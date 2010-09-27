@@ -1,0 +1,150 @@
+#ifndef DYNAMICSFROMFILES_H
+#define DYNAMICSFROMFILES_H
+
+#include "FluorophorDynamics.h"
+#include "../lib/datatable.h"
+
+/** \brief this class loads several datafiles, containing trajectories and uses these trajectories
+ *         for the dynamics simulation
+ *  \ingroup diff4_dynamic
+ *
+ * Note that most of the parameters you may set for a simulation (sim_timestep ...) are not
+ * usable with this class, as they are determined by the contents of the files.
+ *
+ * The trajectories may be played in parallel or one after the other. It is also possible to
+ * center the trajectories around a certain point in space, i.e. the center of mass of the
+ * trajectory may be shifted.
+ *
+ * All loaded files must have at least 4 columns (the first is the simulation time with
+ * \b equidistant steps, and then the position of the fluorophor. In parallel mode all files
+ * have to have the same number of lines!!!
+ *
+ * Take care that it is importand that you don't simulate more steps than there are steps in the files!
+ *
+ * The file may have additional columns:
+ *   - col 1: time
+ *   - col 2-4: x,y,z position
+ *   - col 5-7: polarisation vector in global coordinate system (cartesian unit vector!)
+ *   - col 8: quantum efficiency [0..1]
+ *   - col 9: absorbtion cross section in [m^2]
+ *   - col 10: quantum state [integer]
+ * .
+ */
+class DynamicsFromFiles : public FluorophorDynamics
+{
+    public:
+        /** Default constructor */
+        DynamicsFromFiles(FluorophorManager* fluorophors);
+        /** Default destructor */
+        virtual ~DynamicsFromFiles();
+
+        /** \brief initialize the simulation environment (random walker positions ... */
+        virtual void init();
+
+        /** \brief output the next step from the trajectory
+         *
+         * \param boundary_check when \c boundary_check==false the walkers won't be reset when they reach
+         *                       the border of the simulational box
+         */
+        virtual void propagate(bool boundary_check=true);
+
+        /** \brief report the state of the object, as human-readable text */
+        virtual std::string report();
+    protected:
+        /** \brief read configuration from INI file */
+        virtual void read_config_internal(jkINIParser2& parser);
+
+
+
+        /** \brief these datatables store the trajectories (possibly 1D array in parallel mode!) */
+        datatable* data;
+        /** \brief coordinate shift (x-axis) of the trajectories */
+        double* shift_x;
+        /** \brief coordinate shift (y-axis) of the trajectories */
+        double* shift_y;
+        /** \brief coordinate shift (z-axis) of the trajectories */
+        double* shift_z;
+        /** \brief number of loaded trajectories */
+        int trajectory_count;
+        /** \brief release all memory allocated by this class */
+        void clear();
+        /** \brief the files to be loaded */
+        std::vector<std::string> trajectory_files;
+        /** \brief the possible simulation modes */
+        enum TrajectoryMode {
+            Parallel,
+            Sequential
+        };
+        /** \brief the possible shift modes */
+        enum ShiftMode {
+            Mean,
+            HalfTime
+        };
+        /** \brief how to shift the trajectories */
+        ShiftMode shiftmode;
+        /** \brief the mode in which to use several trajectory files */
+        TrajectoryMode tmode;
+        /** \brief indicates whether to shift the trajectories' COM to 0 or not */
+        bool shift_trajectories;
+        /** \brief counts the current file to output */
+        int file_counter;
+        /** \brief counts the line in the current file to output */
+        int line_counter;
+        /** \brief separator char in CSV files */
+        char separator_char;
+        /** \brief comment char in CSV files */
+        char comment_char;
+        /** \brief scaling factor of time column to seconds x[units of time_column]*factor=x[seconds] */
+        double time_factor;
+        /** \brief scaling factor of position column to microns x[units of position_column]*factor=x[microns] */
+        double position_factor;
+        /** \brief scaling factor of absorbtion_corsssection column to meters^2 x[units of abs_column]*factor=x[m^2] */
+        double abs_factor;
+        /**  \brief scaling factor of fluorescence quantum efficiency column to [0..1] x[units of abs_column]*factor=x[m^2] */
+        double qfluor_factor;
+        /** \brief how many columns to read */
+        int max_columns;
+        /** \brief start numberes input files here */
+        int num_start;
+        /** \brief stop numberes input files here */
+        int num_stop;
+
+        /** \brief column index of time column in file (default: 0)*/
+        int col_time;
+        /** \brief column index of x-position column in file (default: 1)*/
+        int col_posx;
+        /** \brief column index of y-position column in file (default: 2)*/
+        int col_posy;
+        /** \brief column index of z-position column in file (default: 3)*/
+        int col_posz;
+        /** \brief column index of absorption cross section column in file (default: 8)*/
+        int col_abs;
+        /** \brief column index of fluorescence quantum efficiency column in file (default: 7)*/
+        int col_qfluor;
+        /** \brief column index of qm_state column in file (default: 9)*/
+        int col_qmstate;
+        /** \brief column index of x-component of polarisation column in file (default: 4)*/
+        int col_px;
+        /** \brief column index of y-component of polarisation column in file (default: 5)*/
+        int col_py;
+        /** \brief column index of z-component of polarisation column in file (default: 6)*/
+        int col_pz;
+        /** \brief column index of x-component of polarisation column 1 in file (default: 4)*/
+        int col_px1;
+        /** \brief column index of y-component of polarisation column 1 in file (default: 5)*/
+        int col_py1;
+        /** \brief column index of z-component of polarisation column 1 in file (default: 6)*/
+        int col_pz1;
+        /** \brief if you use a linear combination of polarisation vectors, this compination is \f$ f\cdot\vec{p}+(1-f)\cdot\vec{p}_1 \f$
+                   where \f$ f \f$ is this parameter. */
+        double p_fraction;
+
+
+        /** \brief how long did it take to load all files */
+        double timing_loadall;
+        /** \brief how long did it take to load 1 file (in average) */
+        double timing_load1;
+
+};
+
+#endif // DYNAMICSFROMFILES_H
