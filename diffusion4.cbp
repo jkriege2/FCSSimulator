@@ -10,7 +10,6 @@
 				<Option output="diffusion4" prefix_auto="1" extension_auto="1" />
 				<Option type="1" />
 				<Option compiler="gcc" />
-				<Option parameters="two_correlators.ini" />
 				<Compiler>
 					<Add option="-march=prescott" />
 					<Add option="-fexpensive-optimizations" />
@@ -48,11 +47,28 @@
 			<Add option="-DHAVE_INLINE" />
 		</Compiler>
 		<Linker>
+			<Add option="--enable-auto-import" />
 			<Add library="gsl" />
 			<Add library="gslcblas" />
 			<Add library="boost_thread-mt" />
 			<Add library="boost_date_time-mt" />
 		</Linker>
+		<Unit filename="..\..\..\LIB\trunk\correlator_multitau.h" />
+		<Unit filename="..\..\..\LIB\trunk\datatable.cpp" />
+		<Unit filename="..\..\..\LIB\trunk\datatable.h" />
+		<Unit filename="..\..\..\LIB\trunk\highrestimer.cpp" />
+		<Unit filename="..\..\..\LIB\trunk\highrestimer.h" />
+		<Unit filename="..\..\..\LIB\trunk\jkiniparser2.cpp" />
+		<Unit filename="..\..\..\LIB\trunk\jkiniparser2.h" />
+		<Unit filename="..\..\..\LIB\trunk\jkmathparser.cpp" />
+		<Unit filename="..\..\..\LIB\trunk\jkmathparser.h" />
+		<Unit filename="..\..\..\LIB\trunk\multitau-correlator.h" />
+		<Unit filename="..\..\..\LIB\trunk\shiftregister.h" />
+		<Unit filename="..\..\..\LIB\trunk\statistics_tools.cpp" />
+		<Unit filename="..\..\..\LIB\trunk\statistics_tools.h" />
+		<Unit filename="..\..\..\LIB\trunk\ticktock.h" />
+		<Unit filename="..\..\..\LIB\trunk\tools.cpp" />
+		<Unit filename="..\..\..\LIB\trunk\tools.h" />
 		<Unit filename="browniandynamics.cpp" />
 		<Unit filename="browniandynamics.h" />
 		<Unit filename="diffusion4.dox" />
@@ -71,22 +87,7 @@
 		<Unit filename="fluorescencemeasurement.h" />
 		<Unit filename="fluorophordynamics.cpp" />
 		<Unit filename="fluorophordynamics.h" />
-		<Unit filename="janb\correlator_multitau.cc" />
-		<Unit filename="janb\correlator_multitau.h" />
 		<Unit filename="main.cpp" />
-		<Unit filename="..\lib\datatable.cpp" />
-		<Unit filename="..\lib\datatable.h" />
-		<Unit filename="..\lib\highrestimer.cpp" />
-		<Unit filename="..\lib\highrestimer.h" />
-		<Unit filename="..\lib\jkiniparser2.cpp" />
-		<Unit filename="..\lib\jkiniparser2.h" />
-		<Unit filename="..\lib\jkmathparser.cpp" />
-		<Unit filename="..\lib\jkmathparser.h" />
-		<Unit filename="..\lib\multitau-correlator.h" />
-		<Unit filename="..\lib\shiftregister.h" />
-		<Unit filename="..\lib\ticktock.h" />
-		<Unit filename="..\lib\tools.cpp" />
-		<Unit filename="..\lib\tools.h" />
 		<Extensions>
 			<code_completion />
 			<debugger />
