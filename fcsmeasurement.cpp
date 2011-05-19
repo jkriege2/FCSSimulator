@@ -17,7 +17,7 @@ FCSMeasurement::FCSMeasurement(FluorophorManager* fluorophors, std::string objec
     // Rho 6G
     lambda_ex=527;
 
-    q_det=0.1;
+    q_det=0.5;
 
     img_z0=2;
     img_x0=2;
@@ -157,8 +157,8 @@ void FCSMeasurement::init(){
     //unsigned int correlation_slots=P+(S-1)*(P-P/m);
     //corr=(double*)calloc(correlation_slots, sizeof(double));
     //corr_tau=(double*)calloc(correlation_slots, sizeof(double));
-    correlator=new MultiTauCorrelator<uint16_t, uint32_t>(S, m, P, corr_taumin);
-    corrjanb=new correlatorjb(S, P);
+    correlator=new MultiTauCorrelator<double, double>(S, m, P, corr_taumin);
+    corrjanb=new correlatorjb<double, double>(S, P);
     Ephoton=6.626e-34*2.99e8/(lambda_ex*1e-9);
 
     if (corr_taumin<0.99*sim_timestep) {
@@ -191,13 +191,20 @@ void FCSMeasurement::propagate(){
         printf("correlating ...\n");
         PublicTickTock tim;
         tim.tick();
+        long* taus=(long*)malloc(S*P*sizeof(long));
         if (!online_correlation) {
             if (correlator_type==0) {
-                correlator->correlate_series(timeseries, timesteps);
-            } else {
+                for (int i=0; i<timesteps; i++) {
+                    correlator->correlate_step(timeseries[i]);
+                }
+            } else if (correlator_type==1) {
                 for (int i=0; i<timesteps; i++) {
                     corrjanb->run(timeseries[i], timeseries[i]);
                 }
+            } else if (correlator_type==2) {
+                statisticsAutocorrelateCreateMultiTau(taus, S, m, P);
+                corr=(double*)malloc(S*P*sizeof(double));
+                statisticsAutocorrelateMultiTauSymmetric(corr, timeseries, timesteps, taus, S*P);
             }
         }
         if (correlator_type==0) {
@@ -205,16 +212,24 @@ void FCSMeasurement::propagate(){
             corr=correlator->getCor();
             corr_tau=correlator->getCorTau();
             slots=correlator->getSlots();
-        } else {
+        } else if (correlator_type==1) {
             slots=S*P;
-            float** corr1=corrjanb->get_array_G();
+            double** corr1=corrjanb->get_array_G();
             corr=(double*)malloc(slots*sizeof(double));
             corr_tau=(double*)malloc(slots*sizeof(double));
             for (int i=0; i<slots; i++) {
                 corr_tau[i]=corr1[0][i]*corr_taumin;
                 corr[i]=corr1[1][i];
             }
+        } else if (correlator_type==2) {
+            corr_tau=(double*)malloc(slots*sizeof(double));
+            for (int i=0; i<slots; i++) {
+                corr_tau[i]=taus[i]*corr_taumin;
+            }
         }
+
+        free(taus);
+
         tim.tock();
         correlation_runtime+=tim.get_duration();
         printf(" done!\n");

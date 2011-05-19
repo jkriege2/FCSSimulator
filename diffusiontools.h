@@ -17,9 +17,9 @@
 #include <sys/types.h>
 #include <dirent.h>
 
-#include "../lib/tools.h"
-#include "../lib/jkiniparser2.h"
-#include "../lib/datatable.h"
+#include "../../../LIB/trunk/tools.h"
+#include "../../../LIB/trunk/jkiniparser2.h"
+#include "../../../LIB/trunk/datatable.h"
 
 
 

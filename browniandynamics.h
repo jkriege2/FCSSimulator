@@ -6,8 +6,8 @@
 #include <gsl/gsl_randist.h>
 #include <cstdlib>
 
-#include "../lib/tools.h"
-#include "../lib/jkINIParser2.h"
+#include "../../../LIB/trunk/tools.h"
+#include "../../../LIB/trunk/jkINIParser2.h"
 #include "fluorophordynamics.h"
 #include "diffusiontools.h"
 

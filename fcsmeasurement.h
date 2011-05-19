@@ -16,12 +16,13 @@
 //#include <boost/thread/thread.hpp>
 
 #include "browniandynamics.h"
-#include "../lib/tools.h"
-#include "../lib/jkINIParser2.h"
-#include "../lib/multitau-correlator.h"
+#include "../../../LIB/trunk/tools.h"
+#include "../../../LIB/trunk/jkINIParser2.h"
+#include "../../../LIB/trunk/multitau-correlator.h"
 #include "fluorophordynamics.h"
 #include "fluorescencemeasurement.h"
-#include "janb/correlator_multitau.h"
+#include "../../../LIB/trunk/correlator_multitau.h"
+#include "../../../LIB/trunk/statistics_tools.h"
 
 
 /*! \brief Fluorescence Correlation Spectroscopy (FCS) class
@@ -221,10 +222,10 @@ class FCSMeasurement: public FluorescenceMeasurement {
         double correlation_runtime;
 
         /** \brief Multiple-Tau correlator class */
-        MultiTauCorrelator<uint16_t, uint32_t>* correlator;
+        MultiTauCorrelator<double, double>* correlator;
 
         /** \brief JanB's correlator */
-        correlatorjb* corrjanb;
+        correlatorjb<double, double>* corrjanb;
 
         /** \brief end of current integration period */
         double endCurrentStep;

@@ -1,10 +1,10 @@
 #include <iostream>
 #include "browniandynamics.h"
 #include "fluorescenceimaging.h"
-#include "../lib/jkINIParser2.h"
+#include "../../../LIB/trunk/jkINIParser2.h"
 #include "fcsmeasurement.h"
 #include "fluorophordynamics.h"
-#include "../lib/datatable.h"
+#include "../../../LIB/trunk/datatable.h"
 #include "dynamicsfromfiles2.h"
 
 #include <gsl/gsl_matrix.h>

@@ -1,12 +1,12 @@
-#include "../lib/jkINIParser2.h"
+#include "../../../LIB/trunk/jkINIParser2.h"
 #include <string>
 #include <vector>
-#include "../lib/tools.h"
+#include "../../../LIB/trunk/tools.h"
 #include "fluorophordynamics.h"
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
-#include "../lib/ticktock.h"
+#include "../../../LIB/trunk/ticktock.h"
 
 #include "diffusiontools.h"
 

@@ -11,8 +11,8 @@
 #include <gsl/gsl_math.h>
 
 #include "browniandynamics.h"
-#include "../lib/tools.h"
-#include "../lib/jkINIParser2.h"
+#include "../../../LIB/trunk/tools.h"
+#include "../../../LIB/trunk/jkINIParser2.h"
 #include "fluorescencemeasurement.h"
 
 /*! \brief create images of the fluorescence
