@@ -222,9 +222,10 @@ void FCSMeasurement::propagate(){
                 corr[i]=corr1[1][i];
             }
         } else if (correlator_type==2) {
+            slots=S*P;
             corr_tau=(double*)malloc(slots*sizeof(double));
             for (int i=0; i<slots; i++) {
-                corr_tau[i]=taus[i]*corr_taumin;
+                corr_tau[i]=(double)taus[i]*corr_taumin;
             }
         }
 
@@ -333,7 +334,9 @@ void FCSMeasurement::save() {
     sprintf(fn, "%s%scorr.dat", basename.c_str(), object_name.c_str());
     printf("writing '%s' ...", fn);
     f=fopen(fn, "w");
-    for (unsigned long long i=0; i<slots; i++) {
+    unsigned long long istart=1;
+    if (correlator_type==2) istart=0;
+    for (unsigned long long i=istart; i<slots; i++) {
         fprintf(f, "%15.10lf, %15.10lf\n", corr_tau[i], corr[i]);
     }
     fclose(f);
