@@ -7,17 +7,20 @@ FCSMeasurement::FCSMeasurement(FluorophorManager* fluorophors, std::string objec
 {
     save_binning=false;
     online_correlation=false;
+    save_timeseries=false;
 
     psf_region_factor=3;
 
-    psf_r0=0.1;
-    psf_z0=0.7;
+    expsf_r0=0.5;
+    expsf_z0=0.5*6;
+    detpsf_r0=0.53;
+    detpsf_z0=0.53*6;
     I0=200/0.25e-12;
 
     // Rho 6G
     lambda_ex=527;
 
-    q_det=0.5;
+    q_det=0.1;
 
     img_z0=2;
     img_x0=2;
@@ -83,10 +86,14 @@ void FCSMeasurement::read_config_internal(jkINIParser2& parser) {
 
     psf_region_factor=parser.getAsDouble("psf_region_factor", psf_region_factor);
 
-    psf_r0=parser.getSetAsDouble("psf_r0", psf_r0);
-    psf_z0=parser.getSetAsDouble("psf_z0", psf_z0);
+    expsf_r0=parser.getSetAsDouble("expsf_r0", expsf_r0);
+    expsf_z0=parser.getSetAsDouble("expsf_z0", expsf_z0);
 
-    corr_taumin=parser.getSetAsDouble("corr_taumin", sim_timestep);
+    detpsf_r0=parser.getSetAsDouble("detpsf_r0", detpsf_r0);
+    detpsf_z0=parser.getSetAsDouble("detpsf_z0", detpsf_z0);
+
+    corr_taumin=parser.getSetAsDouble("corr_taumin", corr_taumin);
+    //std::cout<<"  >>>> read corr_taumin = "<<corr_taumin<<std::endl;
     S=parser.getSetAsInt("corr_S", S);
     m=parser.getSetAsInt("corr_m", m);
     P=parser.getSetAsInt("corr_P", P);
@@ -95,7 +102,7 @@ void FCSMeasurement::read_config_internal(jkINIParser2& parser) {
     if (parser.exists("I0")) {
         I0=parser.getSetAsDouble("I0", I0);
     } else {
-        I0=parser.getSetAsDouble("P0", I0*(M_PI*gsl_pow_2(2.0*1e-6*psf_r0)))/(M_PI*gsl_pow_2(2.0*1e-6*psf_r0));
+        I0=parser.getSetAsDouble("P0", I0*(M_PI*gsl_pow_2(2.0*1e-6*expsf_r0)))/(M_PI*gsl_pow_2(2.0*1e-6*expsf_r0));
     }
     lambda_ex=parser.getSetAsDouble("lambda_ex", lambda_ex);
     q_det=parser.getSetAsDouble("q_det", q_det);
@@ -127,7 +134,8 @@ void FCSMeasurement::read_config_internal(jkINIParser2& parser) {
     polarised_excitation=parser.getSetAsBool("polarised_excitation", polarised_excitation);
 
     save_binning=parser.getSetAsBool("save_binning", save_binning);
-    save_binning_time=parser.getSetAsDouble("save_binning_time", corr_taumin*10.0);
+    save_binning_time=parser.getSetAsDouble("save_binning_time", save_binning_time);
+    save_timeseries=parser.getSetAsBool("save_timeseries", save_timeseries);
 
 
     init();
@@ -166,7 +174,7 @@ void FCSMeasurement::init(){
     }
 
     double r=corr_taumin/sim_timestep;
-    if (round(r)-r>0.0000001) {
+    if (fabs(round(r)-r)>0.0000001) {
         throw MeasurementException("corr_taumin has to be an integer multiple of sim_timestep!!!\ncorr_taumin="+floattostr(corr_taumin)+"   sim_timestep="+floattostr(sim_timestep)+"   r="+floattostr(r));
     } else corr_taumin=round(r)*sim_timestep;
 
@@ -265,10 +273,10 @@ void FCSMeasurement::run_fcs_simulation(){
                 double edy=y0-ex_y0;
                 double edxs=edx*edx;
                 double edys=edy*edy;
-                if (fabs(edz)<psf_region_factor*psf_z0 && edxs+edys<gsl_pow_2(psf_region_factor*psf_r0)) {
+                if ((fabs(edz)<(psf_region_factor*detpsf_z0)) && ((edxs+edys)<gsl_pow_2(psf_region_factor*detpsf_r0))) {
                     double dxs=dx*dx;
                     double dys=dy*dy;
-                    double n0=n00*((dynn[i].qm_state==0)?1.0:0.0)*dynn[i].q_fluor*dynn[i].sigma_abs;
+                    double n0=n00*dyn[d]->get_walker_sigma_times_qfl(i);
                     n0=n0*fluorophors->get_spectral_absorbance(dynn[i].spectrum, lambda_ex);
                     //dynn->get_walker_spectral_absorbance(i, lambda_ex);
                     double dpx, dpy, dpz;
@@ -278,11 +286,11 @@ void FCSMeasurement::run_fcs_simulation(){
                     if (polarised_excitation) {
                         n0=n0*(1.0-e_pol_fraction+e_pol_fraction*gsl_pow_2(dpx*e_x+dpy*e_y+dpz*e_z));
                     }
-                    n0=n0*exp(-2.0*(edxs+edys)/gsl_pow_2(psf_r0)-2.0*gsl_pow_2(edz)/gsl_pow_2(psf_z0));
+                    n0=n0*exp(-2.0*(edxs+edys)/gsl_pow_2(expsf_r0)-2.0*gsl_pow_2(edz)/gsl_pow_2(expsf_z0));
                     if (polarised_detection) {
                         n0=n0*gsl_pow_2(dpx*d_x+dpy*d_y+dpz*d_z);
                     }
-                    nphot_sum=nphot_sum+n0*q_det*exp(-2.0*(dxs+dys)/gsl_pow_2(psf_r0)-2.0*gsl_pow_2(dz)/gsl_pow_2(psf_z0));
+                    nphot_sum=nphot_sum+n0*q_det*exp(-2.0*(dxs+dys)/gsl_pow_2(detpsf_r0)-2.0*gsl_pow_2(dz)/gsl_pow_2(detpsf_z0));
                     //std::cout<<"nphot_sum="<<nphot_sum<<"\n";
                 }
             }
@@ -291,7 +299,7 @@ void FCSMeasurement::run_fcs_simulation(){
 
     // if the current integration step ended, we may add a new value to the correlator
     //std::cout<<"sim_time="<<sim_time<<"   endCurrentStep="<<endCurrentStep<<"\n";
-    if (sim_time>endCurrentStep) {
+    if (sim_time>=endCurrentStep) {
         endCurrentStep=sim_time+corr_taumin;
         register uint16_t N=gsl_ran_poisson(rng, nphot_sum);
         //std::cout<<"N="<<N<<std::endl;
@@ -315,7 +323,7 @@ void FCSMeasurement::run_fcs_simulation(){
             }
         }
         if (current_timestep%(timesteps/20)==0) {
-            std::cout<<format("%4.1lf", (double)current_timestep/(double)timesteps*100.0)<<"%:   "<<display_temp<<std::endl;
+            std::cout<<format("%4.1lf", (double)current_timestep/(timesteps)*100.0)<<"%:   "<<display_temp<<std::endl;
             display_temp=0;
         } else {
             display_temp+=N;
@@ -353,25 +361,33 @@ void FCSMeasurement::save() {
     printf(" done!\n");
 
     if (!online_correlation) {
-        sprintf(fn, "%s%sts.dat", basename.c_str(), object_name.c_str());
-        printf("writing '%s' ...", fn);
-        f=fopen(fn, "w");
-        double t=0;
-        for (unsigned long long i=0; i<timesteps; i++) {
-            fprintf(f, "%15.10lf, %ld\n", t, timeseries[i]);
-            t=t+corr_taumin;
-        }
-        fclose(f);
-        std::string tsfn=fn;
-        printf(" done!\n");
+        if (save_timeseries) {
+            sprintf(fn, "%s%sts.dat", basename.c_str(), object_name.c_str());
+            printf("writing '%s' ...", fn);
+            f=fopen(fn, "w");
+            double t=0;
+            for (unsigned long long i=0; i<timesteps; i++) {
+                fprintf(f, "%15.10lf, %ld\n", t, timeseries[i]);
+                t=t+corr_taumin;
+            }
+            fclose(f);
+            std::string tsfn=fn;
+            printf(" done!\n");
 
-        sprintf(fn, "%s%stsplot.plt", basename.c_str(), object_name.c_str());
-        printf("writing '%s' ...", fn);
-        f=fopen(fn, "w");
-        fprintf(f, "plot \"%s\" with steps\n", extract_file_name(tsfn).c_str());
-        fprintf(f, "pause -1\n");
-        fclose(f);
-        printf(" done!\n");
+            sprintf(fn, "%s%stsplot.plt", basename.c_str(), object_name.c_str());
+            printf("writing '%s' ...", fn);
+            f=fopen(fn, "w");
+            fprintf(f, "set xlabel \"time [seconds]\"\n");
+            fprintf(f, "set ylabel \"photon count [photons/%lfsec]\"\n", corr_taumin);
+            fprintf(f, "plot \"%s\" with steps\n", extract_file_name(tsfn).c_str());
+            fprintf(f, "pause -1\n");
+            fprintf(f, "set xlabel \"time [seconds]\"\n");
+            fprintf(f, "set ylabel \"photon count [Hz]\"\n", corr_taumin);
+            fprintf(f, "plot \"%s\" using 1:(($2)/%lf) with steps\n", extract_file_name(tsfn).c_str(), corr_taumin);
+            fprintf(f, "pause -1\n");
+            fclose(f);
+            printf(" done!\n");
+        }
     }
 
     if (save_binning) {
@@ -382,7 +398,7 @@ void FCSMeasurement::save() {
             f=fopen(fn, "w");
             double t=0;
             int b=round(save_binning_time/corr_taumin);
-            for (unsigned long long i=0; i<timesteps/b; i++) {
+            for (unsigned long long i=0; i<timesteps/b-1; i++) {
                 fprintf(f, "%15.10lf, %ld\n", t, binned_timeseries[i]);
                 t=t+corr_taumin*b;
             }
@@ -393,7 +409,13 @@ void FCSMeasurement::save() {
             sprintf(fn, "%s%sbtsplot.plt", basename.c_str(), object_name.c_str());
             printf("writing '%s' ...", fn);
             f=fopen(fn, "w");
+            fprintf(f, "set xlabel \"time [seconds]\"\n");
+            fprintf(f, "set ylabel \"photon count [photons/%lfsec]\"\n", corr_taumin*b);
             fprintf(f, "plot \"%s\" with steps\n", extract_file_name(tsfn).c_str());
+            fprintf(f, "pause -1\n");
+            fprintf(f, "set xlabel \"time [seconds]\"\n");
+            fprintf(f, "set ylabel \"photon count [Hz]\"\n", corr_taumin);
+            fprintf(f, "plot \"%s\" using 1:(($2)/%lf) with steps\n", extract_file_name(tsfn).c_str(), corr_taumin*b);
             fprintf(f, "pause -1\n");
             fclose(f);
             printf(" done!\n");
@@ -405,7 +427,7 @@ void FCSMeasurement::save() {
             f=fopen(fn, "w");
             double t=0;
             int b=round(save_binning_time/corr_taumin);
-            for (unsigned long long i=0; i<timesteps; i=i+b) {
+            for (unsigned long long i=0; i<timesteps-b; i=i+b) {
                 register uint32_t ts=0;
                 for (int j=0; j<b; j++) {
                     ts=ts+timeseries[i+j];
@@ -420,7 +442,13 @@ void FCSMeasurement::save() {
             sprintf(fn, "%s%sbtsplot.plt", basename.c_str(), object_name.c_str());
             printf("writing '%s' ...", fn);
             f=fopen(fn, "w");
+            fprintf(f, "set xlabel \"time [seconds]\"\n");
+            fprintf(f, "set ylabel \"photon count [photons/%lfsec]\"\n", corr_taumin*b);
             fprintf(f, "plot \"%s\" with steps\n", extract_file_name(tsfn).c_str());
+            fprintf(f, "pause -1\n");
+            fprintf(f, "set xlabel \"time [seconds]\"\n");
+            fprintf(f, "set ylabel \"photon count [Hz]\"\n", corr_taumin);
+            fprintf(f, "plot \"%s\" using 1:(($2)/%lf) with steps\n", extract_file_name(tsfn).c_str(), corr_taumin*b);
             fprintf(f, "pause -1\n");
             fclose(f);
             printf(" done!\n");
@@ -433,14 +461,19 @@ void FCSMeasurement::save() {
 
 std::string FCSMeasurement::report(){
     std::string s=FluorescenceMeasurement::report();
-    s+="pos_laser = ["+floattostr(img_x0)+", "+floattostr(img_y0)+", "+floattostr(img_z0)+"] um\n";
-    s+="pos_detector = ["+floattostr(ex_x0)+", "+floattostr(ex_y0)+", "+floattostr(ex_z0)+"] um\n";
+    s+="pos_laser     = ["+floattostr(ex_x0)+", "+floattostr(ex_y0)+", "+floattostr(ex_z0)+"] um\n";
+    s+="pos_detection = ["+floattostr(img_x0)+", "+floattostr(img_y0)+", "+floattostr(img_z0)+"] um\n";
     s+="distance_laser_detector = ["+floattostr(img_x0-ex_x0)+", "+floattostr(img_y0-ex_y0)+", "+floattostr(img_z0-ex_z0)+"] um\n";
     s+="                        = "+floattostr(sqrt(gsl_pow_2(img_x0-ex_x0)+gsl_pow_2(img_y0-ex_y0)+gsl_pow_2(img_z0-ex_z0)))+" um\n";
-    s+="psf_r0 = "+floattostr(psf_r0)+" microns\n";
-    s+="psf_z0 = "+floattostr(psf_z0)+" microns\n";
-    double Veff=4.0/3.0*M_PI*psf_r0*psf_r0*psf_z0;
-    s+="focus_volume (Veff) = "+floattostr(Veff)+" femto litre\n";
+    s+="expsf_r0 = "+floattostr(expsf_r0)+" microns\n";
+    s+="expsf_z0 = "+floattostr(expsf_z0)+" microns\n";
+    s+="detpsf_r0 = "+floattostr(detpsf_r0)+" microns\n";
+    s+="detpsf_z0 = "+floattostr(detpsf_z0)+" microns\n";
+    double psf_r0=1.0/sqrt(1.0/detpsf_r0/detpsf_r0+1.0/expsf_r0/expsf_r0);
+    s+="psf_system = sqrt(1/expsf_r0^2 + 1/detpsf_r0^2) = "+floattostr(psf_r0)+" microns\n";
+
+    double Veff=pow(M_PI, 1.5)*(psf_r0*psf_r0*psf_r0*detpsf_z0/detpsf_r0);
+    s+="focus_volume (Veff) = pi^(3/2) * psf_system^3 * detpsf_z0/detpsf_r0 = "+floattostr(Veff)+" femto litre\n";
     double sum=0;
     if (dyn.size()>0) {
         for (size_t i=0; i<dyn.size(); i++) {
@@ -464,11 +497,11 @@ std::string FCSMeasurement::report(){
     s+="lambda_ex = "+floattostr(lambda_ex)+" nm\n";
     s+="EPhoton_ex = "+floattostr(Ephoton/1.602176487e-19/1e-3)+" meV\n";
     s+="I0 = "+floattostr(I0)+" uW/m^2  =  "+floattostr(I0/1e12)+" uW/micron^2  =  "+floattostr(I0/1e6)+" uW/mm^2\n";
-    s+="P0 [on focus, i.e. on A=pi*(2*psf_r0)^2] = "+floattostr(I0*(M_PI*gsl_pow_2(2.0*psf_r0*1e-6)))+" uW\n";
+    s+="P0 [on focus, i.e. on A=pi*(2*expsf_r0)^2] = "+floattostr(I0*(M_PI*gsl_pow_2(2.0*expsf_r0*1e-6)))+" uW\n";
     for (size_t i=0; i<dyn.size(); i++) {
-        s+="abs_photons/(molecule*s) [using "+dyn[i]->get_object_name()+" data] = "+floattostr(I0*1e-6/Ephoton*dyn[i]->get_init_sigma_abs())+"\n";
-        s+="fluor_photons/(molecule*s) [using "+dyn[i]->get_object_name()+" data] = "+floattostr(dyn[i]->get_init_q_fluor()*I0*1e-6/Ephoton*Ephoton*dyn[i]->get_init_sigma_abs())+"\n";
-        s+="det_photons/(molecule*s) [using "+dyn[i]->get_object_name()+" data] = "+floattostr(q_det*dyn[i]->get_init_q_fluor()*I0*1e-6/Ephoton*Ephoton*dyn[i]->get_init_sigma_abs())+"\n";
+        s+="abs_photons/(molecule*s) [using "+dyn[i]->get_object_name()+" data] = "+floattostr(I0*1e-6/Ephoton*dyn[i]->get_init_sigma_abs(0))+"\n";
+        s+="fluor_photons/(molecule*s) [using "+dyn[i]->get_object_name()+" data] = "+floattostr(dyn[i]->get_init_q_fluor(0)*I0*1e-6/Ephoton*dyn[i]->get_init_sigma_abs(0))+"\n";
+        s+="det_photons/(molecule*s) [using "+dyn[i]->get_object_name()+" data] = "+floattostr(q_det*dyn[i]->get_init_q_fluor(0)*I0*1e-6/Ephoton*dyn[i]->get_init_sigma_abs(0))+"\n";
         s+="absorbtion @ lambda_ex [using "+dyn[i]->get_object_name()+" data] = "+floattostr(fluorophors->get_spectral_absorbance(dyn[i]->get_init_spectrum(), lambda_ex)*100.0)+" %\n";
     }
     s+="duration = "+floattostr(duration*1e3)+" msecs\n";

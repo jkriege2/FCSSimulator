@@ -55,8 +55,10 @@
      - \f$ (x_i, y_i, z_i)^t \f$ is the position of the i-th walker
      - \f$ (x_{ex}, y_{ex}, z_{ex})^t \f$ is the position of the excitation laser
      - \f$ (x_{det}, y_{det}, z_{det})^t \f$ is the position of the detection volume
-     - \f$ \mbox{psf\_r0} \f$ is the \f$ 1/e^2 \f$-width of the detection profile in the x- and y-direction
-     - \f$ \mbox{psf\_z0} \f$ is the \f$ 1/e^2 \f$-width of the detection profile in the z-direction
+     - \f$ \mbox{detpsf\_r0} \f$ is the \f$ 1/e^2 \f$-width of the detection profile in the x- and y-direction
+     - \f$ \mbox{detpsf\_z0} \f$ is the \f$ 1/e^2 \f$-width of the detection profile in the z-direction
+     - \f$ \mbox{expsf\_r0} \f$ is the \f$ 1/e^2 \f$-width of the excitation profile in the x- and y-direction
+     - \f$ \mbox{expsf\_z0} \f$ is the \f$ 1/e^2 \f$-width of the excitation profile in the z-direction
      - \f$ \vec{\mu}_i \f$ is the dipole moment direction ( \f$ |\vec{\mu}_i|=1 \f$ ) of the i-th walker
      - \f$ \vec{p}_{ex} \f$ is the (linear) polarisation vector ( \f$ |\vec{p}_{ex}|=1 \f$ ) of the excitation light
      - \f$ F_{pol} \f$ is the fraction of polarized light in the excitation light (0: no polarized light, 1: fully polarized light)
@@ -93,8 +95,10 @@ class FCSMeasurement: public FluorescenceMeasurement {
          */
         virtual void save();
 
-        GetSetMacro(double, psf_r0);
-        GetSetMacro(double, psf_z0);
+        GetSetMacro(double, expsf_r0);
+        GetSetMacro(double, expsf_z0);
+        GetSetMacro(double, detpsf_r0);
+        GetSetMacro(double, detpsf_z0);
         GetSetMacro(double, lambda_ex);
         GetSetMacro(double, I0);
         GetSetMacro(double, q_det);
@@ -124,11 +128,17 @@ class FCSMeasurement: public FluorescenceMeasurement {
         /** \brief photon energy [Joule] (calculated)*/
         double Ephoton;
 
-        /** \brief radius (1/e^2 width) of the gaussian PSF in x-y-plane in [micrometers] */
-        double psf_r0;
+        /** \brief radius (1/e^2 width) of the gaussian excitation PSF in x-y-plane in [micrometers] */
+        double expsf_r0;
 
-        /** \brief size (1/e^2 width) of the gaussian PSF in z-direction in [micrometers] */
-        double psf_z0;
+        /** \brief size (1/e^2 width) of the gaussian excitation PSF in z-direction in [micrometers] */
+        double expsf_z0;
+
+        /** \brief radius (1/e^2 width) of the gaussian detection PSF in x-y-plane in [micrometers] */
+        double detpsf_r0;
+
+        /** \brief size (1/e^2 width) of the gaussian detection PSF in z-direction in [micrometers] */
+        double detpsf_z0;
 
         /** \brief wavelength of excitation light [nanometers] */
         double lambda_ex;
@@ -180,6 +190,8 @@ class FCSMeasurement: public FluorescenceMeasurement {
          *         away from the laser spot are assumed to not send any fluorescence photons */
         double psf_region_factor;
 
+        /** \brief if this is \c true the object saves the timeseries  */
+        bool save_timeseries;
         /** \brief if this is \c true the object also saves a binned version of the timeseries with
          *         a binning time of save_binning_time */
         bool save_binning;

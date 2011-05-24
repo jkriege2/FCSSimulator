@@ -8,7 +8,6 @@
 #include "dynamicsfromfiles2.h"
 
 #include <gsl/gsl_matrix.h>
-#include <boost/thread.hpp>
 
 #include <cstdio>
 #include <fstream>
@@ -19,32 +18,6 @@
 using namespace std;
 
 FluorophorManager* fluorophors;
-
-class ManyDynamicsThreadAdaptor {
-    protected:
-        std::vector<FluorophorDynamics*> dyn;
-    public:
-        void addDynamics(FluorophorDynamics* d) {
-            dyn.push_back(d);
-        };
-        void operator()() {
-            for (size_t i=0; i<dyn.size(); i++) {
-                dyn[i]->propagate();
-            }
-        }
-};
-
-class DynamicsThreadAdaptor {
-    protected:
-        FluorophorDynamics* dyn;
-    public:
-        void addDynamics(FluorophorDynamics* d) {
-            dyn=d;
-        }
-        void operator()() {
-            dyn->propagate();
-        }
-};
 
 std::vector<FluorophorDynamics*> dyn;
 std::vector<FluorescenceMeasurement*> meas;
@@ -61,7 +34,7 @@ void do_sim(std::string inifilename) {
         ini.readFile(inifilename);
         ini.print();
         std::string basename=ini.getSetAsString("simulation.basename", "");
-        bool multithread=ini.getSetAsBool("simulation.multithread", false);
+        //bool multithread=ini.getSetAsBool("simulation.multithread", false);
         double duration=ini.getSetAsDouble("simulation.duration", -1);
 
         mk_all_dir(extract_file_path(basename+"config.ini").c_str());

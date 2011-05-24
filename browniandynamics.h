@@ -82,12 +82,28 @@ class BrownianDynamics: public FluorophorDynamics
         double sigma_rotjump;
         /** \brief if set (\c true ) this class also uses rotational diffusion */
         bool use_rotational_diffusion;
+        /** \brief indicates in which interval of sim timesteps to save the MSD (<=0 => no M;SD is saved) */
+        int save_msd_every_n_timesteps;
+        /** \brief number of MSD values to save */
+        int msd_size;
+        /** \brief array used to store the msd, if save_msd_every_n_timesteps>0. Every array index \f$ i \f$ corresponds
+         *         to a time \f$ i\cdot\mbox{save\_msd\_every\_n\_timesteps}\cdot\mbox{sim\_timestep} \$ . The size of this
+         *         array is determined by msd_size */
+        double* msd;
+        uint64_t* msd_count;
+
+        /** \brief number of fluorophores per random walker/particle */
+        unsigned int n_fluorophores;
+
         /** \brief used to read configuration data from ini file ... overwrite this to read data in derived classes.
          *
          * This base class will care for entering the right group to read from! But keep in mind that you will HAVE to call the
          * corresponding function of the parent class in your implementation!
          */
         virtual void read_config_internal(jkINIParser2& parser);
+
+        /** \brief set the number of walkrs and allocate the according amount of memory for walker_state */
+        virtual void change_walker_count(unsigned long N_walker);
 
     public:
         /** \brief class constructor with standard volume 30*30*30µm^3 and a concentration of 1nM */

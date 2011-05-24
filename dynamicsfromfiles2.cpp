@@ -231,10 +231,7 @@ void DynamicsFromFiles2::propagate(bool boundary_check) {
         walker_state[0].p_x=init_p_x;
         walker_state[0].p_y=init_p_y;
         walker_state[0].p_z=init_p_z;
-        walker_state[0].q_fluor=init_q_fluor;
-        walker_state[0].tau_fl=init_tau_fl;
         walker_state[0].qm_state=init_qm_state;
-        walker_state[0].sigma_abs=init_sigma_abs;
         walker_state[0].type=init_type;
         walker_state[0].spectrum=init_spectrum;
         //std::cout<<walker_state[0].x<<", "<<walker_state[0].y<<", "<<walker_state[0].z<<std::endl;
@@ -262,10 +259,10 @@ void DynamicsFromFiles2::propagate(bool boundary_check) {
         // normalize p
 
         if ((cc>col_qfluor) && (col_qfluor>=0) && (max_columns>col_qfluor)) {
-            walker_state[0].q_fluor=data[col_qfluor]*qfluor_factor;
+            walker_state[0].q_fluor[0]=data[col_qfluor]*qfluor_factor;
         }
         if ((cc>col_abs) && (col_abs>=0) && (max_columns>col_abs)) {
-            walker_state[0].sigma_abs=data[col_abs]*abs_factor;
+            walker_state[0].sigma_abs[0]=data[col_abs]*abs_factor;
         }
         if ((cc>col_qmstate) && (col_qmstate>=0) && (max_columns>col_qmstate)) {
             walker_state[0].qm_state=(int)round(data[col_qmstate]);
@@ -296,10 +293,7 @@ void DynamicsFromFiles2::propagate(bool boundary_check) {
                 walker_state[file_counter].p_x=init_p_x;
                 walker_state[file_counter].p_y=init_p_y;
                 walker_state[file_counter].p_z=init_p_z;
-                walker_state[file_counter].q_fluor=init_q_fluor;
-                walker_state[file_counter].tau_fl=init_tau_fl;
                 walker_state[file_counter].qm_state=init_qm_state;
-                walker_state[file_counter].sigma_abs=init_sigma_abs;
                 walker_state[file_counter].type=init_type;
                 walker_state[file_counter].spectrum=init_spectrum;
                 //std::cout<<walker_state[file_counter].x<<", "<<walker_state[file_counter].y<<", "<<walker_state[file_counter].z<<std::endl;
@@ -326,10 +320,10 @@ void DynamicsFromFiles2::propagate(bool boundary_check) {
                 }
                 // normalize p
                 if ((cc>col_qfluor) && (col_qfluor>=0) && (max_columns>col_qfluor)) {
-                    walker_state[file_counter].q_fluor=data[col_qfluor]*qfluor_factor;
+                    walker_state[file_counter].q_fluor[0]=data[col_qfluor]*qfluor_factor;
                 }
                 if ((cc>col_abs) && (col_abs>=0) && (max_columns>col_abs)) {
-                    walker_state[file_counter].sigma_abs=data[col_abs]*abs_factor;
+                    walker_state[file_counter].sigma_abs[0]=data[col_abs]*abs_factor;
                 }
                 if ((cc>col_qmstate) && (col_qmstate>=0) && (max_columns>col_qmstate)) {
                     walker_state[file_counter].qm_state=(int)round(data[col_qmstate]);

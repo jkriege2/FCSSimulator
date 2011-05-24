@@ -14,6 +14,7 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, std::stri
     protocol_trajectories=0;
     sim_time=0;
     sim_timestep=1e-6;
+
     use_two_walkerstates=false;
 
     endoftrajectory=false;
@@ -27,15 +28,16 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, std::stri
     init_p_x=1;
     init_p_y=0;
     init_p_z=0;
-    init_q_fluor=0.1;
     init_qm_state=0;
     init_type=0;
     init_spectrum=-1;
-    init_sigma_abs=2.2e-20;
+    init_used_qm_states=1;
+
+    for (int j=0; j<N_FLUORESCENT_STATES; j++) init_sigma_abs[j]=2.2e-20;
+    for (int j=0; j<N_FLUORESCENT_STATES; j++) init_q_fluor[j]=0.1;
+    for (int j=0; j<N_FLUORESCENT_STATES*N_FLUORESCENT_STATES; j++) init_photophysics_transition[j]=0;
+
     init_spectrum=-1;
-    init_bleaching_propability=0;
-    init_triplet_lifetime=0;
-    init_triplet_propability=0;
     use_photophysics=true;
     protocol_timestep_count=-1;
 
@@ -70,14 +72,14 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, double si
     init_p_x=1;
     init_p_y=0;
     init_p_z=0;
-    init_q_fluor=0.1;
     init_qm_state=0;
     init_type=0;
-    init_sigma_abs=2.2e-20;
     init_spectrum=-1;
-    init_bleaching_propability=0;
-    init_triplet_lifetime=0;
-    init_triplet_propability=0;
+    init_used_qm_states=1;
+
+    for (int j=0; j<N_FLUORESCENT_STATES; j++) init_sigma_abs[j]=2.2e-20;
+    for (int j=0; j<N_FLUORESCENT_STATES; j++) init_q_fluor[j]=0.1;
+    for (int j=0; j<N_FLUORESCENT_STATES*N_FLUORESCENT_STATES; j++) init_photophysics_transition[j]=0;
     use_photophysics=true;
     protocol_timestep_count=-1;
 
@@ -113,15 +115,14 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, double si
     init_p_x=1;
     init_p_y=0;
     init_p_z=0;
-    init_q_fluor=0.1;
     init_qm_state=0;
     init_type=0;
     init_spectrum=-1;
-    init_sigma_abs=2.2e-20;
-    init_spectrum=-1;
-    init_bleaching_propability=0;
-    init_triplet_lifetime=0;
-    init_triplet_propability=0;
+    init_used_qm_states=1;
+
+    for (int j=0; j<N_FLUORESCENT_STATES; j++) init_sigma_abs[j]=2.2e-20;
+    for (int j=0; j<N_FLUORESCENT_STATES; j++) init_q_fluor[j]=0.1;
+    for (int j=0; j<N_FLUORESCENT_STATES*N_FLUORESCENT_STATES; j++) init_photophysics_transition[j]=0;
     use_photophysics=true;
     protocol_timestep_count=-1;
 
@@ -160,38 +161,79 @@ void FluorophorDynamics::read_config_internal(jkINIParser2& parser) {
     init_p_x=parser.getSetAsDouble("init_p_x", init_p_x);
     init_p_y=parser.getSetAsDouble("init_p_y", init_p_y);
     init_p_z=parser.getSetAsDouble("init_p_z", init_p_z);
-    std::string spec="none";
+    std::string spec="rho6g";
     if (parser.exists("init_fluorophor")) {
-        spec=tolower(parser.getSetAsString("init_fluorophor", "rho6g"));
+        spec=tolower(parser.getSetAsString("init_fluorophor", spec));
         if (!fluorophors->fluorophorExists(spec)) {
             throw FluorophorException(format("didn't find fluorophor %s in database", spec.c_str()));
         }
-        init_q_fluor=fluorophors->getFluorophorData(spec).fluorescence_efficiency;
+        for (int j=0; j<N_FLUORESCENT_STATES; j++) {
+            init_sigma_abs[j]=fluorophors->getFluorophorData(spec).sigma_abs;
+            init_q_fluor[j]=fluorophors->getFluorophorData(spec).fluorescence_efficiency;
+        }
+        /*
         init_tau_fl=fluorophors->getFluorophorData(spec).fluorescence_lifetime;
-        init_sigma_abs=fluorophors->getFluorophorData(spec).sigma_abs;
         init_bleaching_propability=fluorophors->getFluorophorData(spec).bleaching_propability;
         init_triplet_lifetime=fluorophors->getFluorophorData(spec).triplet_lifetime;
         init_triplet_propability=fluorophors->getFluorophorData(spec).triplet_propability;
-        std::cout<<spec<<": "<<init_q_fluor<<", "<<init_tau_fl<<", "<<init_sigma_abs<<std::endl;
+        std::cout<<spec<<": "<<init_q_fluor<<", "<<init_tau_fl<<", "<<init_sigma_abs<<std::endl;*/
     }
-    init_q_fluor=parser.getSetAsDouble("init_q_fluor", init_q_fluor);
     init_qm_state=parser.getSetAsInt("init_qm_state", init_qm_state);
     init_type=parser.getSetAsInt("init_type", init_type);
-    init_sigma_abs=parser.getSetAsDouble("init_sigma_abs", init_sigma_abs);
-    //test_spectra=parser.getSetAsBool("test_spectra", test_spectra);
-    init_tau_fl=parser.getSetAsDouble("init_tau_fluor", init_tau_fl);
-    init_bleaching_propability=parser.getSetAsDouble("init_bleaching_propability", init_bleaching_propability);
-    init_triplet_lifetime=parser.getSetAsDouble("init_triplet_lifetime", init_triplet_lifetime);
-    init_triplet_propability=parser.getSetAsDouble("init_triplet_propability", init_triplet_propability);
-    spec=tolower(parser.getSetAsString("init_spectrum", spec));
-    use_photophysics=parser.getSetAsBool("use_photophysics", use_photophysics);
-    init_spectrum=-1;
-    if (fluorophors->getFluorophorData(spec).spectrum!=-1) {
-        init_spectrum=fluorophors->getFluorophorData(spec).spectrum;
-    } else {
-        std::cout<<std::endl<<std::endl<<"didn't find spectrum for "<<spec<<std::endl;
+
+    //init_used_qm_states=1;
+
+    for (int j=0; j<N_FLUORESCENT_STATES; j++) {
+        std::string prop1="init_sigma_abs_"+inttostr(j);
+        std::string prop2="init_q_fluor_"+inttostr(j);
+        //std::cout<<parser.getGroupName()<<prop1<<"("<<parser.exists(prop1)<<") -> init_sigma_abs["<<j<<"]="<<init_sigma_abs[j]<<"     "<<parser.getGroupName()<<prop2<<"("<<parser.exists(prop2)<<") -> init_q_fluor["<<j<<"]="<<init_q_fluor[j]<<std::endl;
+        if ((parser.exists(prop1) || parser.exists(prop2)) && (j+1>init_used_qm_states)) init_used_qm_states=j+1;
+        init_sigma_abs[j]=parser.getSetAsDouble(prop1, parser.getAsDouble("init_sigma_abs", init_sigma_abs[j]));
+        init_q_fluor[j]=parser.getSetAsDouble(prop2, parser.getAsDouble("init_q_fluor", init_q_fluor[j]));
+        //std::cout<<"init_used_qm_states="<<init_used_qm_states<<std::endl;
+        //std::cout<<parser.getGroupName()<<prop1<<"("<<parser.exists(prop1)<<") -> init_sigma_abs["<<j<<"]="<<init_sigma_abs[j]<<"     "<<parser.getGroupName()<<prop2<<"("<<parser.exists(prop2)<<") -> init_q_fluor["<<j<<"]="<<init_q_fluor[j]<<std::endl;
     }
-    std::cout<<spec<<" ("<<init_spectrum<<"): "<<init_q_fluor<<", "<<init_tau_fl<<", "<<init_sigma_abs<<std::endl;
+
+    for (int i=0; i<N_FLUORESCENT_STATES; i++) {
+        bool has_ii=false;
+        for (int f=0; f<N_FLUORESCENT_STATES; f++) {
+            std::string prop="init_photophysics_transition_"+inttostr(i)+"_"+inttostr(f);
+            if ((i==f) && parser.exists(prop)) has_ii=true;
+            if (parser.exists(prop) && (i+1>init_used_qm_states)) init_used_qm_states=i+1;
+            if (parser.exists(prop) && (f+1>init_used_qm_states)) init_used_qm_states=f+1;
+            init_photophysics_transition[i*N_FLUORESCENT_STATES+f]=parser.getSetAsDouble(prop, init_photophysics_transition[i*N_FLUORESCENT_STATES+f]);
+            //std::cout<<"init_used_qm_states="<<init_used_qm_states<<std::endl;
+        }
+        if (!has_ii) {
+            std::string prop="init_photophysics_transition_"+inttostr(i)+"_"+inttostr(i);
+            std::cout<<"calculating probability "<<prop<<": ";
+            double sum=0;
+            for (int f=0; f<N_FLUORESCENT_STATES; f++) {
+                if (i!=f) sum=sum+init_photophysics_transition[i*N_FLUORESCENT_STATES+f];
+            }
+            if (sum<=1.0) {
+                init_photophysics_transition[i*N_FLUORESCENT_STATES+i]=1.0-sum;
+                std::cout<<1.0-sum<<std::endl;
+            } else {
+                std::cout<<1.0-sum<<std::endl;
+                throw FluorophorException(format("probability to leave state %d larger than one!!!", i));
+            }
+        }
+    }
+    init_used_qm_states=parser.getSetAsInt("init_used_qm_states", init_used_qm_states);
+
+    use_photophysics=parser.getSetAsBool("use_photophysics", use_photophysics);
+
+    if (parser.exists("init_spectrum")) {
+        spec=tolower(parser.getSetAsString("init_spectrum", spec));
+        //init_spectrum=-1;
+        if (fluorophors->getFluorophorData(spec).spectrum!=-1) {
+            init_spectrum=fluorophors->getFluorophorData(spec).spectrum;
+        } else {
+            std::cout<<std::endl<<std::endl<<"didn't find spectrum for "<<spec<<std::endl;
+        }
+    }
+    //std::cout<<spec<<" ("<<init_spectrum<<"): "<<init_q_fluor<<", "<<init_tau_fl<<", "<<init_sigma_abs<<std::endl;
     protocol_trajectories=parser.getSetAsInt("protocol_trajectories", protocol_trajectories);
     protocol_timestep_count=parser.getSetAsInt("protocol_timestep_count", protocol_timestep_count);;
 }
@@ -295,6 +337,29 @@ void FluorophorDynamics::change_walker_count(unsigned long N_walker){
     walker_count=N_walker;
 }
 
+void FluorophorDynamics::init_walker(unsigned long i, double x, double y, double z) {
+    walker_state[i].time=0;
+    walker_state[i].exists=true;
+    walker_state[i].x=x;
+    walker_state[i].y=y;
+    walker_state[i].z=z;
+    walker_state[i].x0=x;
+    walker_state[i].y0=y;
+    walker_state[i].z0=z;
+    walker_state[i].p_x=init_p_x;
+    walker_state[i].p_y=init_p_y;
+    walker_state[i].p_z=init_p_z;
+    for (int j=0; j<N_FLUORESCENT_STATES; j++) walker_state[i].sigma_abs[j]=init_sigma_abs[j];
+    for (int j=0; j<N_FLUORESCENT_STATES; j++) walker_state[i].q_fluor[j]=init_q_fluor[j];
+    for (int j=0; j<N_FLUORESCENT_STATES*N_FLUORESCENT_STATES; j++) walker_state[i].photophysics_transition[j]=init_photophysics_transition[j];
+    walker_state[i].qm_state=init_qm_state;
+    walker_state[i].used_qm_states=init_used_qm_states;
+    walker_state[i].type=init_type;
+    walker_state[i].spectrum=init_spectrum;
+    walker_state[i].user_data=NULL;
+    fluorophors->load_spectrum(init_spectrum);
+}
+
 void FluorophorDynamics::init(){
     sim_time=0;
     endoftrajectory=false;
@@ -307,61 +372,17 @@ void FluorophorDynamics::init(){
     // now we initialize the walkers at random possitions inside the simulation volume
     if (volume_shape==Box) {
         for (unsigned long i=0; i<walker_count; i++) {
-            walker_state[i].time=0;
-            walker_state[i].exists=true;
-            walker_state[i].x=sim_x*gsl_rng_uniform(rng);
-            walker_state[i].y=sim_y*gsl_rng_uniform(rng);
-            walker_state[i].z=sim_z*gsl_rng_uniform(rng);
-            walker_state[i].p_x=init_p_x;
-            walker_state[i].p_y=init_p_y;
-            walker_state[i].p_z=init_p_z;
-            walker_state[i].q_fluor=init_q_fluor;
-            walker_state[i].tau_fl=init_tau_fl;
-            walker_state[i].qm_state=init_qm_state;
-            walker_state[i].sigma_abs=init_sigma_abs;
-            walker_state[i].type=init_type;
-            walker_state[i].spectrum=init_spectrum;
-            walker_state[i].bleaching_propability=init_bleaching_propability;
-            walker_state[i].triplet_lifetime=init_triplet_lifetime;
-            walker_state[i].triplet_propability=init_triplet_propability;
-            fluorophors->load_spectrum(init_spectrum);
-            if (use_photophysics) {
-                if (gsl_rng_uniform(rng)<walker_state[i].bleaching_propability) {
-                    walker_state[i].qm_state=-2;
-                } else if (gsl_rng_uniform(rng)<walker_state[i].triplet_propability) {
-                    walker_state[i].qm_state=-1;
-                }
-            }
+            init_walker(i, sim_x*gsl_rng_uniform(rng), sim_y*gsl_rng_uniform(rng), sim_z*gsl_rng_uniform(rng));
         }
     } else if (volume_shape==Ball) {
         for (unsigned long i=0; i<walker_count; i++) {
-            walker_state[i].time=0;
-            walker_state[i].exists=true;
+            register double x,y,z;
             do {
-                walker_state[i].x=sim_x*gsl_rng_uniform(rng);
-                walker_state[i].y=sim_y*gsl_rng_uniform(rng);
-                walker_state[i].z=sim_z*gsl_rng_uniform(rng);
-            } while (gsl_pow_2(walker_state[i].x)+gsl_pow_2(walker_state[i].y)+gsl_pow_2(walker_state[i].z)>gsl_pow_2(sim_radius));
-            walker_state[i].p_x=init_p_x;
-            walker_state[i].p_y=init_p_y;
-            walker_state[i].p_z=init_p_z;
-            walker_state[i].q_fluor=init_q_fluor;
-            walker_state[i].tau_fl=init_tau_fl;
-            walker_state[i].qm_state=init_qm_state;
-            walker_state[i].sigma_abs=init_sigma_abs;
-            walker_state[i].type=init_type;
-            walker_state[i].spectrum=init_spectrum;
-            walker_state[i].bleaching_propability=init_bleaching_propability;
-            walker_state[i].triplet_lifetime=init_triplet_lifetime;
-            walker_state[i].triplet_propability=init_triplet_propability;
-            fluorophors->load_spectrum(init_spectrum);
-            if (use_photophysics) {
-                if (gsl_rng_uniform(rng)<walker_state[i].bleaching_propability) {
-                    walker_state[i].qm_state=-2;
-                } else if (gsl_rng_uniform(rng)<walker_state[i].triplet_propability) {
-                    walker_state[i].qm_state=-1;
-                }
-            }
+                x=sim_x*gsl_rng_uniform(rng);
+                y=sim_y*gsl_rng_uniform(rng);
+                z=sim_z*gsl_rng_uniform(rng);
+            } while (gsl_pow_2(x)+gsl_pow_2(y)+gsl_pow_2(z)>gsl_pow_2(sim_radius));
+            init_walker(i,x,y,z);
         }
     }
 
@@ -413,11 +434,24 @@ void FluorophorDynamics::init(){
 
 void FluorophorDynamics::propagate(bool boundary_check){
     sim_time=sim_time+sim_timestep;
+    //std::cout<<">>> dyn    sim_time = "<<sim_time<<"\n";
 }
 
 void FluorophorDynamics::propagate_photophysics(int i) {
     if (!use_photophysics) return;
-    switch(walker_state[i].qm_state) {
+    if (walker_state[i].used_qm_states<=1) return;
+    register int state=walker_state[i].qm_state;
+    register double p=0;
+    register double r=gsl_rng_uniform(rng);
+    for (register int f=0; f<mmin(walker_state[i].used_qm_states,N_FLUORESCENT_STATES); f++) {
+        p=p+walker_state[i].photophysics_transition[state*N_FLUORESCENT_STATES+f];
+        if (p >= r) {
+            walker_state[i].qm_state=f;
+            break;
+        }
+    }
+
+    /*switch(walker_state[i].qm_state) {
         case -2: return; break; // may not leave bleached state
         case -1: { // in triplet state
                    if (gsl_rng_uniform(rng)<sim_timestep/walker_state[i].triplet_lifetime) {
@@ -433,7 +467,7 @@ void FluorophorDynamics::propagate_photophysics(int i) {
                    }
                    return;
                  } break;
-    }
+    }*/
 }
 
 
@@ -456,18 +490,20 @@ std::string FluorophorDynamics::report() {
     s+="init_spectrum = "+inttostr(init_spectrum);
     if (init_spectrum==-1) s+=" [none]\n";
     else s+=" ["+extract_file_name(fluorophors->getSpectrumFilename(init_spectrum))+"]\n";
-    s+="init_q_fluor = "+floattostr(init_q_fluor*100.0)+" %\n";
+    s+="init_q_fluor = "+doublevectortostr(init_q_fluor, N_FLUORESCENT_STATES)+" \n";
     s+="init_qm_state = "+inttostr(init_qm_state)+"\n";
     s+="init_type = "+inttostr(init_type)+"\n";
-    s+="init_sigma_abs = "+floattostr_fmt(init_sigma_abs, "%lg")+" meters^2 = "+floattostr_fmt(init_sigma_abs*1e4, "%lg")+" cm^2 = "+floattostr(init_sigma_abs/1e-20)+" Angstrom^2\n";
-    s+="init_tau_fl = "+floattostr(init_tau_fl*1e9)+" nsec\n";
+    s+="init_sigma_abs = "+doublevectortostr(init_sigma_abs, N_FLUORESCENT_STATES)+" meters^2\n";
     if (!use_photophysics) {
         s+="no photophysics simulation!\n";
     } else {
         s+="simulation using photophysics with these constants:\n";
-        s+="init_triplet_propability = "+floattostr(init_triplet_propability)+"\n";
-        s+="init_triplet_lifetime = "+floattostr(init_triplet_lifetime*1e9)+" nsec\n";
-        s+="init_bleaching_propability = "+floattostr(init_bleaching_propability)+"\n";
+        s+="init_used_qm_states = "+inttostr(init_used_qm_states)+"\n";
+        for (int i=0; i<N_FLUORESCENT_STATES; i++) {
+            s+="P["+inttostr(i)+"->f] = "+doublevectortostr(&init_photophysics_transition[i*N_FLUORESCENT_STATES], N_FLUORESCENT_STATES)+"\n";
+        }
+        s+="\n";
+        //s+=doublearraytostr(init_photophysics_transition, N_FLUORESCENT_STATES,N_FLUORESCENT_STATES,false)+"\n";
     }
 
 
@@ -489,7 +525,7 @@ void FluorophorDynamics::store_step_protocol() {
     for (unsigned int i=0; i<protocol_trajectories; i++) {
         walkerState ws=walker_state[i];
         if (ws.time<protocol_timestep_count || protocol_timestep_count<0)
-            fprintf(trajectoryFile[i], "%lg, %lg, %lg, %lg, %d, %d, %d, %lg, %lg, %lg, %lg, %lg, %lg\n", ws.time*sim_timestep, ws.x, ws.y, ws.z, ws.qm_state, ws.type, ws.spectrum, ws.sigma_abs, ws.q_fluor, ws.tau_fl, ws.p_x, ws.p_y, ws.p_z);
+            fprintf(trajectoryFile[i], "%lg, %lg, %lg, %lg, %d, %d, %d, %lg, %lg, %lg\n", ws.time*sim_timestep, ws.x, ws.y, ws.z, ws.qm_state, ws.type, ws.spectrum, ws.p_x, ws.p_y, ws.p_z);
     }
 }
 

@@ -138,7 +138,7 @@ void FluorescenceImaging::propagate(){
                                     double nphot=n0;
                                     double dxs=gsl_pow_2(x0-x);
                                     double dys=gsl_pow_2(y0-y);
-                                    nphot=nphot*((dy[i].qm_state==0)?1.0:0.0)*q_det*dy[i].q_fluor*dy[i].sigma_abs;
+                                    nphot=nphot*dyn[d]->get_walker_sigma_times_qfl(i);
                                     nphot=nphot*exp(-2.0*(dxs+dys)/gsl_pow_2(psf_r0)-2.0*gsl_pow_2(z0-img_z0)/gsl_pow_2(psf_z0));
                                     if (nphot>0) {
                                         gsl_matrix_set(avgImage, ix, iy, gsl_matrix_get(avgImage, ix, iy)+nphot);

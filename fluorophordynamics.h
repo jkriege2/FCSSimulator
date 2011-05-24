@@ -19,8 +19,8 @@
 #define FLUOROPHORDYNAMICS_H
 
 
-
-
+#define N_FLUORESCENT_STATES 32
+#define N_FLUOROPHORES_MAX 32
 
 
 /** \brief this is the virtual base class for any class describing fluorophor dynamics
@@ -55,22 +55,13 @@
  * \section FD_photophysics Photophysics Simulation
  * This class implements basic photophysics, if activated with use_photophysics.
  * The photophysics is implemented in propagate_photophysics() which you will have to call for every walker when implementing
- * the dynamics.
+ * the dynamics.  If you want to implement your own photophysics simulation, overwrite this method in derved classes!
  *
- * The photophysics simulation implements triplet dynamics and photo bleaching by means of the
- * qm_state property of a walker. These states are used:
- *   - \b 0: ground state (excitable to excited state and triplet state; bleachable
- *   - \b -1: in triplet state: may return to 0 after a triplet lifetime (exponential decay)
- *   - \b -2: bleached: may not return to any state
- * .
- * The impact of these states on the fluorescence is modeled by the function get_walker_state_factor() which returns a
- * number between 0 and 1. In the implementation herein it simply returns 1 if \c qm_state==0 and 0 otherwise. This
- * factor may be multiplied with the absorbtion propability. If it is 0 the current walker may NOT contribute to the
- * fluorescence signal.
- *
- * So basically this implementation assumes that the fluorescence dynamics, i.e. the transition from ground to excited
- * state and back is much faster than the simulation timestep. I.e. you won't be able to see the antibunching part of
- * the photon correlation.
+ * The photophysics simulation implements only a stump that supportrs at most N_FLUORESCENT_STATES fluorescent states \f$ i \f$ ,
+ * with each a fluorescence efficiency \f$ \phi_i\geq0 \f$. The transition propabilities are defined in terms of a matrix
+ * for the propability to go from state \f$ i \f$ to state \f$ f \f$ : \f$ p_{if}=\mathbb{P}(i\rightarrow f) \f$. The current state
+ * is stored in qm_state. The function get_walker_qfluor() returns the fluorescence efficiency of the current walker in its current
+ * state.
  *
  *
  * \section FD_threads threading support
@@ -107,20 +98,23 @@ class FluorophorDynamics
             double y;
             /** \brief z-position of the walker [micrometers] */
             double z;
-            /** \brief internal (quantum-mechanical) state of the walker: 0 (ground state), 1 (excited state), 2 (transition from 1 to 0), -1 (triplet state), -2 (bleached) */
+            /** \brief starting x-position of the walker [micrometers] */
+            double x0;
+            /** \brief starting y-position of the walker [micrometers] */
+            double y0;
+            /** \brief starting z-position of the walker [micrometers] */
+            double z0;
+            /** \brief internal (quantum-mechanical) state of the walker: 0 (ground state), 1 (excited state) */
             int qm_state;
             /** \brief absorbption cross section [m^2] */
-            double sigma_abs;
+            double sigma_abs[N_FLUORESCENT_STATES];
             /** \brief quantum efficiency of fluorescence [0..1]*/
-            double q_fluor;
-            /** \brief fluorescence lifetime [seconds] */
-            double tau_fl;
-            /** \brief bleaching propability [0..1] */
-            double bleaching_propability;
-            /** \brief triplet lifetime [sec] */
-            double triplet_lifetime;
-            /** \brief triplet transition propability [0..1] */
-            double triplet_propability;
+            double q_fluor[N_FLUORESCENT_STATES];
+            /** \brief photophysics transition rates in [1/second] The transition probabilities will be calculated as
+             *         rate*sim_timestep. So keep in mind, that all of these propabilitites have to sum up to 1 for one state */
+            double photophysics_transition[N_FLUORESCENT_STATES*N_FLUORESCENT_STATES];
+            /** \brief number of used QM states (has to be smaller than  N_FLUORESCENT_STATES */
+            int used_qm_states;
             /** \brief x-component of dipole moment vector */
             double p_x;
             /** \brief y-component of dipole moment vector */
@@ -131,6 +125,8 @@ class FluorophorDynamics
             int type;
             /** \brief this specifies the absorption spectrum to use for the fluorophor see get_spectral_efficiency() for details */
             int spectrum;
+            /** \brief this may be used by the implementer of derived classes to store additional data */
+            void* user_data;
         };
 
         /** \brief the possible shapes of the simulational volume */
@@ -198,22 +194,18 @@ class FluorophorDynamics
 
         /** \brief initial internal (quantum-mechanical) state of the walker: 0 (ground state), 1 (excited state), 2 (transition from 1 to 0), -1 (triplet state), -2 (bleached) */
         int init_qm_state;
+        /** \brief initial value for number of used QM states */
+        int init_used_qm_states;
         /** \brief initial type of the walker */
         int init_type;
         /** \brief initial absorption spectrum ID of the walker */
         int init_spectrum;
         /** \brief initial absorbption cross section [m^2] */
-        double init_sigma_abs;
+        double init_sigma_abs[N_FLUORESCENT_STATES];
         /** \brief initial quantum efficiency of fluorescence [0..1]*/
-        double init_q_fluor;
-        /** \brief initial fluorescence lifetime [seconds]*/
-        double init_tau_fl;
-        /** \brief initial bleaching propability [0..1] */
-        double init_bleaching_propability;
-        /** \brief initial triplet lifetime [sec] */
-        double init_triplet_lifetime;
-        /** \brief initial triplet transition propability [0..1] */
-        double init_triplet_propability;
+        double init_q_fluor[N_FLUORESCENT_STATES];
+        /** \brief initial photophysics transition rates */
+        double init_photophysics_transition[N_FLUORESCENT_STATES*N_FLUORESCENT_STATES];
         /** \brief initial x-component of dipole moment vector */
         double init_p_x;
         /** \brief initial y-component of dipole moment vector */
@@ -335,6 +327,9 @@ class FluorophorDynamics
             change_walker_count((unsigned long)round(c_fluor*1e-9*6.022e23*4.0*M_PI/3.0*gsl_pow_3(sim_radius*1e-5)));
         };
 
+        /** \brief initialize the state of the i-th walker and put it to the given position. The walker step counter is reset to 0 */
+        virtual void init_walker(unsigned long i, double x=0, double y=0, double z=0);
+
         /** \brief return the number of walkers in the simulational box */
         inline unsigned long get_walker_count() { return walker_count; };
 
@@ -352,12 +347,94 @@ class FluorophorDynamics
         /** \brief implements the photophysics. Overwrite this if you want higher oder photophysics, other than fluorescence lifetime, triplet dynamics and photobleaching
          *
          * \param walker the walker to do the simulation for
+         * \param intensity the laser intensity at theposition of the walker
          *
          */
         virtual void propagate_photophysics(int walker);
 
         /** \brief get state of i-th walker */
         inline walkerState get_walker_state(unsigned long i) { return walker_state_other[i]; };
+
+
+        inline double get_walker_sigma_times_qfl(unsigned long i) {
+            register double s=0;
+            register int state=walker_state[i].qm_state;
+            if ((state>=0)&&(state<N_FLUORESCENT_STATES)) {
+                s=walker_state[i].sigma_abs[state]*walker_state[i].q_fluor[state];
+            }
+            return s;
+        }
+
+        /** \brief perform a boundary check for the i-th walker and reset it to a random border position, if it left the sim box */
+        inline void perform_boundary_check(unsigned long i) {
+            register double nx=walker_state[i].x;
+            register double ny=walker_state[i].y;
+            register double nz=walker_state[i].z;
+            if (volume_shape==0) {
+                if (   (nx<0) || (nx>sim_x)
+                    || (ny<0) || (ny>sim_y)
+                    || (nz<0) || (nz>sim_z) ) {
+
+
+                    // first choose one face of the simulation volume and then set the walker
+                    // to any position on the face ... also shift a bit inwards
+                    char face=gsl_rng_uniform_int(rng, 6)+1;
+                    switch(face) {
+                        case 1:
+                            //x-y-plane at z=0
+                            walker_state[i].x=gsl_ran_flat(rng, 0, sim_x);
+                            walker_state[i].y=gsl_ran_flat(rng, 0, sim_y);
+                            walker_state[i].z=0;
+                            break;
+                        case 2:
+                            //x-y-plane at z=sim_z
+                            walker_state[i].x=gsl_ran_flat(rng, 0, sim_x);
+                            walker_state[i].y=gsl_ran_flat(rng, 0, sim_y);
+                            walker_state[i].z=sim_z;
+                            break;
+                        case 3:
+                            //x-z-plane at y=0
+                            walker_state[i].x=gsl_ran_flat(rng, 0, sim_x);
+                            walker_state[i].y=0;
+                            walker_state[i].z=gsl_ran_flat(rng, 0, sim_z);
+                            break;
+                        case 4:
+                            //x-z-plane at y=sim_y
+                            walker_state[i].x=gsl_ran_flat(rng, 0, sim_x);
+                            walker_state[i].y=sim_y;
+                            walker_state[i].z=gsl_ran_flat(rng, 0, sim_z);
+                            break;
+                        case 5:
+                            //z-y-plane at x=0
+                            walker_state[i].x=0;
+                            walker_state[i].y=gsl_ran_flat(rng, 0, sim_y);
+                            walker_state[i].z=gsl_ran_flat(rng, 0, sim_z);
+                            break;
+                        case 6:
+                            //z-y-plane at x=sim_x
+                            walker_state[i].x=sim_x;
+                            walker_state[i].y=gsl_ran_flat(rng, 0, sim_y);
+                            walker_state[i].z=gsl_ran_flat(rng, 0, sim_z);
+                            break;
+                    }
+                    walker_state[i].time=0;
+                    walker_state[i].x0=walker_state[i].x;
+                    walker_state[i].y0=walker_state[i].y;
+                    walker_state[i].z0=walker_state[i].z;
+                }
+            } else if (volume_shape==1) {
+                if (gsl_pow_2(nx)+gsl_pow_2(ny)+gsl_pow_2(nz)>gsl_pow_2(sim_radius)) {
+                    gsl_ran_dir_3d(rng, &nx, &ny, &nz);
+                    walker_state[i].x=sim_radius*nx;
+                    walker_state[i].y=sim_radius*ny;
+                    walker_state[i].z=sim_radius*nz;
+                    walker_state[i].time=0;
+                    walker_state[i].x0=walker_state[i].x;
+                    walker_state[i].y0=walker_state[i].y;
+                    walker_state[i].z0=walker_state[i].z;
+                }
+            }
+        }
 
         /** \brief get pointer to array with all walker states */
         inline walkerState* get_walker_state() { return walker_state_other; };
@@ -368,51 +445,6 @@ class FluorophorDynamics
          */
         virtual walkerState* copy_walker_state(walkerState* start);
 
-//        /** \brief set state of i-th walker*/
-//        inline virtual void set_walker_state(unsigned long i, walkerState state) { walker_state_other[i]=state; };
-//
-//
-//        /** \brief get position of i-th walker */
-//        inline virtual void get_walker_position(unsigned long i, double* x, double* y, double* z) { *x=walker_state_other[i].x; *y=walker_state_other[i].y; *z=walker_state_other[i].z; };
-//
-//        /** \brief get dipole moment vector of i-th walker */
-//        inline virtual void get_walker_dipole(unsigned long i, double* p_x, double* p_y, double* p_z) { *p_x=walker_state_other[i].p_x; *p_y=walker_state_other[i].p_y; *p_z=walker_state_other[i].p_z; };
-//
-//        /** \brief get the quantum mechanical state of the i-th walker at a give timestep */
-//        inline virtual int get_walker_qm_state(unsigned long i) { return  walker_state_other[i].qm_state; };
-//
-//        /** \brief get the type of the i-th walker */
-//        inline virtual int get_walker_type(unsigned long i) { return  walker_state_other[i].type; };
-//
-//        /** \brief get the spectrum of the i-th walker */
-//        inline virtual int get_walker_spectrum(unsigned long i) { return  walker_state_other[i].spectrum; };
-//
-//        /** \brief get the absorption cross section of the i-th walker */
-//        inline virtual double get_walker_sigma_abs(unsigned long i) { return  walker_state_other[i].sigma_abs; };
-//
-//        /** \brief get the quantum efficiency of the fluorescence of the i-th walker */
-//        inline virtual double get_walker_q_fluor(unsigned long i) { return  walker_state_other[i].q_fluor; };
-//
-//        /** \brief get the fluorescence lifetime of the i-th walker */
-//        inline virtual double get_walker_tau_fl(unsigned long i) { return  walker_state_other[i].tau_fl; };
-//
-//        /** \brief get the bleaching propability of the i-th walker [0..1] */
-//        inline virtual double get_walker_bleaching_propability(unsigned long i) { return  walker_state_other[i].bleaching_propability; };
-//
-//        /** \brief get the triplet lifetim of the i-th walkere [sec] */
-//        inline virtual double get_walker_triplet_lifetime(unsigned long i) { return  walker_state_other[i].triplet_lifetime; };
-//
-//        /** \brief get the triplet transition propability of the i-th walker [0..1] */
-//        inline virtual double get_walker_triplet_propability(unsigned long i) { return  walker_state_other[i].triplet_propability; };
-//
-//        /** \brief returns whether the given walker really exists */
-//        inline virtual double get_walker_exists(unsigned long i) { return  walker_state_other[i].exists; };
-//
-//        /** \brief get a factor [0..1] for the i-th walker which describes the dependence on the inner state of the walker */
-//        inline virtual double get_walker_state_factor(unsigned long i) {
-//            if (!use_photophysics) return 1.0;
-//            return (walker_state_other[i].qm_state==0)?1.0:0.0;
-//        };
 
         /** \brief returns \c true if the end of the possible trajectories is reached, i.e. as long as this object may
          *         suply data this is \c false */
@@ -431,8 +463,14 @@ class FluorophorDynamics
         GetMacro(double, sim_radius);
         GetMacro(double, c_fluor);
         GetSetMacro(int, init_qm_state);
-        GetSetMacro(double, init_sigma_abs);
-        GetSetMacro(double, init_q_fluor);
+        double get_init_sigma_abs(int i) {
+            if ((i>=0)&&(i<N_FLUORESCENT_STATES)) return init_sigma_abs[i];
+            return 0;
+        };
+        double get_init_q_fluor(int i) {
+            if ((i>=0)&&(i<N_FLUORESCENT_STATES)) return init_q_fluor[i];
+            return 0;
+        };
         GetSetMacro(double, init_p_x);
         GetSetMacro(double, init_p_y);
         GetSetMacro(double, init_p_z);
