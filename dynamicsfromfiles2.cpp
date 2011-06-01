@@ -138,8 +138,8 @@ void DynamicsFromFiles2::init() {
     linecount.clear();
     columncount.clear();
 
-    double comx, comy, comz;
-    double minx, maxx, miny, maxy, minz, maxz;
+    //double comx, comy, comz;
+    //double minx, maxx, miny, maxy, minz, maxz;
 
     PublicTickTock tim, tim1;
     tim.tick();
@@ -149,7 +149,7 @@ void DynamicsFromFiles2::init() {
         std::cout<<"checking file "<<trajectory_files[i]<<" [sc="+chartoprintablestr(separator_char)+", cc="+chartoprintablestr(comment_char)+", ";
         //data[i].load_csv(trajectory_files[i], separator_char, comment_char);
         unsigned long long lcount=count_lines(trajectory_files[i], comment_char);
-        if (lcount<1) throw FluorophorException(format("file '%s' does not contain data or does not exist", trajectory_files[i]));
+        if (lcount<1) throw FluorophorException(format("file '%s' does not contain data or does not exist", trajectory_files[i].c_str()));
         std::cout<<"lines="<<lcount<<"] ... "<<std::endl;
 
         FILE* f=fopen(trajectory_files[i].c_str(), "r");
@@ -334,7 +334,7 @@ void DynamicsFromFiles2::propagate(bool boundary_check) {
             anyon = anyon || walker_state[file_counter].exists;
         }
         if (anyon) line_counter++; // if there is still some data available, increase linecount
-        else endoftrajectory==true; // if there is no more data, signal this with     endoftrajectory=true!
+        else endoftrajectory=true; // if there is no more data, signal this with     endoftrajectory=true!
     }
 }
 

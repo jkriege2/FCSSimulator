@@ -21,7 +21,7 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, std::stri
 
      // init GSL random number generator
     gsl_rng_env_setup();
-    rng_type = gsl_rng_taus2;
+    rng_type = gsl_rng_taus;
     rng = gsl_rng_alloc (rng_type);
     gsl_rng_set(rng, time(0));
 
@@ -65,7 +65,7 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, double si
 
      // init GSL random number generator
     gsl_rng_env_setup();
-    rng_type = gsl_rng_taus2;
+    rng_type = gsl_rng_taus;
     rng = gsl_rng_alloc (rng_type);
     gsl_rng_set(rng, time(0));
 
@@ -108,7 +108,7 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, double si
 
      // init GSL random number generator
     gsl_rng_env_setup();
-    rng_type = gsl_rng_taus2;
+    rng_type = gsl_rng_taus;
     rng = gsl_rng_alloc (rng_type);
     gsl_rng_set(rng, time(0));
 
@@ -144,6 +144,16 @@ FluorophorDynamics::~FluorophorDynamics()
     if (walker_state!=NULL) free(walker_state);
     if (use_two_walkerstates && walker_state_other!=NULL) free(walker_state_other);
     gsl_rng_free(rng);
+}
+
+
+unsigned long FluorophorDynamics::calc_walker_count() {
+    if (volume_shape==Box) {
+        return (unsigned long)round(c_fluor*1e-9*6.022e23*sim_x*1e-5*sim_y*1e-5*sim_z*1e-5);
+    } else if (volume_shape==Ball) {
+        return (unsigned long)round(c_fluor*1e-9*6.022e23*4.0*M_PI/3.0*gsl_pow_3(sim_radius*1e-5));
+    }
+    return 0;
 }
 
 void FluorophorDynamics::read_config_internal(jkINIParser2& parser) {
@@ -240,7 +250,7 @@ void FluorophorDynamics::read_config_internal(jkINIParser2& parser) {
 
 void FluorophorDynamics::read_config(jkINIParser2& parser, std::string group, std::string supergroup) {
     basename=parser.getSetAsString("simulation.basename", "");
-    std::string rng=tolower(parser.getSetAsString("simulation.rng", "taus2"));
+    std::string rng=tolower(parser.getSetAsString("simulation.rng", "taus"));
     duration=parser.getAsDouble("simulation.duration", 1.0);
     sim_timestep=parser.getAsDouble("simulation.timestep", 1e-6);
     if (rng=="mt19937") {
@@ -356,7 +366,7 @@ void FluorophorDynamics::init_walker(unsigned long i, double x, double y, double
     walker_state[i].used_qm_states=init_used_qm_states;
     walker_state[i].type=init_type;
     walker_state[i].spectrum=init_spectrum;
-    walker_state[i].user_data=NULL;
+    //walker_state[i].user_data=NULL;
     fluorophors->load_spectrum(init_spectrum);
 }
 
@@ -511,8 +521,8 @@ std::string FluorophorDynamics::report() {
 }
 
 void FluorophorDynamics::save_trajectories() {
-    FILE* f;
-    char fn[1024];
+    //FILE* f;
+    //char fn[1024];
     if (protocol_trajectories>0) {
         for (unsigned int i=0; i<protocol_trajectories; i++) {
             fclose(trajectoryFile[i]);

@@ -10,7 +10,7 @@ FluorescenceMeasurement::FluorescenceMeasurement(FluorophorManager* fluorophors,
 
      // init GSL random number generator
     gsl_rng_env_setup();
-    rng_type = gsl_rng_taus2;
+    rng_type = gsl_rng_taus;
     rng = gsl_rng_alloc (rng_type);
     gsl_rng_set(rng, time(0));
 }
@@ -26,7 +26,7 @@ void FluorescenceMeasurement::read_config_internal(jkINIParser2& parser) {
 
 void FluorescenceMeasurement::read_config(jkINIParser2& parser, std::string group, std::string supergroup) {
     basename=parser.getSetAsString("simulation.basename", "");
-    std::string rng=tolower(parser.getSetAsString("simulation.rng", "taus2"));
+    std::string rng=tolower(parser.getSetAsString("simulation.rng", "taus"));
     duration=parser.getAsDouble("simulation.duration", 1.0);
     sim_timestep=parser.getAsDouble("simulation.timestep", 1e-6);
     if (rng=="mt19937") {

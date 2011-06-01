@@ -20,7 +20,6 @@
 
 
 #define N_FLUORESCENT_STATES 32
-#define N_FLUOROPHORES_MAX 32
 
 
 /** \brief this is the virtual base class for any class describing fluorophor dynamics
@@ -125,8 +124,7 @@ class FluorophorDynamics
             int type;
             /** \brief this specifies the absorption spectrum to use for the fluorophor see get_spectral_efficiency() for details */
             int spectrum;
-            /** \brief this may be used by the implementer of derived classes to store additional data */
-            void* user_data;
+
         };
 
         /** \brief the possible shapes of the simulational volume */
@@ -233,8 +231,11 @@ class FluorophorDynamics
         /** \brief GSL helper object: random number generator */
         gsl_rng * rng;
 
-        /** \brief set the number of walkrs and allocate the according amount of memory for walker_state */
-        virtual void change_walker_count(unsigned long N_walker);
+        /** \brief set the number of walkers and allocate the according amount of memory for walker_state */
+        void change_walker_count(unsigned long N_walker);
+        /** \brief get the number of walkers for the current simulation settings */
+        virtual unsigned long calc_walker_count();
+
 
         /** \brief if this is >0 the object will protocoll as many of the particle trajectories as given in protocol_trajectories.
          *
@@ -304,11 +305,12 @@ class FluorophorDynamics
         /** \brief set the fluorophor concentration */
         inline void set_c_fluor(double value) {
             c_fluor=value;
-            if (volume_shape==Box) {
+            change_walker_count(calc_walker_count());
+            /*if (volume_shape==Box) {
                 change_walker_count((unsigned long)round(c_fluor*1e-9*6.022e23*sim_x*1e-5*sim_y*1e-5*sim_z*1e-5));
             } else if (volume_shape==Ball) {
                 change_walker_count((unsigned long)round(c_fluor*1e-9*6.022e23*4.0*M_PI/3.0*gsl_pow_3(sim_radius*1e-5)));
-            }
+            }*/
         };
 
         /** \brief set the dimensions of the simulational box */
@@ -317,14 +319,14 @@ class FluorophorDynamics
             sim_x=vx;
             sim_y=vy;
             sim_z=vz;
-            change_walker_count((unsigned long)round(c_fluor*1e-9*6.022e23*sim_x*1e-5*sim_y*1e-5*sim_z*1e-5));
+            change_walker_count(calc_walker_count());
         };
 
         /** \brief set the dimensions of the simulational sphere */
         inline void set_sim_sphere(double rad) {
             volume_shape=Ball;
             sim_radius=rad;
-            change_walker_count((unsigned long)round(c_fluor*1e-9*6.022e23*4.0*M_PI/3.0*gsl_pow_3(sim_radius*1e-5)));
+            change_walker_count(calc_walker_count());
         };
 
         /** \brief initialize the state of the i-th walker and put it to the given position. The walker step counter is reset to 0 */
@@ -485,7 +487,7 @@ class FluorophorDynamics
 
         void set_use_two_walkerstates(bool v) {
             use_two_walkerstates=v;
-            change_walker_count(walker_count);
+            change_walker_count(calc_walker_count());
         };
 
 

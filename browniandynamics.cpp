@@ -7,6 +7,7 @@ BrownianDynamics::BrownianDynamics(FluorophorManager* fluorophors, std::string o
 {
     save_msd_every_n_timesteps=-1;
     msd=NULL;
+    msd2=NULL;
     msd_count=NULL;
     msd_size=10000;
     set_diff_coeff(10, 20);
@@ -25,6 +26,7 @@ BrownianDynamics::BrownianDynamics(FluorophorManager* fluorophors, double sim_x,
 {
     save_msd_every_n_timesteps=-1;
     msd=NULL;
+    msd2=NULL;
     msd_size=10000;
     msd_count=NULL;
     set_diff_coeff(10, 20);
@@ -40,6 +42,7 @@ BrownianDynamics::BrownianDynamics(FluorophorManager* fluorophors, double sim_ra
 {
     save_msd_every_n_timesteps=-1;
     msd=NULL;
+    msd2=NULL;
     msd_size=10000;
     msd_count=NULL;
     set_diff_coeff(10, 20);
@@ -57,12 +60,14 @@ BrownianDynamics::~BrownianDynamics()
 {
     if (msd) {
         free(msd);
+        free(msd2);
         free(msd_count);
     }
 }
 
-void BrownianDynamics::change_walker_count(unsigned long N_walker) {
-    FluorophorDynamics::change_walker_count(N_walker*n_fluorophores);
+unsigned long BrownianDynamics::calc_walker_count() {
+    unsigned long c=FluorophorDynamics::calc_walker_count();
+    return c*n_fluorophores;
 }
 
 void BrownianDynamics::read_config_internal(jkINIParser2& parser) {
@@ -87,13 +92,16 @@ void BrownianDynamics::init(){
     FluorophorDynamics::init();
     if (msd!=NULL) {
         free(msd);
+        free(msd2);
         free(msd_count);
     }
     if (save_msd_every_n_timesteps>0) {
         msd=(double*)calloc(msd_size, sizeof(double));
+        msd2=(double*)calloc(msd_size, sizeof(double));
         msd_count=(uint64_t*)calloc(msd_size, sizeof(uint64_t));
         for (int i=0; i<msd_size; i++) {
             msd[i]=0;
+            msd2[i]=0;
             msd_count[i]=0;
         }
     }
@@ -101,8 +109,9 @@ void BrownianDynamics::init(){
 
 void BrownianDynamics::propagate(bool boundary_check){
     FluorophorDynamics::propagate(boundary_check);
+    //static walkerState oldstate;
     // now wepropagate every walker
-    for (unsigned long i=0; i<walker_count; i++) {
+    for (register unsigned long i=0; i<walker_count; i++) {
         if (i%n_fluorophores==0) {
             walker_state[i].time++;
 
@@ -133,6 +142,7 @@ void BrownianDynamics::propagate(bool boundary_check){
                 int idx=walker_state[i].time/save_msd_every_n_timesteps+1;
                 if ((idx>=0)&&(idx<msd_size)) {
                     msd[idx] += m;
+                    msd2[idx] += m*m;
                     msd_count[idx]++;
                 }
             }
@@ -150,7 +160,7 @@ void BrownianDynamics::propagate(bool boundary_check){
                 register double mu1=walker_state[i].p_x;
                 register double mu2=walker_state[i].p_y;
                 register double mu3=walker_state[i].p_z;
-                double mu;
+                //double mu;
 
                 double ns1, ns2, ns3, nss1, nss2, nss3, ns, nss;
                 if (mu3!=0) {
@@ -225,8 +235,20 @@ void BrownianDynamics::propagate(bool boundary_check){
             // photophysics
             propagate_photophysics(i);
             //std::cout<<"prop "<<i<<std::endl;
+
         } else {
-            walker_state[i]=walker_state[n_fluorophores*(i/n_fluorophores)];
+            walker_state[i].x=walker_state[n_fluorophores*(i/n_fluorophores)].x;
+            walker_state[i].y=walker_state[n_fluorophores*(i/n_fluorophores)].y;
+            walker_state[i].z=walker_state[n_fluorophores*(i/n_fluorophores)].z;
+            walker_state[i].x0=walker_state[n_fluorophores*(i/n_fluorophores)].x0;
+            walker_state[i].y0=walker_state[n_fluorophores*(i/n_fluorophores)].y0;
+            walker_state[i].z0=walker_state[n_fluorophores*(i/n_fluorophores)].z0;
+            walker_state[i].time=walker_state[n_fluorophores*(i/n_fluorophores)].time;
+            walker_state[i].p_x=walker_state[n_fluorophores*(i/n_fluorophores)].p_x;
+            walker_state[i].p_y=walker_state[n_fluorophores*(i/n_fluorophores)].p_y;
+            walker_state[i].p_z=walker_state[n_fluorophores*(i/n_fluorophores)].p_z;
+
+            propagate_photophysics(i);
             //std::cout<<"copy "<<i<<" from "<<n_fluorophores*(i/n_fluorophores)<<std::endl;
         }
     }
@@ -240,7 +262,10 @@ void BrownianDynamics::propagate(bool boundary_check){
         FILE* f=fopen(fn, "w");
         for (int i=0; i<msd_size; i++) {
             double tau=(double)(i+1)*(double)sim_timestep*(double)save_msd_every_n_timesteps;
-            if (msd_count[i]>0) fprintf(f, "%lg, %lg\n", tau, msd[i]/(double)msd_count[i]);
+            double cnt=(double)msd_count[i];
+            double mean=msd[i]/cnt;
+            double stddev=sqrt(msd2[i]/cnt-mean*mean);
+            if (msd_count[i]>0) fprintf(f, "%lg, %lg, %lg, %lg\n", tau, mean, stddev, cnt);
         }
         fclose(f);
         std::cout<<"DONE!\n";
@@ -256,7 +281,8 @@ void BrownianDynamics::propagate(bool boundary_check){
         fprintf(f, "set xlabel \"time t [s]\"\n");
         fprintf(f, "set ylabel \"sigma^2 [microns^2]\"\n");
         fprintf(f, "msd(tau)=6 * %lf * tau\n", diff_coeff[0]);
-        fprintf(f, "plot \"%s\" using 1:2 title \"simulation result\" with points, msd(x) title \"theory\" with lines, msd_fit(x) title sprintf(\"fit D=%%f\",Diff) with lines\n", extract_file_name(basename+object_name+"msd.dat").c_str());
+        fprintf(f, "set style fill transparent solid 0.5 noborder\n");
+        fprintf(f, "plot \"%s\" using 1:(($2)-($3)):(($2)+($3)) notitle with filledcurves, \"%s\" using 1:2 title \"simulation result\" with points, msd(x) title \"theory\" with lines, msd_fit(x) title sprintf(\"fit D=%%f\",Diff) with lines\n", extract_file_name(basename+object_name+"msd.dat").c_str(), extract_file_name(basename+object_name+"msd.dat").c_str());
         fprintf(f, "\n");
         fprintf(f, "pause -1\n");
         fprintf(f, "set logscale xy\n");
@@ -264,10 +290,17 @@ void BrownianDynamics::propagate(bool boundary_check){
         fprintf(f, "set xlabel \"time t [s]\"\n");
         fprintf(f, "set ylabel \"sigma^2 [microns^2]\"\n");
         fprintf(f, "msd(tau)=6 * %lf * tau\n", diff_coeff[0]);
-        fprintf(f, "plot \"%s\" using 1:2 title \"simulation result\" with points, msd(x) title \"theory\" with lines, msd_fit(x) title sprintf(\"fit D=%%f\",Diff) with lines\n", extract_file_name(basename+object_name+"msd.dat").c_str());
+        fprintf(f, "set style fill transparent solid 0.5 noborder\n");
+        fprintf(f, "plot \"%s\" using 1:(($2)-($3)):(($2)+($3)) notitle with filledcurves, \"%s\" using 1:2 title \"simulation result\" with points, msd(x) title \"theory\" with lines, msd_fit(x) title sprintf(\"fit D=%%f\",Diff) with lines\n", extract_file_name(basename+object_name+"msd.dat").c_str(), extract_file_name(basename+object_name+"msd.dat").c_str());
         fprintf(f, "\n");
         fprintf(f, "pause -1\n");
-
+        fprintf(f, "unset logscale xy\n");
+        fprintf(f, "set title \"particle averaged over against time\"\n");
+        fprintf(f, "set xlabel \"time t [s]\"\n");
+        fprintf(f, "set ylabel \"particles\"\n");
+        fprintf(f, "plot \"%s\" using 1:4 title \"simulation result\" with linespoints\n", extract_file_name(basename+object_name+"msd.dat").c_str());
+        fprintf(f, "\n");
+        fprintf(f, "pause -1\n");
         fclose(f);
         std::cout<<"DONE!\n";
     }

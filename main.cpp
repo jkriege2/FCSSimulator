@@ -170,10 +170,10 @@ void do_sim(std::string inifilename) {
         }
         filestr.close();
 
-    } catch (std::exception& E) {
-        std::cout<<"Error:\n   "<<E.what()<<std::endl;
     } catch (datatable_exception& E) {
         std::cout<<"Error:\n   "<<E.get_message()<<std::endl;
+    } catch (std::exception& E) {
+        std::cout<<"Error:\n   "<<E.what()<<std::endl;
     }
     for (size_t i=0; i<dyn.size(); i++) {
         delete dyn[i];
@@ -201,7 +201,7 @@ int main(int argc, char* argv[])
                 std::cout<<"   will simluate '"<<files1[j]<<"' ...\n";
             }
         }
-        for (int i=0; i<files.size(); i++) {
+        for (unsigned int i=0; i<files.size(); i++) {
             std::cout<<"---------------------------------------------------------------------------------------------------------"<<std::endl<<std::endl;
             std::cout<<"--  simulating for "<<files[i]<<"   "<<i+1<<"/"<<files.size()<<std::endl;
             std::cout<<"---------------------------------------------------------------------------------------------------------"<<std::endl<<std::endl;

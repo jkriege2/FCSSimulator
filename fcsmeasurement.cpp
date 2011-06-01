@@ -322,7 +322,7 @@ void FCSMeasurement::run_fcs_simulation(){
                 bin_i++;
             }
         }
-        if (current_timestep%(timesteps/20)==0) {
+        if (current_timestep%(timesteps/1000)==0) {
             std::cout<<format("%4.1lf", (double)current_timestep/(timesteps)*100.0)<<"%:   "<<display_temp<<std::endl;
             display_temp=0;
         } else {
@@ -367,7 +367,7 @@ void FCSMeasurement::save() {
             f=fopen(fn, "w");
             double t=0;
             for (unsigned long long i=0; i<timesteps; i++) {
-                fprintf(f, "%15.10lf, %ld\n", t, timeseries[i]);
+                fprintf(f, "%15.10lf, %d\n", t, timeseries[i]);
                 t=t+corr_taumin;
             }
             fclose(f);
@@ -382,7 +382,7 @@ void FCSMeasurement::save() {
             fprintf(f, "plot \"%s\" with steps\n", extract_file_name(tsfn).c_str());
             fprintf(f, "pause -1\n");
             fprintf(f, "set xlabel \"time [seconds]\"\n");
-            fprintf(f, "set ylabel \"photon count [Hz]\"\n", corr_taumin);
+            fprintf(f, "set ylabel \"photon count [Hz]\"\n");
             fprintf(f, "plot \"%s\" using 1:(($2)/%lf) with steps\n", extract_file_name(tsfn).c_str(), corr_taumin);
             fprintf(f, "pause -1\n");
             fclose(f);
@@ -399,7 +399,7 @@ void FCSMeasurement::save() {
             double t=0;
             int b=round(save_binning_time/corr_taumin);
             for (unsigned long long i=0; i<timesteps/b-1; i++) {
-                fprintf(f, "%15.10lf, %ld\n", t, binned_timeseries[i]);
+                fprintf(f, "%15.10lf, %u\n", t, binned_timeseries[i]);
                 t=t+corr_taumin*b;
             }
             fclose(f);
@@ -414,7 +414,7 @@ void FCSMeasurement::save() {
             fprintf(f, "plot \"%s\" with steps\n", extract_file_name(tsfn).c_str());
             fprintf(f, "pause -1\n");
             fprintf(f, "set xlabel \"time [seconds]\"\n");
-            fprintf(f, "set ylabel \"photon count [Hz]\"\n", corr_taumin);
+            fprintf(f, "set ylabel \"photon count [Hz]\"\n");
             fprintf(f, "plot \"%s\" using 1:(($2)/%lf) with steps\n", extract_file_name(tsfn).c_str(), corr_taumin*b);
             fprintf(f, "pause -1\n");
             fclose(f);
@@ -432,7 +432,7 @@ void FCSMeasurement::save() {
                 for (int j=0; j<b; j++) {
                     ts=ts+timeseries[i+j];
                 }
-                fprintf(f, "%15.10lf, %ld\n", t, ts);
+                fprintf(f, "%15.10lf, %lu\n", t, ts);
                 t=t+corr_taumin;
             }
             fclose(f);
@@ -447,7 +447,7 @@ void FCSMeasurement::save() {
             fprintf(f, "plot \"%s\" with steps\n", extract_file_name(tsfn).c_str());
             fprintf(f, "pause -1\n");
             fprintf(f, "set xlabel \"time [seconds]\"\n");
-            fprintf(f, "set ylabel \"photon count [Hz]\"\n", corr_taumin);
+            fprintf(f, "set ylabel \"photon count [Hz]\"\n");
             fprintf(f, "plot \"%s\" using 1:(($2)/%lf) with steps\n", extract_file_name(tsfn).c_str(), corr_taumin*b);
             fprintf(f, "pause -1\n");
             fclose(f);
