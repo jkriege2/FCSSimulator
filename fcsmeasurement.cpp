@@ -354,8 +354,16 @@ void FCSMeasurement::save() {
     sprintf(fn, "%s%scorrplot.plt", basename.c_str(), object_name.c_str());
     printf("writing '%s' ...", fn);
     f=fopen(fn, "w");
+    double psf_r0=1.0/sqrt(1.0/detpsf_r0/detpsf_r0+1.0/expsf_r0/expsf_r0);
+    fprintf(f, "g(t)=1.0+1.0/N/(1.0+t/tauD)/sqrt(1.0+t/gamma/gamma/tauD)\n");
+    fprintf(f, "N=1\n");
+    fprintf(f, "tauD=100e-6\n");
+    fprintf(f, "gamma=1\n");
+    fprintf(f, "wxy=%lf\n", psf_r0);
+    fprintf(f, "fit g(x) \"%s\" via N, tauD,gamma\n", extract_file_name(corrfn).c_str());
+
     fprintf(f, "set logscale x\n");
-    fprintf(f, "plot \"%s\" with points\n", extract_file_name(corrfn).c_str());
+    fprintf(f, "plot \"%s\" title \"simulation data\" with points, g(x) title sprintf(\"fit N=%%f, tauD=%%f microSecs, gamma=%%f, D=%%f micron^2/s\",N, tauD*1e6, gamma, wxy*wxy/4.0/tauD)\n", extract_file_name(corrfn).c_str());
     fprintf(f, "pause -1\n");
     fclose(f);
     printf(" done!\n");
@@ -499,10 +507,14 @@ std::string FCSMeasurement::report(){
     s+="I0 = "+floattostr(I0)+" uW/m^2  =  "+floattostr(I0/1e12)+" uW/micron^2  =  "+floattostr(I0/1e6)+" uW/mm^2\n";
     s+="P0 [on focus, i.e. on A=pi*(2*expsf_r0)^2] = "+floattostr(I0*(M_PI*gsl_pow_2(2.0*expsf_r0*1e-6)))+" uW\n";
     for (size_t i=0; i<dyn.size(); i++) {
-        s+="abs_photons/(molecule*s) [using "+dyn[i]->get_object_name()+" data] = "+floattostr(I0*1e-6/Ephoton*dyn[i]->get_init_sigma_abs(0))+"\n";
-        s+="fluor_photons/(molecule*s) [using "+dyn[i]->get_object_name()+" data] = "+floattostr(dyn[i]->get_init_q_fluor(0)*I0*1e-6/Ephoton*dyn[i]->get_init_sigma_abs(0))+"\n";
-        s+="det_photons/(molecule*s) [using "+dyn[i]->get_object_name()+" data] = "+floattostr(q_det*dyn[i]->get_init_q_fluor(0)*I0*1e-6/Ephoton*dyn[i]->get_init_sigma_abs(0))+"\n";
-        s+="absorbtion @ lambda_ex [using "+dyn[i]->get_object_name()+" data] = "+floattostr(fluorophors->get_spectral_absorbance(dyn[i]->get_init_spectrum(), lambda_ex)*100.0)+" %\n";
+        s+="  using "+dyn[i]->get_object_name()+" data:\n";
+        s+="    init_spectrum = "+floattostr(dyn[i]->get_init_spectrum())+"\n";
+        s+="    sigma_abs = "+format("%g", dyn[i]->get_init_sigma_abs(0),-1, false, 1e-30)+" m^2\n";
+        s+="    q_fluor = "+floattostr(dyn[i]->get_init_q_fluor(0)*100)+" %\n";
+        s+="    abs_photons/(molecule*s)  = "+floattostr(I0*1e-6/Ephoton*dyn[i]->get_init_sigma_abs(0))+"\n";
+        s+="    fluor_photons/(molecule*s) = "+floattostr(dyn[i]->get_init_q_fluor(0)*I0*1e-6/Ephoton*dyn[i]->get_init_sigma_abs(0))+"\n";
+        s+="    det_photons/(molecule*s) = "+floattostr(q_det*dyn[i]->get_init_q_fluor(0)*I0*1e-6/Ephoton*dyn[i]->get_init_sigma_abs(0))+"\n";
+        s+="    absorbtion @ lambda_ex = "+floattostr(fluorophors->get_spectral_absorbance(dyn[i]->get_init_spectrum(), lambda_ex)*100.0)+" %\n";
     }
     s+="duration = "+floattostr(duration*1e3)+" msecs\n";
     s+="=> timesteps = "+inttostr(timesteps)+"     à  timestep-duration = "+floattostr(sim_timestep*1e9)+" nsecs\n";

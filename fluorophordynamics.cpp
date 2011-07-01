@@ -172,13 +172,16 @@ void FluorophorDynamics::read_config_internal(jkINIParser2& parser) {
     init_p_y=parser.getSetAsDouble("init_p_y", init_p_y);
     init_p_z=parser.getSetAsDouble("init_p_z", init_p_z);
     std::string spec="rho6g";
+    std::cout<<"fluorophor: "<<parser.getAsString("init_fluorophor")<<std::endl;
     if (parser.exists("init_fluorophor")) {
         spec=tolower(parser.getSetAsString("init_fluorophor", spec));
+        //std::cout<<"fluorophor: "<<spec<<std::endl;
         if (!fluorophors->fluorophorExists(spec)) {
             throw FluorophorException(format("didn't find fluorophor %s in database", spec.c_str()));
         }
         for (int j=0; j<N_FLUORESCENT_STATES; j++) {
             init_sigma_abs[j]=fluorophors->getFluorophorData(spec).sigma_abs;
+            //std::cout<<"fluorophor: "<<spec<<"   init_sigma_abs["<<j<<"]="<<init_sigma_abs[j]<<std::endl;
             init_q_fluor[j]=fluorophors->getFluorophorData(spec).fluorescence_efficiency;
         }
         /*
@@ -188,6 +191,7 @@ void FluorophorDynamics::read_config_internal(jkINIParser2& parser) {
         init_triplet_propability=fluorophors->getFluorophorData(spec).triplet_propability;
         std::cout<<spec<<": "<<init_q_fluor<<", "<<init_tau_fl<<", "<<init_sigma_abs<<std::endl;*/
     }
+    //std::cout<<"fluorophor: "<<spec<<std::endl;
     init_qm_state=parser.getSetAsInt("init_qm_state", init_qm_state);
     init_type=parser.getSetAsInt("init_type", init_type);
 
@@ -200,6 +204,7 @@ void FluorophorDynamics::read_config_internal(jkINIParser2& parser) {
         if ((parser.exists(prop1) || parser.exists(prop2)) && (j+1>init_used_qm_states)) init_used_qm_states=j+1;
         init_sigma_abs[j]=parser.getSetAsDouble(prop1, parser.getAsDouble("init_sigma_abs", init_sigma_abs[j]));
         init_q_fluor[j]=parser.getSetAsDouble(prop2, parser.getAsDouble("init_q_fluor", init_q_fluor[j]));
+        //std::cout<<"init_sigma_abs["<<j<<"]="<<init_sigma_abs[j]<<std::endl;
         //std::cout<<"init_used_qm_states="<<init_used_qm_states<<std::endl;
         //std::cout<<parser.getGroupName()<<prop1<<"("<<parser.exists(prop1)<<") -> init_sigma_abs["<<j<<"]="<<init_sigma_abs[j]<<"     "<<parser.getGroupName()<<prop2<<"("<<parser.exists(prop2)<<") -> init_q_fluor["<<j<<"]="<<init_q_fluor[j]<<std::endl;
     }
@@ -237,13 +242,15 @@ void FluorophorDynamics::read_config_internal(jkINIParser2& parser) {
     if (parser.exists("init_spectrum")) {
         spec=tolower(parser.getSetAsString("init_spectrum", spec));
         //init_spectrum=-1;
-        if (fluorophors->getFluorophorData(spec).spectrum!=-1) {
-            init_spectrum=fluorophors->getFluorophorData(spec).spectrum;
-        } else {
-            std::cout<<std::endl<<std::endl<<"didn't find spectrum for "<<spec<<std::endl;
-        }
     }
-    //std::cout<<spec<<" ("<<init_spectrum<<"): "<<init_q_fluor<<", "<<init_tau_fl<<", "<<init_sigma_abs<<std::endl;
+
+    if (fluorophors->getFluorophorData(spec).spectrum!=-1) {
+        init_spectrum=fluorophors->getFluorophorData(spec).spectrum;
+    } else {
+        std::cout<<std::endl<<std::endl<<"didn't find spectrum for "<<spec<<std::endl;
+    }
+
+    std::cout<<spec<<" ("<<init_spectrum<<"): "<<init_q_fluor[0]<<", "<<init_sigma_abs[0]<<std::endl;
     protocol_trajectories=parser.getSetAsInt("protocol_trajectories", protocol_trajectories);
     protocol_timestep_count=parser.getSetAsInt("protocol_timestep_count", protocol_timestep_count);;
 }
