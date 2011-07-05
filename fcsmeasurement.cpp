@@ -344,8 +344,10 @@ void FCSMeasurement::save() {
     f=fopen(fn, "w");
     unsigned long long istart=1;
     if (correlator_type==2) istart=0;
+
     for (unsigned long long i=istart; i<slots; i++) {
-        fprintf(f, "%15.10lf, %15.10lf\n", corr_tau[i], corr[i]);
+        if (correlator_type==1) fprintf(f, "%15.10lf, %15.10lf\n", corr_tau[i], corr[i]);
+        else fprintf(f, "%15.10lf, %15.10lf\n", corr_tau[i], corr[i]);
     }
     fclose(f);
     printf(" done!\n");
