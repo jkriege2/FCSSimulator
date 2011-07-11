@@ -522,6 +522,11 @@ std::string FCSMeasurement::report(){
     s+="=> timesteps = "+inttostr(timesteps)+"     à  timestep-duration = "+floattostr(sim_timestep*1e9)+" nsecs\n";
     s+="correlator:  S(#corr)="+inttostr(S)+"   P(#chan/dec)="+inttostr(P)+"    m(binRatio)="+inttostr(m)+"\n";
     s+="             corr_tau_min= "+floattostr_fmt(corr_taumin*1e9, "%lg")+" ns = "+floattostr(corr_taumin/sim_timestep)+" simulation timesteps\n";
+    s+="             correlator_type= "+inttostr(correlator_type);
+    if (correlator_type==0) s+=" (corr_jk)";
+    if (correlator_type==1) s+=" (corr_jb)";
+    if (correlator_type==2) s+=" (corr_direct)";
+    s+="\n"
 
     double mem=0;
     if (!online_correlation)  mem=mem+timesteps*sizeof(uint16_t);
