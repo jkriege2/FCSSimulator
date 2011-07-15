@@ -410,7 +410,7 @@ void FCSMeasurement::save() {
             int b=round(save_binning_time/corr_taumin);
             for (unsigned long long i=0; i<timesteps/b-1; i++) {
                 fprintf(f, "%15.10lf, %u\n", t, binned_timeseries[i]);
-                t=t+corr_taumin*b;
+                t=t+corr_taumin*(double)b;
             }
             fclose(f);
             std::string tsfn=fn;
