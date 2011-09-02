@@ -3,39 +3,54 @@
 	<FileVersion major="1" minor="6" />
 	<Project>
 		<Option title="diffusion4" />
+		<Option makefile_is_custom="1" />
 		<Option pch_mode="2" />
-		<Option compiler="gnu_gcc_compiler_450" />
+		<Option compiler="gnu_gcc_compiler_440" />
+		<MakeCommands>
+			<Build command="$make -f $makefile" />
+			<CompileFile command="$make -f $makefile $file" />
+			<Clean command="$make -f $makefile clean" />
+			<DistClean command="$make -f $makefile distclean$target" />
+			<AskRebuildNeeded command="$make -q -f $makefile" />
+			<SilentBuild command="$make -s -f $makefile" />
+		</MakeCommands>
 		<Build>
 			<Target title="Release">
 				<Option output="diffusion4" prefix_auto="1" extension_auto="1" />
 				<Option type="1" />
-				<Option compiler="gnu_gcc_compiler_450" />
-				<Option parameters="two_correlators1.ini" />
+				<Option compiler="gnu_gcc_compiler_440" />
+				<Option parameters="test.ini" />
 				<Compiler>
 					<Add option="-fexpensive-optimizations" />
 					<Add option="-O2" />
 					<Add option="-ffast-math -msse -msse2" />
 				</Compiler>
-			</Target>
-			<Target title="Release1">
-				<Option output="diffusion4" prefix_auto="1" extension_auto="1" />
-				<Option type="1" />
-				<Option compiler="gnu_gcc_compiler_450" />
-				<Compiler>
-					<Add option="-fexpensive-optimizations" />
-					<Add option="-O3" />
-					<Add option="-ffast-math" />
-				</Compiler>
+				<MakeCommands>
+					<Build command="$make -f $makefile" />
+					<CompileFile command="$make -f $makefile $file" />
+					<Clean command="$make -f $makefile clean" />
+					<DistClean command="$make -f $makefile distclean$target" />
+					<AskRebuildNeeded command="$make -q -f $makefile " />
+					<SilentBuild command="$make -s -f $makefile" />
+				</MakeCommands>
 			</Target>
 			<Target title="Debug">
 				<Option output="diffusion4" prefix_auto="1" extension_auto="1" />
 				<Option type="1" />
-				<Option compiler="gnu_gcc_compiler_450" />
-				<Option parameters="two_correlators1.ini" />
+				<Option compiler="gnu_gcc_compiler_440" />
+				<Option parameters="test.ini" />
 				<Compiler>
 					<Add option="-Wall" />
 					<Add option="-g" />
 				</Compiler>
+				<MakeCommands>
+					<Build command="$make -f $makefile " />
+					<CompileFile command="$make -f $makefile $file" />
+					<Clean command="$make -f $makefile clean" />
+					<DistClean command="$make -f $makefile distclean$target" />
+					<AskRebuildNeeded command="$make -q -f $makefile" />
+					<SilentBuild command="$make -s -f $makefile" />
+				</MakeCommands>
 			</Target>
 		</Build>
 		<Compiler>
@@ -67,6 +82,11 @@
 		<Unit filename="..\..\..\LIB\trunk\ticktock.h" />
 		<Unit filename="..\..\..\LIB\trunk\tools.cpp" />
 		<Unit filename="..\..\..\LIB\trunk\tools.h" />
+		<Unit filename="Makefile">
+			<Option compilerVar="CC" />
+			<Option compile="1" />
+			<Option link="1" />
+		</Unit>
 		<Unit filename="browniandynamics.cpp" />
 		<Unit filename="browniandynamics.h" />
 		<Unit filename="diffusion4.dox" />
