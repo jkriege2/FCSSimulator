@@ -526,7 +526,7 @@ std::string FCSMeasurement::report(){
     if (correlator_type==0) s+=" (corr_jk)";
     if (correlator_type==1) s+=" (corr_jb)";
     if (correlator_type==2) s+=" (corr_direct)";
-    s+="\n"
+    s+="\n";
 
     double mem=0;
     if (!online_correlation)  mem=mem+timesteps*sizeof(uint16_t);
