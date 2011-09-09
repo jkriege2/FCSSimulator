@@ -1,7 +1,7 @@
 #include <iostream>
 #include "browniandynamics.h"
 #include "fluorescenceimaging.h"
-#include "../../../LIB/trunk/jkINIParser2.h"
+#include "../../../LIB/trunk/jkiniparser2.h"
 #include "fcsmeasurement.h"
 #include "fluorophordynamics.h"
 #include "../../../LIB/trunk/datatable.h"

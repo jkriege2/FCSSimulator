@@ -1,10 +1,9 @@
-LIB=../../../../LIB/trunk
+LIB=../../../LIB/trunk
 CC=g++
-OPTIMIZATION_OPTS = -O2
-CPPFLAGS= -Wall $(OPTIMIZATION_OPTS) -I${LIB}
+CFLAGS = -march=core2 -msse4 -mcx16 -mpopcnt -msahf -O2 -pipe -ggdb -Wall
 LDFLAGS = -lgsl -lcblas -lm
 
-EXECUTEABLE=diffusion4
+EXECUTABLE=diffusion4
 SRC_FILE= browniandynamics.cpp \
           diffusiontools.cpp \
           dynamicsfromfiles2.cpp \
@@ -24,14 +23,14 @@ SRC_FILE= browniandynamics.cpp \
 SRC_FILE_O = $(subst .cpp,.o,$(SRC_FILE))
 
 
-${EXECUTEABLE}: ${SRC_FILE_O}
-	$(CC) $(CPPFLAGS) $(LDFLAGS) -o $(EXECUTABLE) ${SRC_FILE_O}
+${EXECUTABLE}: ${SRC_FILE_O}
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $(EXECUTABLE) ${SRC_FILE_O}
 
 $(SRC_FILE_O): %.o: %.cpp
-	$(CC) $(CPPFLAGS) -c -o $@ $<
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
-	rm -f ${EXECUTEABLE} *.o
+	rm -f ${EXECUTABLE} *.o
 	rm -f $(SRC_FILE_O)
 
 

@@ -1,7 +1,7 @@
 #ifndef DYNAMICSFROMFILES_H
 #define DYNAMICSFROMFILES_H
 
-#include "FluorophorDynamics.h"
+#include "fluorophordynamics.h"
 
 /** \brief this class loads several datafiles, containing trajectories and uses these trajectories
  *         for the dynamics simulation

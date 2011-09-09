@@ -1,4 +1,4 @@
-#include "../../../LIB/trunk/jkINIParser2.h"
+#include "../../../LIB/trunk/jkiniparser2.h"
 #include <string>
 #include <vector>
 #include "../../../LIB/trunk/tools.h"

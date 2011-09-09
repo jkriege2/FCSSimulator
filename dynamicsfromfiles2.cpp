@@ -1,4 +1,4 @@
-#include "DynamicsFromFiles2.h"
+#include "dynamicsfromfiles2.h"
 #include "../../../LIB/trunk/ticktock.h"
 #include "../../../LIB/trunk/tools.h"
 
