@@ -1,7 +1,7 @@
 LIB=../../../LIB/trunk
 CC=g++
-CFLAGS = -march=core2 -msse4 -mcx16 -mpopcnt -msahf -O2 -pipe -ggdb -Wall
-LDFLAGS = -lgsl -lcblas -lm
+CFLAGS =   -Wall -O2 #-march=core2 -msse4 -mcx16 -mpopcnt -msahf -O2 -pipe -ggdb -Wall
+LDFLAGS = -lgsl -lgslcblas -lm
 
 EXECUTABLE=diffusion4
 SRC_FILE= browniandynamics.cpp \
@@ -24,7 +24,7 @@ SRC_FILE_O = $(subst .cpp,.o,$(SRC_FILE))
 
 
 ${EXECUTABLE}: ${SRC_FILE_O}
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $(EXECUTABLE) ${SRC_FILE_O}
+	$(CC) $(CFLAGS) -o $(EXECUTABLE) ${SRC_FILE_O} $(LDFLAGS)
 
 $(SRC_FILE_O): %.o: %.cpp
 	$(CC) $(CFLAGS) -c -o $@ $<

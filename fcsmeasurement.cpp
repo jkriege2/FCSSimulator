@@ -147,13 +147,13 @@ void FCSMeasurement::init(){
     correlation_runtime=0;
 
     clear();
-    timesteps=(unsigned long long)ceil(duration/sim_timestep);
+    timesteps=(unsigned long long)ceil(duration/corr_taumin);
 
     // when in online_correlation mode we do NOT build up a timeseries.
     // if the user selects to get a binned_timeseries we create a biined_timeseries
     // array. In non-online_correlation mode the binned series may be calculated from
     // the raw timeseries, so there is no need for a binned_timeseries array!
-    if (!online_correlation)  timeseries=(uint16_t*)calloc(timesteps, sizeof(uint16_t));
+    if (!online_correlation)  timeseries=(uint16_t*)calloc((unsigned long long)ceil(duration/corr_taumin), sizeof(uint16_t));
     if (save_binning && online_correlation) {
         int b=round(save_binning_time/corr_taumin);
         binned_timeseries=(uint32_t*)calloc((timesteps)/b+10, sizeof(uint32_t));
@@ -302,7 +302,7 @@ void FCSMeasurement::run_fcs_simulation(){
     if (sim_time>=endCurrentStep) {
         endCurrentStep=sim_time+corr_taumin;
         register uint16_t N=gsl_ran_poisson(rng, nphot_sum);
-        //std::cout<<"N="<<N<<std::endl;
+        //std::cout<<"nphot_sum="<<nphot_sum<<"    N="<<N<<std::endl;
         if (online_correlation) {
             if (correlator_type==0) {
                 correlator->correlate_step(N);
@@ -323,7 +323,7 @@ void FCSMeasurement::run_fcs_simulation(){
             }
         }
         if (current_timestep%(timesteps/1000)==0) {
-            std::cout<<format("%4.1lf", (double)current_timestep/(timesteps)*100.0)<<"%:   "<<display_temp<<std::endl;
+            std::cout<<format("%4.1lf", ((double)current_timestep*corr_taumin/corr_taumin)/(timesteps)*100.0)<<"%:   "<<display_temp<<std::endl;
             display_temp=0;
         } else {
             display_temp+=N;
