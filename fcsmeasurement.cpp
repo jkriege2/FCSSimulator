@@ -343,6 +343,7 @@ void FCSMeasurement::save() {
     printf("writing '%s' ...", fn);
     f=fopen(fn, "w");
     unsigned long long istart=1;
+    if (correlator_type==1) istart=0;
     if (correlator_type==2) istart=0;
 
     for (unsigned long long i=istart; i<slots; i++) {
