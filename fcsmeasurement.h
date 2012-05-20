@@ -72,6 +72,28 @@
   poissonian distribution with average value \f$ n_{phot} \f$ . This introduces the photon
   counting statistics of the detector.
 
+  The background photons are added to the photons from the fluorescence as a second poissonian process, so
+    \f[ n_{phot+back}=\mathcal{P}_{Poisson}(n_{phot})+\mathcal{P}_{Poisson}(r_{back}\cdot\Delta t_{sample}) \f]
+  where \f$ r_{back} \f$ is the background count rate in photons/second.
+
+  The detection may be limited to a certain number of photons per simulation timestep.
+
+  It is possible to select different PDPs for the detection and illumination. If gaussian functions are selected,
+  the with is ALWAYS given as 1/e^2-width, so the gaussian takes the form
+    \f[  g(x)=\exp(-2\cdot x^2/\sigma^2) \f]
+
+  These are the illumintaion modes:
+    - The gaussian illumintaion is gaussian in all three axes
+    - the SPIM illumination is gaussian only in the z-direction, whereas it is uniform in the lateral xy-plane.
+  .
+
+  The detection modes are:
+    - The gaussian detection is gaussian in all three axes
+    - square_pixel detection is gaussian in z-direction and laterally it resembles a square function of width \c pixel_size
+      convolved with a gaussian of the given lateral width:
+        \[ \int\limits_{-a/2}^{a/2} \exp\left(-2\cdot\frac{(x-u)^2}{\sigma^2}\;\mathrm{d}u=\frac{\erf\left(\frac{a-2x}{\sqrt{2}\cdot s}\right)+\erf\left(\frac{a+2x}{\sqrt{2}\cdot s}\right)}{2\cdot\erf\left(a/(\sqrt{2}\cdot s)\right)} \]
+  .
+
  */
 class FCSMeasurement: public FluorescenceMeasurement {
     public:
@@ -258,6 +280,41 @@ class FCSMeasurement: public FluorescenceMeasurement {
         unsigned long long bin_i;
         /** \brief which correlator tu use: 0: JanK's multi-tau,  1:JanB's Multi-tau */
         unsigned int correlator_type;
+
+        /** \brief this is the maximum number of photons that may be detected/counted during one measurement timestep. Before the correlation/storing,
+         *         the number of detected photons is limited to this. */
+        uint32_t max_photons;
+
+        /** \brief minimum wavelength of the detection filter (switched off if <0) */
+        double det_wavelength_min;
+        /** \brief maximum wavelength of the detection filter (switched off if <0) */
+        double det_wavelength_max;
+        /** \brief background photon count rate in 1/second=Hz */
+        double background_rate;
+
+        /*! \brief illumination intensity distribution
+
+            possible values:
+              - 0: gaussian
+              - 1: gaussian_SPIM (lateral: uniform, longitudinal: gaussian)
+         */
+         int ill_distribution;
+
+         std::string ill_distribution_to_str(int i) const;
+         int str_to_ill_distribution(std::string i) const;
+
+         /*! \brief detection propability distribution
+
+            possible values:
+              - 0: gaussian
+              - 1: square pixel (uses additional parameter pixel_size)
+         */
+         int det_distribution;
+         std::string det_distribution_to_str(int i) const;
+         int str_to_det_distribution(std::string i) const;
+
+         /** \brief size of possibly used detection pixels in [microns] */
+         double pixel_size;
 
     private:
 };

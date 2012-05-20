@@ -10,12 +10,20 @@ FCSMeasurement::FCSMeasurement(FluorophorManager* fluorophors, std::string objec
     save_timeseries=false;
 
     psf_region_factor=3;
+    det_wavelength_max=-1;
+    det_wavelength_min=-1;
+    background_rate=0;
+    ill_distribution=0;
+    det_distribution=0;
+    pixel_size=0.4;
 
     expsf_r0=0.5;
     expsf_z0=0.5*6;
     detpsf_r0=0.53;
     detpsf_z0=0.53*6;
     I0=200/0.25e-12;
+
+    max_photons=0xFFFFFF;
 
     // Rho 6G
     lambda_ex=527;
@@ -84,8 +92,17 @@ void FCSMeasurement::read_config_internal(jkINIParser2& parser) {
     FluorescenceMeasurement::read_config_internal(parser);
     online_correlation=parser.getSetAsBool("online_correlation", online_correlation);
 
+    max_photons=parser.getAsInt("max_photons", max_photons);
+    det_wavelength_min=parser.getAsDouble("det_wavelength_min", det_wavelength_min);
+    det_wavelength_max=parser.getAsDouble("det_wavelength_max", det_wavelength_max);
+
+    background_rate=parser.getAsDouble("background_rate", background_rate);
     psf_region_factor=parser.getAsDouble("psf_region_factor", psf_region_factor);
 
+    ill_distribution=str_to_ill_distribution(parser.getSetAsString("ill_distribution", ill_distribution_to_str(ill_distribution)));
+    det_distribution=str_to_det_distribution(parser.getSetAsString("det_distribution", ill_distribution_to_str(det_distribution)));
+
+    pixel_size=parser.getSetAsDouble("pixel_size", pixel_size);
     expsf_r0=parser.getSetAsDouble("expsf_r0", expsf_r0);
     expsf_z0=parser.getSetAsDouble("expsf_z0", expsf_z0);
 
@@ -213,6 +230,10 @@ void FCSMeasurement::propagate(){
                 statisticsAutocorrelateCreateMultiTau(taus, S, m, P);
                 corr=(double*)malloc(S*P*sizeof(double));
                 statisticsAutocorrelateMultiTauSymmetric(corr, timeseries, timesteps, taus, S*P);
+            } else if (correlator_type==3) {
+                statisticsAutocorrelateCreateMultiTau(taus, S, m, P);
+                corr=(double*)malloc(S*P*sizeof(double));
+                statisticsAutocorrelateMultiTauAvgSymmetric<uint16_t,uint64_t>(corr, timeseries, timesteps, S, m, P, 1);
             }
         }
         if (correlator_type==0) {
@@ -229,7 +250,7 @@ void FCSMeasurement::propagate(){
                 corr_tau[i]=corr1[0][i]*corr_taumin;
                 corr[i]=corr1[1][i];
             }
-        } else if (correlator_type==2) {
+        } else if (correlator_type==2 || correlator_type==3) {
             slots=S*P;
             corr_tau=(double*)malloc(slots*sizeof(double));
             for (int i=0; i<slots; i++) {
@@ -286,11 +307,30 @@ void FCSMeasurement::run_fcs_simulation(){
                     if (polarised_excitation) {
                         n0=n0*(1.0-e_pol_fraction+e_pol_fraction*gsl_pow_2(dpx*e_x+dpy*e_y+dpz*e_z));
                     }
-                    n0=n0*exp(-2.0*(edxs+edys)/gsl_pow_2(expsf_r0)-2.0*gsl_pow_2(edz)/gsl_pow_2(expsf_z0));
+                    switch (ill_distribution) {
+                        case 0:
+                            n0=n0*exp(-2.0*(edxs+edys)/gsl_pow_2(expsf_r0)-2.0*gsl_pow_2(edz)/gsl_pow_2(expsf_z0));
+                            break;
+                        case 1:
+                            n0=n0*exp(-2.0*gsl_pow_2(edz)/gsl_pow_2(expsf_z0));
+                            break;
+                    }
                     if (polarised_detection) {
                         n0=n0*gsl_pow_2(dpx*d_x+dpy*d_y+dpz*d_z);
                     }
-                    nphot_sum=nphot_sum+n0*q_det*exp(-2.0*(dxs+dys)/gsl_pow_2(detpsf_r0)-2.0*gsl_pow_2(dz)/gsl_pow_2(detpsf_z0));
+                    if (det_wavelength_min>0 && det_wavelength_max>0) {
+                        n0=n0*fluorophors->get_spectral_fluorescence(dynn[i].spectrum, det_wavelength_min, det_wavelength_max);
+                    }
+                    double sq2=sqrt(2.0);
+                    switch (det_distribution) {
+                        case 0:
+                            nphot_sum=nphot_sum+n0*q_det*exp(-2.0*(dxs+dys)/gsl_pow_2(detpsf_r0)-2.0*gsl_pow_2(dz)/gsl_pow_2(detpsf_z0));
+                            break;
+                        case 1:
+                            nphot_sum=nphot_sum+n0*q_det*exp(gsl_pow_2(dz)/gsl_pow_2(detpsf_z0))*(erf((pixel_size-2.0*dx)/(sq2*gsl_pow_2(detpsf_r0)))+erf((pixel_size+2.0*dy)/(gsl_pow_2(detpsf_r0)*sq2)))/(2.0*erf(pixel_size/(sq2*gsl_pow_2(detpsf_r0))));
+                            break;
+                    }
+
                     //std::cout<<"nphot_sum="<<nphot_sum<<"\n";
                 }
             }
@@ -302,6 +342,10 @@ void FCSMeasurement::run_fcs_simulation(){
     if (sim_time>=endCurrentStep) {
         endCurrentStep=sim_time+corr_taumin;
         register uint16_t N=gsl_ran_poisson(rng, nphot_sum);
+        if (background_rate>0) {
+            N=N+gsl_ran_poisson(rng, background_rate*corr_taumin);
+        }
+        N=mmin(N, max_photons);
         //std::cout<<"nphot_sum="<<nphot_sum<<"    N="<<N<<std::endl;
         if (online_correlation) {
             if (correlator_type==0) {
@@ -345,6 +389,7 @@ void FCSMeasurement::save() {
     unsigned long long istart=1;
     if (correlator_type==1) istart=0;
     if (correlator_type==2) istart=0;
+    if (correlator_type==3) istart=0;
 
     for (unsigned long long i=istart; i<slots; i++) {
         if (correlator_type==1) fprintf(f, "%15.10lf, %15.10lf\n", corr_tau[i], corr[i]);
@@ -444,6 +489,7 @@ void FCSMeasurement::save() {
                     ts=ts+timeseries[i+j];
                 }
                 fprintf(f, "%15.10lf, %lu\n", t, ts);
+                fprintf(stdout, "%15.10lf, %lu\n", t, ts);
                 t=t+corr_taumin;
             }
             fclose(f);
@@ -480,11 +526,15 @@ std::string FCSMeasurement::report(){
     s+="expsf_z0 = "+floattostr(expsf_z0)+" microns\n";
     s+="detpsf_r0 = "+floattostr(detpsf_r0)+" microns\n";
     s+="detpsf_z0 = "+floattostr(detpsf_z0)+" microns\n";
+    s+="pixel_size = "+floattostr(pixel_size)+" microns\n";
     double psf_r0=1.0/sqrt(1.0/detpsf_r0/detpsf_r0+1.0/expsf_r0/expsf_r0);
-    s+="psf_system = sqrt(1/expsf_r0^2 + 1/detpsf_r0^2) = "+floattostr(psf_r0)+" microns\n";
+    s+="confocal_psf_system = sqrt(1/expsf_r0^2 + 1/detpsf_r0^2) = "+floattostr(psf_r0)+" microns\n";
 
     double Veff=pow(M_PI, 1.5)*(psf_r0*psf_r0*psf_r0*detpsf_z0/detpsf_r0);
-    s+="focus_volume (Veff) = pi^(3/2) * psf_system^3 * detpsf_z0/detpsf_r0 = "+floattostr(Veff)+" femto litre\n";
+    s+="confocal_focus_volume (Veff) = pi^(3/2) * psf_system^3 * detpsf_z0/detpsf_r0 = "+floattostr(Veff)+" femto litre\n";
+
+    s+="illumination_distribution = "+ill_distribution_to_str(ill_distribution)+"\n";
+    s+="detection_distribution = "+det_distribution_to_str(det_distribution)+"\n";
     double sum=0;
     if (dyn.size()>0) {
         for (size_t i=0; i<dyn.size(); i++) {
@@ -505,7 +555,16 @@ std::string FCSMeasurement::report(){
     } else {
         s+="non-polarised detection\n";
     }
+    s+="max_photons = "+inttostr(max_photons)+"\n";
     s+="lambda_ex = "+floattostr(lambda_ex)+" nm\n";
+    if (det_wavelength_min>0 && det_wavelength_max>0) {
+        s+="det_wavelength_min = "+floattostr(det_wavelength_min)+" nm\n";
+        s+="det_wavelength_max = "+floattostr(det_wavelength_max)+" nm\n";
+    } else {
+        s+="detecting all photons (no \"fluorescence filter\")\n";
+    }
+    if (background_rate>0) s+="background_rate = "+floattostr(background_rate)+" Hz (poissonian distribution)\n";
+    else s+="no background photons\n;";
     s+="EPhoton_ex = "+floattostr(Ephoton/1.602176487e-19/1e-3)+" meV\n";
     s+="I0 = "+floattostr(I0)+" uW/m^2  =  "+floattostr(I0/1e12)+" uW/micron^2  =  "+floattostr(I0/1e6)+" uW/mm^2\n";
     s+="P0 [on focus, i.e. on A=pi*(2*expsf_r0)^2] = "+floattostr(I0*(M_PI*gsl_pow_2(2.0*expsf_r0*1e-6)))+" uW\n";
@@ -527,6 +586,7 @@ std::string FCSMeasurement::report(){
     if (correlator_type==0) s+=" (corr_jk)";
     if (correlator_type==1) s+=" (corr_jb)";
     if (correlator_type==2) s+=" (corr_direct)";
+    if (correlator_type==3) s+=" (corr_directavg)";
     s+="\n";
 
     double mem=0;
@@ -548,3 +608,30 @@ std::string FCSMeasurement::report(){
 
     return s;
 }
+
+ std::string FCSMeasurement::ill_distribution_to_str(int i) const {
+    if (i==0) return "gaussian";
+    if (i==1) return "gaussian_spim";
+    return "unknown";
+ }
+
+ std::string FCSMeasurement::det_distribution_to_str(int i) const {
+    if (i==0) return "gaussian";
+    if (i==1) return "square_pixel";
+    return "unknown";
+ }
+
+
+int FCSMeasurement::str_to_ill_distribution(std::string i) const {
+    std::string s=tolower(i);
+    if (s=="gaussian") return 0;
+    if (s=="gaussian_spim") return 1;
+    return strtol(s.c_str(), NULL, 10);
+ }
+
+int FCSMeasurement::str_to_det_distribution(std::string i) const {
+    std::string s=tolower(i);
+    if (s=="gaussian") return 0;
+    if (s=="square_pixel") return 1;
+    return strtol(s.c_str(), NULL, 10);
+ }

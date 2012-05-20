@@ -1,7 +1,10 @@
 LIB=../../../LIB/trunk
 CC=g++
-CFLAGS =   -Wall -O2 #-march=core2 -msse4 -mcx16 -mpopcnt -msahf -O2 -pipe -ggdb -Wall
+CFLAGS =  -Wall
 LDFLAGS = -lgsl -lgslcblas -lm
+
+Debug: CC += -DDEBUG -g
+Release: CFLAGS += -O3
 
 EXECUTABLE=diffusion4
 SRC_FILE= browniandynamics.cpp \
@@ -22,15 +25,19 @@ SRC_FILE= browniandynamics.cpp \
 
 SRC_FILE_O = $(subst .cpp,.o,$(SRC_FILE))
 
+Debug: ${EXECUTABLE}
+
+Release: ${EXECUTABLE}
 
 ${EXECUTABLE}: ${SRC_FILE_O}
-	$(CC) $(CFLAGS) -o $(EXECUTABLE) ${SRC_FILE_O} $(LDFLAGS)
+	$(CC) $(CFLAGS) --enable-auto-import -o $(EXECUTABLE) ${SRC_FILE_O} $(LDFLAGS)
 
 $(SRC_FILE_O): %.o: %.cpp
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
-	rm -f ${EXECUTABLE} *.o
+	rm -f ${EXECUTABLE}
+	rm -f *.o
 	rm -f $(SRC_FILE_O)
 
 

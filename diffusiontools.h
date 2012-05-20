@@ -227,6 +227,13 @@ sigma_abs=3.6e-20 \endverbatim
             return GSL_MIN(1.0, GSL_MAX(0.0, gsl_spline_eval(spline, wavelength, acc)));
         }
 
+        /** \brief get the fluorescence value [0..1] from the given spectrum at the given wavelength [nm]
+         *
+         * If \a spectrum equals -1 this function simply returns 1, otherwise an interpolated value
+         * from the given spectrum.
+         */
+        double get_spectral_fluorescence(int spectrum, double wavelength_start, double wavelength_end);
+
         /** \brief add a spectrum file to the internal database, but do NOT load the file
          *         loading is done internally by calling load_spectrum() */
         void add_spectrum(std::string filename);
