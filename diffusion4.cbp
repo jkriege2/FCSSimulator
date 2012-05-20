@@ -5,20 +5,20 @@
 		<Option title="diffusion4" />
 		<Option makefile_is_custom="1" />
 		<Option pch_mode="2" />
-		<Option compiler="gnu_gcc_compiler_440" />
+		<Option compiler="gnu_gcc_compiler_450" />
 		<MakeCommands>
-			<Build command="$make -f $makefile" />
+			<Build command="$make -f $makefile $target" />
 			<CompileFile command="$make -f $makefile $file" />
 			<Clean command="$make -f $makefile clean" />
 			<DistClean command="$make -f $makefile distclean$target" />
 			<AskRebuildNeeded command="$make -q -f $makefile" />
-			<SilentBuild command="$make -s -f $makefile" />
+			<SilentBuild command="$make -f $makefile $target &gt; $(CMD_NULL)" />
 		</MakeCommands>
 		<Build>
 			<Target title="Release">
 				<Option output="diffusion4" prefix_auto="1" extension_auto="1" />
 				<Option type="1" />
-				<Option compiler="gnu_gcc_compiler_440" />
+				<Option compiler="gnu_gcc_compiler_450" />
 				<Option parameters="test.ini" />
 				<Compiler>
 					<Add option="-fexpensive-optimizations" />
@@ -26,30 +26,30 @@
 					<Add option="-ffast-math -msse -msse2" />
 				</Compiler>
 				<MakeCommands>
-					<Build command="$make -f $makefile" />
+					<Build command="$make -f $makefile $target" />
 					<CompileFile command="$make -f $makefile $file" />
 					<Clean command="$make -f $makefile clean" />
 					<DistClean command="$make -f $makefile distclean$target" />
 					<AskRebuildNeeded command="$make -q -f $makefile " />
-					<SilentBuild command="$make -s -f $makefile" />
+					<SilentBuild command="$make -f $makefile $target &gt; $(CMD_NULL)" />
 				</MakeCommands>
 			</Target>
 			<Target title="Debug">
 				<Option output="diffusion4" prefix_auto="1" extension_auto="1" />
 				<Option type="1" />
-				<Option compiler="gnu_gcc_compiler_440" />
+				<Option compiler="gnu_gcc_compiler_450" />
 				<Option parameters="test.ini" />
 				<Compiler>
 					<Add option="-Wall" />
 					<Add option="-g" />
 				</Compiler>
 				<MakeCommands>
-					<Build command="$make -f $makefile " />
+					<Build command="$make -f $makefile  $target" />
 					<CompileFile command="$make -f $makefile $file" />
 					<Clean command="$make -f $makefile clean" />
 					<DistClean command="$make -f $makefile distclean$target" />
 					<AskRebuildNeeded command="$make -q -f $makefile" />
-					<SilentBuild command="$make -s -f $makefile" />
+					<SilentBuild command="$make -f $makefile  $target &gt; $(CMD_NULL)" />
 				</MakeCommands>
 			</Target>
 		</Build>

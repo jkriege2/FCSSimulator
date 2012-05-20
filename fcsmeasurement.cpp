@@ -489,7 +489,7 @@ void FCSMeasurement::save() {
                     ts=ts+timeseries[i+j];
                 }
                 fprintf(f, "%15.10lf, %lu\n", t, ts);
-                fprintf(stdout, "%15.10lf, %lu\n", t, ts);
+                //fprintf(stdout, "%15.10lf, %lu\n", t, ts);
                 t=t+corr_taumin;
             }
             fclose(f);
