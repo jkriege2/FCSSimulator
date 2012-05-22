@@ -273,7 +273,8 @@ class FluorophorDynamics
         /** \brief this is true as long, as this object may produce trajectories, set this to \c false if you reached the end of let's say
          *         a trajectory input file. */
         bool endoftrajectory;
-
+        /** \brief depletion propability with this propability a particle does not re-enter the simulation box */
+        double depletion_propability;
     public:
         /** \brief class constructor with standard volume 30*30*30µm^3 and a concentration of 1nM */
         FluorophorDynamics(FluorophorManager* fluorophors, std::string object_name=std::string(""));
@@ -369,75 +370,7 @@ class FluorophorDynamics
         }
 
         /** \brief perform a boundary check for the i-th walker and reset it to a random border position, if it left the sim box */
-        inline void perform_boundary_check(unsigned long i) {
-            register double nx=walker_state[i].x;
-            register double ny=walker_state[i].y;
-            register double nz=walker_state[i].z;
-            if (volume_shape==0) {
-                if (   (nx<0) || (nx>sim_x)
-                    || (ny<0) || (ny>sim_y)
-                    || (nz<0) || (nz>sim_z) ) {
-
-
-                    // first choose one face of the simulation volume and then set the walker
-                    // to any position on the face ... also shift a bit inwards
-                    char face=gsl_rng_uniform_int(rng, 6)+1;
-                    switch(face) {
-                        case 1:
-                            //x-y-plane at z=0
-                            walker_state[i].x=gsl_ran_flat(rng, 0, sim_x);
-                            walker_state[i].y=gsl_ran_flat(rng, 0, sim_y);
-                            walker_state[i].z=0;
-                            break;
-                        case 2:
-                            //x-y-plane at z=sim_z
-                            walker_state[i].x=gsl_ran_flat(rng, 0, sim_x);
-                            walker_state[i].y=gsl_ran_flat(rng, 0, sim_y);
-                            walker_state[i].z=sim_z;
-                            break;
-                        case 3:
-                            //x-z-plane at y=0
-                            walker_state[i].x=gsl_ran_flat(rng, 0, sim_x);
-                            walker_state[i].y=0;
-                            walker_state[i].z=gsl_ran_flat(rng, 0, sim_z);
-                            break;
-                        case 4:
-                            //x-z-plane at y=sim_y
-                            walker_state[i].x=gsl_ran_flat(rng, 0, sim_x);
-                            walker_state[i].y=sim_y;
-                            walker_state[i].z=gsl_ran_flat(rng, 0, sim_z);
-                            break;
-                        case 5:
-                            //z-y-plane at x=0
-                            walker_state[i].x=0;
-                            walker_state[i].y=gsl_ran_flat(rng, 0, sim_y);
-                            walker_state[i].z=gsl_ran_flat(rng, 0, sim_z);
-                            break;
-                        case 6:
-                            //z-y-plane at x=sim_x
-                            walker_state[i].x=sim_x;
-                            walker_state[i].y=gsl_ran_flat(rng, 0, sim_y);
-                            walker_state[i].z=gsl_ran_flat(rng, 0, sim_z);
-                            break;
-                    }
-                    walker_state[i].time=0;
-                    walker_state[i].x0=walker_state[i].x;
-                    walker_state[i].y0=walker_state[i].y;
-                    walker_state[i].z0=walker_state[i].z;
-                }
-            } else if (volume_shape==1) {
-                if (gsl_pow_2(nx)+gsl_pow_2(ny)+gsl_pow_2(nz)>gsl_pow_2(sim_radius)) {
-                    gsl_ran_dir_3d(rng, &nx, &ny, &nz);
-                    walker_state[i].x=sim_radius*nx;
-                    walker_state[i].y=sim_radius*ny;
-                    walker_state[i].z=sim_radius*nz;
-                    walker_state[i].time=0;
-                    walker_state[i].x0=walker_state[i].x;
-                    walker_state[i].y0=walker_state[i].y;
-                    walker_state[i].z0=walker_state[i].z;
-                }
-            }
-        }
+        void perform_boundary_check(unsigned long i);
 
         /** \brief get pointer to array with all walker states */
         inline walkerState* get_walker_state() { return walker_state_other; };
@@ -477,6 +410,7 @@ class FluorophorDynamics
         GetSetMacro(double, init_p_x);
         GetSetMacro(double, init_p_y);
         GetSetMacro(double, init_p_z);
+        GetSetMacro(double, depletion_propability);
         GetSetMacro(int, init_type);
         GetSetMacro(int, init_spectrum);
         //GetSetMacro(bool, test_spectra);

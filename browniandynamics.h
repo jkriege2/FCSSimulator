@@ -87,6 +87,7 @@ class BrownianDynamics: public FluorophorDynamics
         int save_msd_factor;
         /** \brief number of MSD values to save */
         int msd_size;
+
         /** \brief array used to store the msd, if save_msd_every_n_timesteps>0. Every array index \f$ i \f$ corresponds
          *         to a time \f$ i\cdot\mbox{save\_msd\_every\_n\_timesteps}\cdot\mbox{sim\_timestep} \$ . The size of this
          *         array is determined by msd_size */

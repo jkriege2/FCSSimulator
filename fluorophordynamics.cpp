@@ -16,6 +16,7 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, std::stri
     sim_timestep=1e-6;
 
     use_two_walkerstates=false;
+    depletion_propability=0;
 
     endoftrajectory=false;
 
@@ -68,6 +69,7 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, double si
     rng_type = gsl_rng_taus;
     rng = gsl_rng_alloc (rng_type);
     gsl_rng_set(rng, time(0));
+    depletion_propability=0;
 
     init_p_x=1;
     init_p_y=0;
@@ -105,6 +107,7 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, double si
     sim_time=0;
     sim_timestep=1e-6;
     use_two_walkerstates=false;
+    depletion_propability=0;
 
      // init GSL random number generator
     gsl_rng_env_setup();
@@ -238,6 +241,7 @@ void FluorophorDynamics::read_config_internal(jkINIParser2& parser) {
     init_used_qm_states=parser.getSetAsInt("init_used_qm_states", init_used_qm_states);
 
     use_photophysics=parser.getSetAsBool("use_photophysics", use_photophysics);
+    depletion_propability=parser.getSetAsDouble("depletion_propability", depletion_propability);
 
     if (parser.exists("init_spectrum")) {
         spec=tolower(parser.getSetAsString("init_spectrum", spec));
@@ -522,6 +526,7 @@ std::string FluorophorDynamics::report() {
         s+="\n";
         //s+=doublearraytostr(init_photophysics_transition, N_FLUORESCENT_STATES,N_FLUORESCENT_STATES,false)+"\n";
     }
+    s+="depletion_propability = "+floattostr(depletion_propability)+"\n";
 
 
     return s;
@@ -572,3 +577,90 @@ void FluorophorDynamics::load_all_used_spectra() {
 
 
 
+
+
+void FluorophorDynamics::perform_boundary_check(unsigned long i) {
+    register double nx=walker_state[i].x;
+    register double ny=walker_state[i].y;
+    register double nz=walker_state[i].z;
+
+    if (walker_state[i].exists) {
+        if (volume_shape==0) {
+            if (   (nx<0) || (nx>sim_x)
+                || (ny<0) || (ny>sim_y)
+                || (nz<0) || (nz>sim_z) ) {
+
+                if (depletion_propability<=0 || gsl_ran_flat(rng,0,1)>depletion_propability) {
+                    //std::cout<<"initializing new walker ... depletion_propability="<<depletion_propability<<"\n";
+
+
+                    // first choose one face of the simulation volume and then set the walker
+                    // to any position on the face ... also shift a bit inwards
+                    char face=gsl_rng_uniform_int(rng, 6)+1;
+                    switch(face) {
+                        case 1:
+                            //x-y-plane at z=0
+                            walker_state[i].x=gsl_ran_flat(rng, 0, sim_x);
+                            walker_state[i].y=gsl_ran_flat(rng, 0, sim_y);
+                            walker_state[i].z=0;
+                            break;
+                        case 2:
+                            //x-y-plane at z=sim_z
+                            walker_state[i].x=gsl_ran_flat(rng, 0, sim_x);
+                            walker_state[i].y=gsl_ran_flat(rng, 0, sim_y);
+                            walker_state[i].z=sim_z;
+                            break;
+                        case 3:
+                            //x-z-plane at y=0
+                            walker_state[i].x=gsl_ran_flat(rng, 0, sim_x);
+                            walker_state[i].y=0;
+                            walker_state[i].z=gsl_ran_flat(rng, 0, sim_z);
+                            break;
+                        case 4:
+                            //x-z-plane at y=sim_y
+                            walker_state[i].x=gsl_ran_flat(rng, 0, sim_x);
+                            walker_state[i].y=sim_y;
+                            walker_state[i].z=gsl_ran_flat(rng, 0, sim_z);
+                            break;
+                        case 5:
+                            //z-y-plane at x=0
+                            walker_state[i].x=0;
+                            walker_state[i].y=gsl_ran_flat(rng, 0, sim_y);
+                            walker_state[i].z=gsl_ran_flat(rng, 0, sim_z);
+                            break;
+                        case 6:
+                            //z-y-plane at x=sim_x
+                            walker_state[i].x=sim_x;
+                            walker_state[i].y=gsl_ran_flat(rng, 0, sim_y);
+                            walker_state[i].z=gsl_ran_flat(rng, 0, sim_z);
+                            break;
+                    }
+                    walker_state[i].time=0;
+                    walker_state[i].x0=walker_state[i].x;
+                    walker_state[i].y0=walker_state[i].y;
+                    walker_state[i].z0=walker_state[i].z;
+                } else {
+                    //std::cout<<"killing walker ... depletion_propability="<<depletion_propability<<"\n";
+                    walker_state[i].exists=false;
+                }
+            }
+        } else if (volume_shape==1) {
+            if (gsl_pow_2(nx)+gsl_pow_2(ny)+gsl_pow_2(nz)>gsl_pow_2(sim_radius)) {
+                if (depletion_propability<=0 || gsl_ran_flat(rng,0,1)>depletion_propability) {
+                    //std::cout<<"initializing new walker ... depletion_propability="<<depletion_propability<<"\n";
+                    gsl_ran_dir_3d(rng, &nx, &ny, &nz);
+                    walker_state[i].x=sim_radius*nx;
+                    walker_state[i].y=sim_radius*ny;
+                    walker_state[i].z=sim_radius*nz;
+                    walker_state[i].time=0;
+                    walker_state[i].x0=walker_state[i].x;
+                    walker_state[i].y0=walker_state[i].y;
+                    walker_state[i].z0=walker_state[i].z;
+                } else {
+                    //std::cout<<"killing walker ... depletion_propability="<<depletion_propability<<"\n";
+                    walker_state[i].exists=false;
+                }
+            }
+        }
+    }
+}

@@ -112,144 +112,146 @@ void BrownianDynamics::propagate(bool boundary_check){
     //static walkerState oldstate;
     // now wepropagate every walker
     for (register unsigned long i=0; i<walker_count; i++) {
-        if (i%n_fluorophores==0) {
-            walker_state[i].time++;
+        if (walker_state[i].exists) {
+            if (i%n_fluorophores==0) {
+                walker_state[i].time++;
 
-            // translational diffusion
-            register double x0=walker_state[i].x;
-            register double y0=walker_state[i].y;
-            register double z0=walker_state[i].z;
+                // translational diffusion
+                register double x0=walker_state[i].x;
+                register double y0=walker_state[i].y;
+                register double z0=walker_state[i].z;
 
-            register double nx,ny,nz;
+                register double nx,ny,nz;
 
-            //double s=(x0>=diffarea_x0)?sigma_jump1:sigma_jump;
-            register double s=sigma_jump[0];
-            for (int j=1; j<DCOUNT; j++) {
-                if (x0>=diffarea_x0[j-1]) s=sigma_jump[j];
-            }
-            //if (x0>=diffarea_x0) s=sigma_jump1;
-            nx=x0+gsl_ran_gaussian_ziggurat(rng, s);
-            ny=y0+gsl_ran_gaussian_ziggurat(rng, s);
-            nz=z0+gsl_ran_gaussian_ziggurat(rng, s);
-
-            // update walker position
-            walker_state[i].x=nx;
-            walker_state[i].y=ny;
-            walker_state[i].z=nz;
-
-            if ((save_msd_every_n_timesteps>0)&&((walker_state[i].time%save_msd_every_n_timesteps)==(save_msd_every_n_timesteps-1))) {
-                double m=gsl_pow_2(nx-walker_state[i].x0)+gsl_pow_2(ny-walker_state[i].y0)+gsl_pow_2(nz-walker_state[i].z0);
-                int idx=walker_state[i].time/save_msd_every_n_timesteps+1;
-                if ((idx>=0)&&(idx<msd_size)) {
-                    msd[idx] += m;
-                    msd2[idx] += m*m;
-                    msd_count[idx]++;
+                //double s=(x0>=diffarea_x0)?sigma_jump1:sigma_jump;
+                register double s=sigma_jump[0];
+                for (int j=1; j<DCOUNT; j++) {
+                    if (x0>=diffarea_x0[j-1]) s=sigma_jump[j];
                 }
-            }
+                //if (x0>=diffarea_x0) s=sigma_jump1;
+                nx=x0+gsl_ran_gaussian_ziggurat(rng, s);
+                ny=y0+gsl_ran_gaussian_ziggurat(rng, s);
+                nz=z0+gsl_ran_gaussian_ziggurat(rng, s);
 
-            // check whether walker left the volume and if so: delete the walker and add
-            // anew one at some position on the border of the simulation volume
-            if (boundary_check) {
-                perform_boundary_check(i);
-            }
+                // update walker position
+                walker_state[i].x=nx;
+                walker_state[i].y=ny;
+                walker_state[i].z=nz;
 
-
-
-            // rotational diffusion
-            if (use_rotational_diffusion) {
-                register double mu1=walker_state[i].p_x;
-                register double mu2=walker_state[i].p_y;
-                register double mu3=walker_state[i].p_z;
-                //double mu;
-
-                double ns1, ns2, ns3, nss1, nss2, nss3, ns, nss;
-                if (mu3!=0) {
-                    ns1=1;
-                    ns2=2;
-                    ns3=-(mu1+2.0*mu2)/mu3;
-                    ns=sqrt(1+4+ns3*ns3);
-                } else if (mu2!=0) {
-                    ns1=1;
-                    ns2=-(mu1+2.0*mu3)/mu2;
-                    ns3=2;
-                    ns=sqrt(1+4+ns2*ns2);
-                } else {
-                    ns1=-(mu2+2.0*mu3)/mu1;
-                    ns2=1;
-                    ns3=1;
-                    ns=sqrt(1+4+ns1*ns1);
+                if ((save_msd_every_n_timesteps>0)&&((walker_state[i].time%save_msd_every_n_timesteps)==(save_msd_every_n_timesteps-1))) {
+                    double m=gsl_pow_2(nx-walker_state[i].x0)+gsl_pow_2(ny-walker_state[i].y0)+gsl_pow_2(nz-walker_state[i].z0);
+                    int idx=walker_state[i].time/save_msd_every_n_timesteps+1;
+                    if ((idx>=0)&&(idx<msd_size)) {
+                        msd[idx] += m;
+                        msd2[idx] += m*m;
+                        msd_count[idx]++;
+                    }
                 }
-                ns1=ns1/ns; ns2=ns2/ns; ns3=ns3/ns;
 
-                nss1=mu2*ns3-mu3*ns2;
-                nss2=mu3*ns1-mu1*ns3;
-                nss3=mu1*ns2-mu2*ns1;
-                nss=sqrt(nss1*nss1+nss2*nss2+nss3*nss3);
-                nss1=nss1/nss; nss2=nss2/nss; nss3=nss3/nss;
-
-                double phi=gsl_ran_flat(rng, -M_PI/2.0, M_PI/2.0);
-                double dalpha=gsl_ran_gaussian_ziggurat(rng, sigma_rotjump);
-                /*while (fabs(dalpha)>=M_PI/2.0) {
-                    dalpha=gsl_ran_gaussian_ziggurat(rng, sigma_rotjump);
-                }*/
-                double dmu1, dmu2, dmu3, dmu;
-                dmu1=cos(phi)*ns1+sin(phi)*nss1;
-                dmu2=cos(phi)*ns2+sin(phi)*nss2;
-                dmu3=cos(phi)*ns3+sin(phi)*nss3;
-                dmu=sqrt(dmu1*dmu1+dmu2*dmu2+dmu3*dmu3);
-                /*double x=sqrt(1.0/gsl_pow_2(cos(dalpha))-1.0)/dmu;
-
-                if (dalpha<0) {
-                    x=-1.0*x;
+                // check whether walker left the volume and if so: delete the walker and add
+                // anew one at some position on the border of the simulation volume
+                if (boundary_check) {
+                    perform_boundary_check(i);
                 }
-                mu1=mu1+x*dmu1;
-                mu2=mu2+x*dmu2;
-                mu3=mu3+x*dmu3;
-                mu=sqrt(mu1*mu1+mu2*mu2+mu3*mu3);
-                mu1=mu1/mu; mu2=mu2/mu; mu3=mu3/mu;*/
-
-                // normalized vector (mu x dmu), i.e. rotation axis
-                nss1=mu2*dmu3-mu3*dmu2;
-                nss2=mu3*dmu1-mu1*dmu3;
-                nss3=mu1*dmu2-mu2*dmu1;
-                nss=sqrt(nss1*nss1+nss2*nss2+nss3*nss3);
-                nss1=nss1/nss; nss2=nss2/nss; nss3=nss3/nss;
-
-                double ca=cos(dalpha);
-                double sa=sin(dalpha);
-                double R[3][3]= {{ca+nss1*nss1*(1.0-ca),      nss1*nss2*(1.0-ca)-nss3*sa, nss1*nss3*(1.0-ca)+nss2*sa},
-                                 {nss2*nss1*(1.0-ca)+nss3*sa, ca+nss2*nss2*(1.0-ca),      nss2*nss3*(1.0-ca)-nss1*sa},
-                                 {nss3*nss1*(1.0-ca)-nss2*sa, nss3*nss2*(1.0-ca)+nss1*sa, ca+nss3*nss3*(1.0-ca)}};
 
 
-                walker_state[i].p_x=R[0][0]*mu1+R[0][1]*mu2+R[0][2]*mu3;
-                walker_state[i].p_y=R[1][0]*mu1+R[1][1]*mu2+R[1][2]*mu3;
-                walker_state[i].p_z=R[2][0]*mu1+R[2][1]*mu2+R[2][2]*mu3;
-                double l=sqrt(walker_state[i].p_x*walker_state[i].p_x+walker_state[i].p_y*walker_state[i].p_y+walker_state[i].p_z*walker_state[i].p_z);
-                walker_state[i].p_x=walker_state[i].p_x/l;
-                walker_state[i].p_y=walker_state[i].p_y/l;
-                walker_state[i].p_z=walker_state[i].p_z/l;
 
+                // rotational diffusion
+                if (use_rotational_diffusion) {
+                    register double mu1=walker_state[i].p_x;
+                    register double mu2=walker_state[i].p_y;
+                    register double mu3=walker_state[i].p_z;
+                    //double mu;
+
+                    double ns1, ns2, ns3, nss1, nss2, nss3, ns, nss;
+                    if (mu3!=0) {
+                        ns1=1;
+                        ns2=2;
+                        ns3=-(mu1+2.0*mu2)/mu3;
+                        ns=sqrt(1+4+ns3*ns3);
+                    } else if (mu2!=0) {
+                        ns1=1;
+                        ns2=-(mu1+2.0*mu3)/mu2;
+                        ns3=2;
+                        ns=sqrt(1+4+ns2*ns2);
+                    } else {
+                        ns1=-(mu2+2.0*mu3)/mu1;
+                        ns2=1;
+                        ns3=1;
+                        ns=sqrt(1+4+ns1*ns1);
+                    }
+                    ns1=ns1/ns; ns2=ns2/ns; ns3=ns3/ns;
+
+                    nss1=mu2*ns3-mu3*ns2;
+                    nss2=mu3*ns1-mu1*ns3;
+                    nss3=mu1*ns2-mu2*ns1;
+                    nss=sqrt(nss1*nss1+nss2*nss2+nss3*nss3);
+                    nss1=nss1/nss; nss2=nss2/nss; nss3=nss3/nss;
+
+                    double phi=gsl_ran_flat(rng, -M_PI/2.0, M_PI/2.0);
+                    double dalpha=gsl_ran_gaussian_ziggurat(rng, sigma_rotjump);
+                    /*while (fabs(dalpha)>=M_PI/2.0) {
+                        dalpha=gsl_ran_gaussian_ziggurat(rng, sigma_rotjump);
+                    }*/
+                    double dmu1, dmu2, dmu3, dmu;
+                    dmu1=cos(phi)*ns1+sin(phi)*nss1;
+                    dmu2=cos(phi)*ns2+sin(phi)*nss2;
+                    dmu3=cos(phi)*ns3+sin(phi)*nss3;
+                    dmu=sqrt(dmu1*dmu1+dmu2*dmu2+dmu3*dmu3);
+                    /*double x=sqrt(1.0/gsl_pow_2(cos(dalpha))-1.0)/dmu;
+
+                    if (dalpha<0) {
+                        x=-1.0*x;
+                    }
+                    mu1=mu1+x*dmu1;
+                    mu2=mu2+x*dmu2;
+                    mu3=mu3+x*dmu3;
+                    mu=sqrt(mu1*mu1+mu2*mu2+mu3*mu3);
+                    mu1=mu1/mu; mu2=mu2/mu; mu3=mu3/mu;*/
+
+                    // normalized vector (mu x dmu), i.e. rotation axis
+                    nss1=mu2*dmu3-mu3*dmu2;
+                    nss2=mu3*dmu1-mu1*dmu3;
+                    nss3=mu1*dmu2-mu2*dmu1;
+                    nss=sqrt(nss1*nss1+nss2*nss2+nss3*nss3);
+                    nss1=nss1/nss; nss2=nss2/nss; nss3=nss3/nss;
+
+                    double ca=cos(dalpha);
+                    double sa=sin(dalpha);
+                    double R[3][3]= {{ca+nss1*nss1*(1.0-ca),      nss1*nss2*(1.0-ca)-nss3*sa, nss1*nss3*(1.0-ca)+nss2*sa},
+                                     {nss2*nss1*(1.0-ca)+nss3*sa, ca+nss2*nss2*(1.0-ca),      nss2*nss3*(1.0-ca)-nss1*sa},
+                                     {nss3*nss1*(1.0-ca)-nss2*sa, nss3*nss2*(1.0-ca)+nss1*sa, ca+nss3*nss3*(1.0-ca)}};
+
+
+                    walker_state[i].p_x=R[0][0]*mu1+R[0][1]*mu2+R[0][2]*mu3;
+                    walker_state[i].p_y=R[1][0]*mu1+R[1][1]*mu2+R[1][2]*mu3;
+                    walker_state[i].p_z=R[2][0]*mu1+R[2][1]*mu2+R[2][2]*mu3;
+                    double l=sqrt(walker_state[i].p_x*walker_state[i].p_x+walker_state[i].p_y*walker_state[i].p_y+walker_state[i].p_z*walker_state[i].p_z);
+                    walker_state[i].p_x=walker_state[i].p_x/l;
+                    walker_state[i].p_y=walker_state[i].p_y/l;
+                    walker_state[i].p_z=walker_state[i].p_z/l;
+
+                }
+
+                // photophysics
+                propagate_photophysics(i);
+                //std::cout<<"prop "<<i<<std::endl;
+
+            } else {
+                walker_state[i].x=walker_state[n_fluorophores*(i/n_fluorophores)].x;
+                walker_state[i].y=walker_state[n_fluorophores*(i/n_fluorophores)].y;
+                walker_state[i].z=walker_state[n_fluorophores*(i/n_fluorophores)].z;
+                walker_state[i].x0=walker_state[n_fluorophores*(i/n_fluorophores)].x0;
+                walker_state[i].y0=walker_state[n_fluorophores*(i/n_fluorophores)].y0;
+                walker_state[i].z0=walker_state[n_fluorophores*(i/n_fluorophores)].z0;
+                walker_state[i].time=walker_state[n_fluorophores*(i/n_fluorophores)].time;
+                walker_state[i].p_x=walker_state[n_fluorophores*(i/n_fluorophores)].p_x;
+                walker_state[i].p_y=walker_state[n_fluorophores*(i/n_fluorophores)].p_y;
+                walker_state[i].p_z=walker_state[n_fluorophores*(i/n_fluorophores)].p_z;
+
+                propagate_photophysics(i);
+                //std::cout<<"copy "<<i<<" from "<<n_fluorophores*(i/n_fluorophores)<<std::endl;
             }
-
-            // photophysics
-            propagate_photophysics(i);
-            //std::cout<<"prop "<<i<<std::endl;
-
-        } else {
-            walker_state[i].x=walker_state[n_fluorophores*(i/n_fluorophores)].x;
-            walker_state[i].y=walker_state[n_fluorophores*(i/n_fluorophores)].y;
-            walker_state[i].z=walker_state[n_fluorophores*(i/n_fluorophores)].z;
-            walker_state[i].x0=walker_state[n_fluorophores*(i/n_fluorophores)].x0;
-            walker_state[i].y0=walker_state[n_fluorophores*(i/n_fluorophores)].y0;
-            walker_state[i].z0=walker_state[n_fluorophores*(i/n_fluorophores)].z0;
-            walker_state[i].time=walker_state[n_fluorophores*(i/n_fluorophores)].time;
-            walker_state[i].p_x=walker_state[n_fluorophores*(i/n_fluorophores)].p_x;
-            walker_state[i].p_y=walker_state[n_fluorophores*(i/n_fluorophores)].p_y;
-            walker_state[i].p_z=walker_state[n_fluorophores*(i/n_fluorophores)].p_z;
-
-            propagate_photophysics(i);
-            //std::cout<<"copy "<<i<<" from "<<n_fluorophores*(i/n_fluorophores)<<std::endl;
         }
     }
     store_step_protocol();

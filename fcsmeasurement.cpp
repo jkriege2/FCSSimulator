@@ -367,6 +367,7 @@ void FCSMeasurement::run_fcs_simulation(){
             }
         }
         if (current_timestep%(timesteps/1000)==0) {
+            display_temp+=N;
             std::cout<<format("%4.1lf", ((double)current_timestep*corr_taumin/corr_taumin)/(timesteps)*100.0)<<"%:   "<<display_temp<<std::endl;
             display_temp=0;
         } else {
@@ -403,10 +404,11 @@ void FCSMeasurement::save() {
     printf("writing '%s' ...", fn);
     f=fopen(fn, "w");
     double psf_r0=1.0/sqrt(1.0/detpsf_r0/detpsf_r0+1.0/expsf_r0/expsf_r0);
+    double psf_z0=1.0/sqrt(1.0/detpsf_z0/detpsf_z0+1.0/expsf_z0/expsf_z0);
     fprintf(f, "g(t)=1.0+1.0/N/(1.0+t/tauD)/sqrt(1.0+t/gamma/gamma/tauD)\n");
     fprintf(f, "N=1\n");
     fprintf(f, "tauD=100e-6\n");
-    fprintf(f, "gamma=1\n");
+    fprintf(f, "gamma=%lf\n", psf_z0/psf_r0);
     fprintf(f, "wxy=%lf\n", psf_r0);
     fprintf(f, "fit g(x) \"%s\" via N, tauD,gamma\n", extract_file_name(corrfn).c_str());
 
@@ -456,7 +458,7 @@ void FCSMeasurement::save() {
             int b=round(save_binning_time/corr_taumin);
             for (unsigned long long i=0; i<timesteps/b-1; i++) {
                 fprintf(f, "%15.10lf, %u\n", t, binned_timeseries[i]);
-                t=t+corr_taumin*(double)b;
+                t=t+save_binning_time;
             }
             fclose(f);
             std::string tsfn=fn;
