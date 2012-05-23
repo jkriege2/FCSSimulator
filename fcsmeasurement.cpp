@@ -366,7 +366,7 @@ void FCSMeasurement::run_fcs_simulation(){
                 bin_i++;
             }
         }
-        if (current_timestep%(timesteps/1000)==0) {
+        if (current_timestep%mmax(1,(timesteps/1000))==0) {
             display_temp+=N;
             std::cout<<format("%4.1lf", ((double)current_timestep*corr_taumin/corr_taumin)/(timesteps)*100.0)<<"%:   "<<display_temp<<std::endl;
             display_temp=0;
@@ -414,6 +414,15 @@ void FCSMeasurement::save() {
 
     fprintf(f, "set logscale x\n");
     fprintf(f, "plot \"%s\" title \"simulation data\" with points, g(x) title sprintf(\"fit N=%%f, tauD=%%f microSecs, gamma=%%f, D=%%f micron^2/s\",N, tauD*1e6, gamma, wxy*wxy/4.0/tauD)\n", extract_file_name(corrfn).c_str());
+    fprintf(f, "pause -1\n");
+    fclose(f);
+    printf(" done!\n");
+
+    sprintf(fn, "%s%scorrplot_simple.plt", basename.c_str(), object_name.c_str());
+    printf("writing '%s' ...", fn);
+    f=fopen(fn, "w");
+    fprintf(f, "set logscale x\n");
+    fprintf(f, "plot \"%s\" title \"simulation data\" with points\n", extract_file_name(corrfn).c_str());
     fprintf(f, "pause -1\n");
     fclose(f);
     printf(" done!\n");

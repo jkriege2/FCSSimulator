@@ -6,7 +6,7 @@
 #include "fluorophordynamics.h"
 #include "../../../LIB/trunk/datatable.h"
 #include "dynamicsfromfiles2.h"
-
+#include "gridrandomwalkdynamics.h"
 #include <gsl/gsl_matrix.h>
 
 #include <cstdio>
@@ -53,6 +53,10 @@ void do_sim(std::string inifilename) {
                 supergroup="brownian";
                 d=new BrownianDynamics(fluorophors, oname);
                 if (duration<=0) throw std::runtime_error("if using brownian dynamics: duration has to be >0!");
+            } else if (lgname.find("grid")==0 && lgname.size()>4) {
+                supergroup="grid";
+                d=new GridRandomWalkDynamics(fluorophors, oname);
+                if (duration<=0) throw std::runtime_error("if using grid dynamics: duration has to be >0!");
             } else if (lgname.find("dynfile")==0 && lgname.size()>7) {
                 supergroup="dynfile";
                 d=new DynamicsFromFiles2(fluorophors, oname);

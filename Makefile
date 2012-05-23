@@ -4,9 +4,9 @@ CFLAGS =  -Wall
 LDFLAGS = -lgsl -lgslcblas -lm
 
 Debug: CC += -DDEBUG -g
-Release: CFLAGS += -O3
+Release: CFLAGS += -O2
 
-EXECUTABLE=diffusion4
+EXECUTABLE=diffusion4.exe
 SRC_FILE= browniandynamics.cpp \
           diffusiontools.cpp \
           dynamicsfromfiles2.cpp \
@@ -15,6 +15,7 @@ SRC_FILE= browniandynamics.cpp \
           fluorescencemeasurement.cpp \
           fluorophordynamics.cpp \
           main.cpp \
+          gridrandomwalkdynamics.cpp \
           $(LIB)/datatable.cpp \
           $(LIB)/highrestimer.cpp \
           $(LIB)/jkiniparser2.cpp \
@@ -36,9 +37,10 @@ $(SRC_FILE_O): %.o: %.cpp
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
+	rm -f *.exe
 	rm -f ${EXECUTABLE}
+
 	rm -f *.o
-	rm -f $(SRC_FILE_O)
 
 
 

@@ -104,6 +104,20 @@ class FluorophorDynamics
             double y0;
             /** \brief starting z-position of the walker [micrometers] */
             double z0;
+
+            /** \brief x-position of the walker [gridpositions] */
+            int32_t ix;
+            /** \brief y-position of the walker [gridpositions] */
+            int32_t iy;
+            /** \brief z-position of the walker [gridpositions] */
+            int32_t iz;
+            /** \brief starting x-position of the walker [gridpositions] */
+            int32_t ix0;
+            /** \brief starting y-position of the walker [gridpositions] */
+            int32_t iy0;
+            /** \brief starting z-position of the walker [gridpositions] */
+            int32_t iz0;
+
             /** \brief internal (quantum-mechanical) state of the walker: 0 (ground state), 1 (excited state) */
             int qm_state;
             /** \brief absorbption cross section [m^2] */
@@ -300,36 +314,16 @@ class FluorophorDynamics
         virtual void read_config(jkINIParser2& parser, std::string group=std::string("dynamics"), std::string supergroup=std::string(""));
 
         /** \brief set the simulation timestep */
-        inline void set_sim_timestep(double value) {
-            sim_timestep=value;
-        };
+        virtual void set_sim_timestep(double value);
 
         /** \brief set the fluorophor concentration */
-        inline void set_c_fluor(double value) {
-            c_fluor=value;
-            change_walker_count(calc_walker_count());
-            /*if (volume_shape==Box) {
-                change_walker_count((unsigned long)round(c_fluor*1e-9*6.022e23*sim_x*1e-5*sim_y*1e-5*sim_z*1e-5));
-            } else if (volume_shape==Ball) {
-                change_walker_count((unsigned long)round(c_fluor*1e-9*6.022e23*4.0*M_PI/3.0*gsl_pow_3(sim_radius*1e-5)));
-            }*/
-        };
+        virtual void set_c_fluor(double value);
 
         /** \brief set the dimensions of the simulational box */
-        inline void set_sim_box(double vx, double vy, double vz) {
-            volume_shape=Box;
-            sim_x=vx;
-            sim_y=vy;
-            sim_z=vz;
-            change_walker_count(calc_walker_count());
-        };
+        virtual void set_sim_box(double vx, double vy, double vz);
 
         /** \brief set the dimensions of the simulational sphere */
-        inline void set_sim_sphere(double rad) {
-            volume_shape=Ball;
-            sim_radius=rad;
-            change_walker_count(calc_walker_count());
-        };
+        virtual void set_sim_sphere(double rad);
 
         /** \brief initialize the state of the i-th walker and put it to the given position. The walker step counter is reset to 0 */
         virtual void init_walker(unsigned long i, double x=0, double y=0, double z=0);
@@ -370,7 +364,7 @@ class FluorophorDynamics
         }
 
         /** \brief perform a boundary check for the i-th walker and reset it to a random border position, if it left the sim box */
-        void perform_boundary_check(unsigned long i);
+        virtual void perform_boundary_check(unsigned long i);
 
         /** \brief get pointer to array with all walker states */
         inline walkerState* get_walker_state() { return walker_state_other; };

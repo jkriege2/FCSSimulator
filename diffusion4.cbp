@@ -19,7 +19,7 @@
 				<Option output="diffusion4" prefix_auto="1" extension_auto="1" />
 				<Option type="1" />
 				<Option compiler="gnu_gcc_compiler_450" />
-				<Option parameters="depletion.ini" />
+				<Option parameters="gridrw.ini" />
 				<Compiler>
 					<Add option="-fexpensive-optimizations" />
 					<Add option="-O2" />
@@ -105,6 +105,8 @@
 		<Unit filename="fluorescencemeasurement.h" />
 		<Unit filename="fluorophordynamics.cpp" />
 		<Unit filename="fluorophordynamics.h" />
+		<Unit filename="gridrandomwalkdynamics.cpp" />
+		<Unit filename="gridrandomwalkdynamics.h" />
 		<Unit filename="main.cpp" />
 		<Extensions>
 			<code_completion />

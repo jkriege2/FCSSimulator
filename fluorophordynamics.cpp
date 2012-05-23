@@ -364,9 +364,15 @@ void FluorophorDynamics::init_walker(unsigned long i, double x, double y, double
     walker_state[i].x=x;
     walker_state[i].y=y;
     walker_state[i].z=z;
+    walker_state[i].ix=x;
+    walker_state[i].iy=y;
+    walker_state[i].iz=z;
     walker_state[i].x0=x;
     walker_state[i].y0=y;
     walker_state[i].z0=z;
+    walker_state[i].ix0=x;
+    walker_state[i].iy0=y;
+    walker_state[i].iz0=z;
     walker_state[i].p_x=init_p_x;
     walker_state[i].p_y=init_p_y;
     walker_state[i].p_z=init_p_z;
@@ -544,11 +550,13 @@ void FluorophorDynamics::save_trajectories() {
 };
 
 void FluorophorDynamics::store_step_protocol() {
+    //std::cout<<"store step protocol\n";
     for (unsigned int i=0; i<protocol_trajectories; i++) {
         walkerState ws=walker_state[i];
         if (ws.time<protocol_timestep_count || protocol_timestep_count<0)
             fprintf(trajectoryFile[i], "%lg, %lg, %lg, %lg, %d, %d, %d, %lg, %lg, %lg\n", ws.time*sim_timestep, ws.x, ws.y, ws.z, ws.qm_state, ws.type, ws.spectrum, ws.p_x, ws.p_y, ws.p_z);
     }
+    //std::cout<<"store step protocol done\n";
 }
 
 /*void FluorophorDynamics::store_step_protocol(int w_start, int w_end) {
@@ -664,3 +672,31 @@ void FluorophorDynamics::perform_boundary_check(unsigned long i) {
         }
     }
 }
+
+void FluorophorDynamics::set_sim_timestep(double value) {
+    sim_timestep=value;
+};
+
+void FluorophorDynamics::set_c_fluor(double value) {
+    c_fluor=value;
+    change_walker_count(calc_walker_count());
+    /*if (volume_shape==Box) {
+        change_walker_count((unsigned long)round(c_fluor*1e-9*6.022e23*sim_x*1e-5*sim_y*1e-5*sim_z*1e-5));
+    } else if (volume_shape==Ball) {
+        change_walker_count((unsigned long)round(c_fluor*1e-9*6.022e23*4.0*M_PI/3.0*gsl_pow_3(sim_radius*1e-5)));
+    }*/
+};
+
+void FluorophorDynamics::set_sim_box(double vx, double vy, double vz) {
+    volume_shape=Box;
+    sim_x=vx;
+    sim_y=vy;
+    sim_z=vz;
+    change_walker_count(calc_walker_count());
+};
+
+void FluorophorDynamics::set_sim_sphere(double rad) {
+    volume_shape=Ball;
+    sim_radius=rad;
+    change_walker_count(calc_walker_count());
+};
