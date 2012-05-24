@@ -140,7 +140,7 @@ void BrownianDynamics::propagate(bool boundary_check){
 
                 if ((save_msd_every_n_timesteps>0)&&((walker_state[i].time%save_msd_every_n_timesteps)==(save_msd_every_n_timesteps-1))) {
                     double m=gsl_pow_2(nx-walker_state[i].x0)+gsl_pow_2(ny-walker_state[i].y0)+gsl_pow_2(nz-walker_state[i].z0);
-                    int idx=walker_state[i].time/save_msd_every_n_timesteps+1;
+                    int idx=walker_state[i].time/save_msd_every_n_timesteps;
                     if ((idx>=0)&&(idx<msd_size)) {
                         msd[idx] += m;
                         msd2[idx] += m*m;
@@ -263,7 +263,7 @@ void BrownianDynamics::propagate(bool boundary_check){
         std::cout<<"writing MSD file '"<<fn<<"' ... ";
         FILE* f=fopen(fn, "w");
         for (int i=0; i<msd_size; i++) {
-            double tau=(double)(i+1)*(double)sim_timestep*(double)save_msd_every_n_timesteps;
+            double tau=(double)(i)*(double)sim_timestep*(double)save_msd_every_n_timesteps;
             double cnt=(double)msd_count[i];
             double mean=msd[i]/cnt;
             double stddev=sqrt(msd2[i]/cnt-mean*mean);

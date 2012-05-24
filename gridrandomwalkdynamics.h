@@ -48,6 +48,8 @@ class GridRandomWalkDynamics : public FluorophorDynamics
          *         array is determined by msd_size */
         double* msd;
         double* msd2;
+        double* msdg;
+        double* msd2g;
         uint64_t* msd_count;
 
 

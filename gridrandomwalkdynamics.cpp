@@ -6,6 +6,8 @@ GridRandomWalkDynamics::GridRandomWalkDynamics(FluorophorManager* fluorophors, s
     save_msd_every_n_timesteps=-1;
     msd=NULL;
     msd2=NULL;
+    msdg=NULL;
+    msd2g=NULL;
     msd_count=NULL;
     obstacles=NULL;
     obstacle_size=0;
@@ -23,6 +25,8 @@ GridRandomWalkDynamics::~GridRandomWalkDynamics() {
     if (msd) {
         free(msd);
         free(msd2);
+        free(msdg);
+        free(msd2g);
         free(msd_count);
     }
     if (obstacles) free(obstacles);
@@ -119,15 +123,21 @@ void GridRandomWalkDynamics::init(){
     if (msd!=NULL) {
         free(msd);
         free(msd2);
+        free(msdg);
+        free(msd2g);
         free(msd_count);
     }
     if (save_msd_every_n_timesteps>0) {
         msd=(double*)calloc(msd_size, sizeof(double));
         msd2=(double*)calloc(msd_size, sizeof(double));
+        msdg=(double*)calloc(msd_size, sizeof(double));
+        msd2g=(double*)calloc(msd_size, sizeof(double));
         msd_count=(uint64_t*)calloc(msd_size, sizeof(uint64_t));
         for (int i=0; i<msd_size; i++) {
             msd[i]=0;
             msd2[i]=0;
+            msdg[i]=0;
+            msd2g[i]=0;
             msd_count[i]=0;
         }
     }
@@ -220,6 +230,12 @@ void GridRandomWalkDynamics::propagate(bool boundary_check){
                     walker_state[i].z=nz*grid_constant;
                 }
             }
+            // check whether walker left the volume and if so: delete the walker and add
+            // anew one at some position on the border of the simulation volume
+            if (boundary_check) {
+                //std::cout<<"boundary ";
+                perform_boundary_check(i);
+            }
 
             register double nx=walker_state[i].x;
             register double ny=walker_state[i].y;
@@ -229,20 +245,18 @@ void GridRandomWalkDynamics::propagate(bool boundary_check){
 
             if ((save_msd_every_n_timesteps>0)&&((walker_state[i].time%save_msd_every_n_timesteps)==(save_msd_every_n_timesteps-1))) {
                 double m=gsl_pow_2(nx-walker_state[i].x0)+gsl_pow_2(ny-walker_state[i].y0)+gsl_pow_2(nz-walker_state[i].z0);
-                int idx=walker_state[i].time/save_msd_every_n_timesteps+1;
+                double mg=gsl_pow_2(nx-walker_state[i].x0)/gsl_pow_2(grid_constant)+gsl_pow_2(ny-walker_state[i].y0)/gsl_pow_2(grid_constant)+gsl_pow_2(nz-walker_state[i].z0)/gsl_pow_2(grid_constant);
+                int idx=walker_state[i].time/save_msd_every_n_timesteps;
                 if ((idx>=0)&&(idx<msd_size)) {
                     msd[idx] += m;
                     msd2[idx] += m*m;
+                    msdg[idx] += mg;
+                    msd2g[idx] += mg*mg;
                     msd_count[idx]++;
                 }
             }
 
-            // check whether walker left the volume and if so: delete the walker and add
-            // anew one at some position on the border of the simulation volume
-            if (boundary_check) {
-                //std::cout<<"boundary ";
-                perform_boundary_check(i);
-            }
+
 
             //std::cout<<"photophys ";
 
@@ -262,14 +276,18 @@ void GridRandomWalkDynamics::propagate(bool boundary_check){
         std::cout<<"writing MSD file '"<<fn<<"' ... ";
         FILE* f=fopen(fn, "w");
         for (int i=0; i<msd_size; i++) {
-            double tau=(double)(i+1)*(double)sim_timestep*(double)save_msd_every_n_timesteps;
+            double tau=(double)(i)*(double)sim_timestep*(double)save_msd_every_n_timesteps;
+            double taug=(double)(i)*(double)save_msd_every_n_timesteps;
             double cnt=(double)msd_count[i];
             double mean=msd[i]/cnt;
             double stddev=sqrt(msd2[i]/cnt-mean*mean);
-            if (msd_count[i]>0) fprintf(f, "%lg, %lg, %lg, %lg\n", tau, mean, stddev, cnt);
+            double meang=msdg[i]/cnt;
+            double stddevg=sqrt(msd2g[i]/cnt-meang*meang);
+            if (msd_count[i]>0) fprintf(f, "%lg, %lg, %lg, %lg, %lg, %lg, %lg\n", tau, mean, stddev, cnt, taug, meang, stddevg);
         }
         fclose(f);
         std::cout<<"DONE!\n";
+
         sprintf(fn, "%s%smsd.plt", basename.c_str(), object_name.c_str());
         std::cout<<"writing MSD plot file '"<<fn<<"' ... ";
         f=fopen(fn, "w");
@@ -313,6 +331,131 @@ void GridRandomWalkDynamics::propagate(bool boundary_check){
         fprintf(f, "set xlabel \"time t [s]\"\n");
         fprintf(f, "set ylabel \"particles\"\n");
         fprintf(f, "plot \"%s\" using 1:4 title \"simulation result\" with linespoints\n", extract_file_name(basename+object_name+"msd.dat").c_str());
+        fprintf(f, "\n");
+        fprintf(f, "pause -1\n");
+        fclose(f);
+        std::cout<<"DONE!\n";
+
+        sprintf(fn, "%s%smsdsimple.plt", basename.c_str(), object_name.c_str());
+        std::cout<<"writing simpleMSD plot file '"<<fn<<"' ... ";
+        f=fopen(fn, "w");
+        fprintf(f, "unset multiplot\n");
+        fprintf(f, "reset\n");
+        fprintf(f, "set title \"sigma_translation^2 against time\"\n");
+        fprintf(f, "set xlabel \"time t [s]\"\n");
+        fprintf(f, "set ylabel \"sigma^2 [microns^2]\"\n");
+        fprintf(f, "msd(tau)=6 * %lf * tau\n", diff_coeff);
+        fprintf(f, "set style fill transparent solid 0.5 noborder\n");
+        fprintf(f, "plot \"%s\" using 1:(($2)-($3)):(($2)+($3)) notitle with filledcurves, \"%s\" using 1:2 title \"simulation result\" with points, "
+                   "msd(x) title \"theory\" with lines\n",
+                   extract_file_name(basename+object_name+"msd.dat").c_str(), extract_file_name(basename+object_name+"msd.dat").c_str());
+        fprintf(f, "\n");
+        fprintf(f, "pause -1\n");
+        fprintf(f, "set logscale xy\n");
+        fprintf(f, "set title \"sigma_translation^2 against time\"\n");
+        fprintf(f, "set xlabel \"time t [s]\"\n");
+        fprintf(f, "set ylabel \"sigma^2 [microns^2]\"\n");
+        fprintf(f, "msd(tau)=6 * %lf * tau\n", diff_coeff);
+        fprintf(f, "set style fill transparent solid 0.5 noborder\n");
+        fprintf(f, "plot \"%s\" using 1:(($2)-($3)):(($2)+($3)) notitle with filledcurves, "
+                   "\"%s\" using 1:2 title \"simulation result\" with points, "
+                   "msd(x) title \"theory\" with lines\n", extract_file_name(basename+object_name+"msd.dat").c_str(), extract_file_name(basename+object_name+"msd.dat").c_str());
+        fprintf(f, "\n");
+        fprintf(f, "pause -1\n");
+        fprintf(f, "unset logscale xy\n");
+        fprintf(f, "set title \"particle averaged over against time\"\n");
+        fprintf(f, "set xlabel \"time t [s]\"\n");
+        fprintf(f, "set ylabel \"particles\"\n");
+        fprintf(f, "plot \"%s\" using 1:4 title \"simulation result\" with linespoints\n", extract_file_name(basename+object_name+"msd.dat").c_str());
+        fprintf(f, "\n");
+        fprintf(f, "pause -1\n");
+        fclose(f);
+        std::cout<<"DONE!\n";
+
+        sprintf(fn, "%s%smsdgrid.plt", basename.c_str(), object_name.c_str());
+        std::cout<<"writing grid MSD plot file '"<<fn<<"' ... ";
+        f=fopen(fn, "w");
+        fprintf(f, "unset multiplot\n");
+        fprintf(f, "reset\n");
+        fprintf(f, "msd_fit(tau) = 6 * Diff * tau\n");
+        fprintf(f, "Diff=%lf;\n", diff_coeff/grid_constant/grid_constant);
+        fprintf(f, "fit msd_fit(x) \"%s\" using 5:6 via Diff\n", extract_file_name(basename+object_name+"msd.dat").c_str());
+        fprintf(f, "msda_fit(tau) = 6 * Gamma * (tau**alpha)\n");
+        fprintf(f, "Gamma=%lf;\n", diff_coeff/grid_constant/grid_constant*sim_timestep);
+        fprintf(f, "alpha=1;\n");
+        fprintf(f, "fit msd_fit(x) \"%s\" using 5:6 via Diff\n", extract_file_name(basename+object_name+"msd.dat").c_str());
+        fprintf(f, "fit msda_fit(x) \"%s\" using 5:6 via Gamma, alpha\n", extract_file_name(basename+object_name+"msd.dat").c_str());
+        fprintf(f, "set title \"sigma_translation^2 against time\"\n");
+        fprintf(f, "set xlabel \"time t [timesteps]\"\n");
+        fprintf(f, "set ylabel \"sigma^2 [gridconst^2]\"\n");
+        fprintf(f, "msd(tau)=6 * %lf * tau\n", diff_coeff/grid_constant/grid_constant*sim_timestep);
+        fprintf(f, "set style fill transparent solid 0.5 noborder\n");
+        fprintf(f, "plot \"%s\" using 5:(($6)-($7)):(($6)+($7)) notitle with filledcurves, \"%s\" using 5:6 title \"simulation result\" with points, "
+                   "msd(x) title \"theory\" with lines, "
+                   "msd_fit(x) title sprintf(\"fit D=%%f\",Diff) with lines, "
+                   "msda_fit(x) title sprintf(\"fit Gamma=%%f alpha=%%f\",Gamma,alpha) with lines\n",
+                   extract_file_name(basename+object_name+"msd.dat").c_str(), extract_file_name(basename+object_name+"msd.dat").c_str());
+        fprintf(f, "\n");
+        fprintf(f, "pause -1\n");
+        fprintf(f, "set logscale xy\n");
+        fprintf(f, "set title \"sigma_translation^2 against time\"\n");
+        fprintf(f, "set xlabel \"time t [timesteps]\"\n");
+        fprintf(f, "set ylabel \"sigma^2 [gridconst^2]\"\n");
+        fprintf(f, "msd(tau)=6 * %lf * tau\n", diff_coeff/grid_constant/grid_constant*sim_timestep);
+        fprintf(f, "set style fill transparent solid 0.5 noborder\n");
+        fprintf(f, "plot \"%s\" using 5:(($6)-($7)):(($6)+($7)) notitle with filledcurves, "
+                   "\"%s\" using 5:6 title \"simulation result\" with points, "
+                   "msd(x) title \"theory\" with lines, "
+                   "msd_fit(x) title sprintf(\"fit D=%%f\",Diff) with lines, "
+                   "msda_fit(x) title sprintf(\"fit Gamma=%%f alpha=%%f\",Gamma,alpha) with lines\n", extract_file_name(basename+object_name+"msd.dat").c_str(), extract_file_name(basename+object_name+"msd.dat").c_str());
+        fprintf(f, "\n");
+        fprintf(f, "pause -1\n");
+        fprintf(f, "unset logscale xy\n");
+        fprintf(f, "set title \"particle averaged over against time\"\n");
+        fprintf(f, "set xlabel \"time t [timesteps]\"\n");
+        fprintf(f, "set ylabel \"particles\"\n");
+        fprintf(f, "plot \"%s\" using 5:4 title \"simulation result\" with linespoints\n", extract_file_name(basename+object_name+"msd.dat").c_str());
+        fprintf(f, "\n");
+        fprintf(f, "pause -1\n");
+        fclose(f);
+        std::cout<<"DONE!\n";
+
+
+        sprintf(fn, "%s%smsdgridsimple.plt", basename.c_str(), object_name.c_str());
+        std::cout<<"writing grid MSD plot file '"<<fn<<"' ... ";
+        f=fopen(fn, "w");
+        fprintf(f, "unset multiplot\n");
+        fprintf(f, "reset\n");
+        fprintf(f, "set title \"sigma_translation^2 against time\"\n");
+        fprintf(f, "set xlabel \"time t [timesteps]\"\n");
+        fprintf(f, "set ylabel \"sigma^2 [gridconst^2]\"\n");
+        fprintf(f, "msd(tau)=6 * %lf * tau\n", diff_coeff/grid_constant/grid_constant*sim_timestep);
+        fprintf(f, "set style fill transparent solid 0.5 noborder\n");
+        fprintf(f, "plot \"%s\" using 5:(($6)-($7)):(($6)+($7)) notitle with filledcurves, \"%s\" using 5:6 title \"simulation result\" with points, "
+                   "msd(x) title \"theory\" with lines, "
+                   "msd_fit(x) title sprintf(\"fit D=%%f\",Diff) with lines, "
+                   "msda_fit(x) title sprintf(\"fit Gamma=%%f alpha=%%f\",Gamma,alpha) with lines\n",
+                   extract_file_name(basename+object_name+"msd.dat").c_str(), extract_file_name(basename+object_name+"msd.dat").c_str());
+        fprintf(f, "\n");
+        fprintf(f, "pause -1\n");
+        fprintf(f, "set logscale xy\n");
+        fprintf(f, "set title \"sigma_translation^2 against time\"\n");
+        fprintf(f, "set xlabel \"time t [timesteps]\"\n");
+        fprintf(f, "set ylabel \"sigma^2 [gridconst^2]\"\n");
+        fprintf(f, "msd(tau)=6 * %lf * tau\n", diff_coeff/grid_constant/grid_constant*sim_timestep);
+        fprintf(f, "set style fill transparent solid 0.5 noborder\n");
+        fprintf(f, "plot \"%s\" using 5:(($6)-($7)):(($6)+($7)) notitle with filledcurves, "
+                   "\"%s\" using 5:6 title \"simulation result\" with points, "
+                   "msd(x) title \"theory\" with lines, "
+                   "msd_fit(x) title sprintf(\"fit D=%%f\",Diff) with lines, "
+                   "msda_fit(x) title sprintf(\"fit Gamma=%%f alpha=%%f\",Gamma,alpha) with lines\n", extract_file_name(basename+object_name+"msd.dat").c_str(), extract_file_name(basename+object_name+"msd.dat").c_str());
+        fprintf(f, "\n");
+        fprintf(f, "pause -1\n");
+        fprintf(f, "unset logscale xy\n");
+        fprintf(f, "set title \"particle averaged over against time\"\n");
+        fprintf(f, "set xlabel \"time t [timesteps]\"\n");
+        fprintf(f, "set ylabel \"particles\"\n");
+        fprintf(f, "plot \"%s\" using 5:4 title \"simulation result\" with linespoints\n", extract_file_name(basename+object_name+"msd.dat").c_str());
         fprintf(f, "\n");
         fprintf(f, "pause -1\n");
         fclose(f);
