@@ -7,9 +7,15 @@ GridRandomWalkDynamics::GridRandomWalkDynamics(FluorophorManager* fluorophors, s
     msd=NULL;
     msd2=NULL;
     msd_count=NULL;
+    obstacles=NULL;
+    obstacle_size=0;
     msd_size=10000;
-    set_grid_constant(0.01);
-    set_diff_coeff(10);
+    gridsize_X=0;
+    gridsize_Y=0;
+    gridsize_Z=0;
+    obstacle_fraction=0;
+    //set_grid_constant(0.01);
+    set_diff_coeff(1000);
     init();
 }
 
@@ -19,12 +25,23 @@ GridRandomWalkDynamics::~GridRandomWalkDynamics() {
         free(msd2);
         free(msd_count);
     }
+    if (obstacles) free(obstacles);
 }
 
 void GridRandomWalkDynamics::recalcJumpProp() {
     double tau=grid_constant*grid_constant/4.0/diff_coeff;
     jump_propability=sim_timestep/tau;
     //jump_propability=sqrt(6.0*diff_coeff*sim_timestep)
+}
+
+void GridRandomWalkDynamics::recalcGridSize() {
+    grid_constant=sqrt(6.0*diff_coeff*sim_timestep);
+
+    gridsize_X=ceil(sim_x/grid_constant);
+    gridsize_Y=ceil(sim_y/grid_constant);
+    gridsize_Z=ceil(sim_z/grid_constant);
+
+    recalcJumpProp();
 }
 
 void GridRandomWalkDynamics::set_grid_constant(double gconst) {
@@ -42,6 +59,7 @@ void GridRandomWalkDynamics::set_diff_coeff(double value) {
     diff_coeff=value;
     //sigma_jump[i]=sqrt(2.0*diff_coeff[i]*sim_timestep);
     recalcJumpProp();
+    recalcGridSize();
 };
 
 
@@ -51,6 +69,8 @@ void GridRandomWalkDynamics::set_sim_timestep(double value) {
     /*for (int i=0; i<DCOUNT; i++) {
         sigma_jump[i]=sqrt(2.0*diff_coeff[i]*sim_timestep);
     }*/
+    recalcGridSize();
+
 };
 
 
@@ -88,8 +108,8 @@ void GridRandomWalkDynamics::read_config_internal(jkINIParser2& parser) {
     set_diff_coeff(parser.getSetAsDouble("diff_coeff", diff_coeff));
     save_msd_every_n_timesteps=parser.getSetAsInt("save_msd_every_n_timesteps", save_msd_every_n_timesteps);
     msd_size=parser.getSetAsInt("msd_size", msd_size);
-
-    set_grid_constant(parser.getSetAsDouble("grid_constant", grid_constant));
+    obstacle_fraction=parser.getSetAsDouble("obstacle_fraction", obstacle_fraction);
+    //set_grid_constant(parser.getSetAsDouble("grid_constant", grid_constant));
     init();
 }
 
@@ -111,7 +131,35 @@ void GridRandomWalkDynamics::init(){
             msd_count[i]=0;
         }
     }
+    init_obstacles();
 }
+
+void GridRandomWalkDynamics::init_obstacles() {
+    if (obstacles) free(obstacles);
+    int64_t cells=(gridsize_X+3)*(gridsize_Y+3)*(gridsize_Z+3);
+    std::cout<<"allocating "<<bytestostr(cells)<<" for obstacle grid ("<<gridsize_X+3<<" * "<<gridsize_Y+3<<" * "<<gridsize_Z+3<<") ... ";
+    obstacles=(uint8_t*)calloc(cells, sizeof(uint8_t));
+    obstacle_size=cells;
+    if (obstacles) std::cout<<"OK!\n";
+    else std::cout<<"ERROR!\n";
+    if (!obstacles) {
+        throw FluorophorException("could not allocate "+bytestostr(cells)+" of memory for obstacle grid!");
+    }
+    if (obstacle_fraction>0 && obstacle_fraction<1.0) {
+        numobstacles=0;
+        std::cout<<"placing obstacles on a  "<<gridsize_X+3<<" * "<<gridsize_Y+3<<" * "<<gridsize_Z+3<<"  grid (fraction = "+floattostr(obstacle_fraction)+") ... ";
+        for (int64_t i=0; i<obstacle_size; i++) {
+            obstacles[i]=0;
+            if (gsl_rng_uniform(rng)<=obstacle_fraction) {
+                obstacles[i]=1;
+                numobstacles++;
+            }
+        }
+        std::cout<<"DONE!\n";
+        std::cout<<"  placed "<<numobstacles<<" obstacles (real fraction: "<<double(numobstacles)/double(cells)<<"\n";
+    }
+}
+
 
 void GridRandomWalkDynamics::set_sim_box(double vx, double vy, double vz) {
     FluorophorDynamics::set_sim_box(vx, vy, vz);
@@ -121,6 +169,8 @@ void GridRandomWalkDynamics::set_sim_box(double vx, double vy, double vz) {
     gridsize_Z=ceil(sim_z/grid_constant);
 
     recalcJumpProp();
+
+    recalcGridSize();
 }
 
 void GridRandomWalkDynamics::set_sim_sphere(double rad) {
@@ -130,13 +180,18 @@ void GridRandomWalkDynamics::set_sim_sphere(double rad) {
 
 void GridRandomWalkDynamics::propagate(bool boundary_check){
     FluorophorDynamics::propagate(boundary_check);
+
+    if (volume_shape != FluorophorDynamics::Box)
+        throw FluorophorException("random walks on grids need a box-shaped simulation volume (other options are not allowd)");
+
     //static walkerState oldstate;
     // now wepropagate every walker
     for (register unsigned long i=0; i<walker_count; i++) {
         if (walker_state[i].exists) {
             walker_state[i].time++;
 
-            if (jump_propability>=1 || gsl_rng_uniform(rng)>jump_propability) {
+            /*if (jump_propability>=1 || gsl_rng_uniform(rng)>jump_propability) */
+            {
                 // translational diffusion
                 register int32_t x0=walker_state[i].ix;
                 register int32_t y0=walker_state[i].iy;
@@ -155,12 +210,15 @@ void GridRandomWalkDynamics::propagate(bool boundary_check){
 
 
                 // update walker position
-                walker_state[i].ix=nx;
-                walker_state[i].iy=ny;
-                walker_state[i].iz=nz;
-                walker_state[i].x=nx*grid_constant;
-                walker_state[i].y=ny*grid_constant;
-                walker_state[i].z=nz*grid_constant;
+                int64_t idx=nz*(gridsize_X+3)*(gridsize_Y+3)+ny*(gridsize_X+3)+nx;
+                if (idx<obstacle_size && idx>0 && obstacles[idx]==0) {
+                    walker_state[i].ix=nx;
+                    walker_state[i].iy=ny;
+                    walker_state[i].iz=nz;
+                    walker_state[i].x=nx*grid_constant;
+                    walker_state[i].y=ny*grid_constant;
+                    walker_state[i].z=nz*grid_constant;
+                }
             }
 
             register double nx=walker_state[i].x;
@@ -220,12 +278,21 @@ void GridRandomWalkDynamics::propagate(bool boundary_check){
         fprintf(f, "msd_fit(tau) = 6 * Diff * tau\n");
         fprintf(f, "Diff=%lf;\n", diff_coeff);
         fprintf(f, "fit msd_fit(x) \"%s\" using 1:2 via Diff\n", extract_file_name(basename+object_name+"msd.dat").c_str());
+        fprintf(f, "msda_fit(tau) = 6 * Gamma * (tau**alpha)\n");
+        fprintf(f, "Gamma=%lf;\n", diff_coeff);
+        fprintf(f, "alpha=1;\n");
+        fprintf(f, "fit msd_fit(x) \"%s\" using 1:2 via Diff\n", extract_file_name(basename+object_name+"msd.dat").c_str());
+        fprintf(f, "fit msda_fit(x) \"%s\" using 1:2 via Gamma, alpha\n", extract_file_name(basename+object_name+"msd.dat").c_str());
         fprintf(f, "set title \"sigma_translation^2 against time\"\n");
         fprintf(f, "set xlabel \"time t [s]\"\n");
         fprintf(f, "set ylabel \"sigma^2 [microns^2]\"\n");
         fprintf(f, "msd(tau)=6 * %lf * tau\n", diff_coeff);
         fprintf(f, "set style fill transparent solid 0.5 noborder\n");
-        fprintf(f, "plot \"%s\" using 1:(($2)-($3)):(($2)+($3)) notitle with filledcurves, \"%s\" using 1:2 title \"simulation result\" with points, msd(x) title \"theory\" with lines, msd_fit(x) title sprintf(\"fit D=%%f\",Diff) with lines\n", extract_file_name(basename+object_name+"msd.dat").c_str(), extract_file_name(basename+object_name+"msd.dat").c_str());
+        fprintf(f, "plot \"%s\" using 1:(($2)-($3)):(($2)+($3)) notitle with filledcurves, \"%s\" using 1:2 title \"simulation result\" with points, "
+                   "msd(x) title \"theory\" with lines, "
+                   "msd_fit(x) title sprintf(\"fit D=%%f\",Diff) with lines, "
+                   "msda_fit(x) title sprintf(\"fit Gamma=%%f alpha=%%f\",Gamma,alpha) with lines\n",
+                   extract_file_name(basename+object_name+"msd.dat").c_str(), extract_file_name(basename+object_name+"msd.dat").c_str());
         fprintf(f, "\n");
         fprintf(f, "pause -1\n");
         fprintf(f, "set logscale xy\n");
@@ -234,7 +301,11 @@ void GridRandomWalkDynamics::propagate(bool boundary_check){
         fprintf(f, "set ylabel \"sigma^2 [microns^2]\"\n");
         fprintf(f, "msd(tau)=6 * %lf * tau\n", diff_coeff);
         fprintf(f, "set style fill transparent solid 0.5 noborder\n");
-        fprintf(f, "plot \"%s\" using 1:(($2)-($3)):(($2)+($3)) notitle with filledcurves, \"%s\" using 1:2 title \"simulation result\" with points, msd(x) title \"theory\" with lines, msd_fit(x) title sprintf(\"fit D=%%f\",Diff) with lines\n", extract_file_name(basename+object_name+"msd.dat").c_str(), extract_file_name(basename+object_name+"msd.dat").c_str());
+        fprintf(f, "plot \"%s\" using 1:(($2)-($3)):(($2)+($3)) notitle with filledcurves, "
+                   "\"%s\" using 1:2 title \"simulation result\" with points, "
+                   "msd(x) title \"theory\" with lines, "
+                   "msd_fit(x) title sprintf(\"fit D=%%f\",Diff) with lines, "
+                   "msda_fit(x) title sprintf(\"fit Gamma=%%f alpha=%%f\",Gamma,alpha) with lines\n", extract_file_name(basename+object_name+"msd.dat").c_str(), extract_file_name(basename+object_name+"msd.dat").c_str());
         fprintf(f, "\n");
         fprintf(f, "pause -1\n");
         fprintf(f, "unset logscale xy\n");
@@ -252,12 +323,16 @@ void GridRandomWalkDynamics::propagate(bool boundary_check){
 
 std::string GridRandomWalkDynamics::report() {
     std::string s=FluorophorDynamics::report();
-    s+="diff_coeff = "+floattostr(diff_coeff)+" micron^2/s\n";
-    s+="jump_propability = "+floattostr(jump_propability)+"\n";
-    s+="grid_constant = "+floattostr(grid_constant)+" micron\n";
     s+="gridsize_X = "+inttostr(gridsize_X)+"\n";
     s+="gridsize_Y = "+inttostr(gridsize_Y)+"\n";
-    s+="gridsize_Z = "+inttostr(gridsize_Z)+"\n";
+    s+="gridsize_Z = "+inttostr(gridsize_Z)+"\n";    s+="diff_coeff = "+floattostr(diff_coeff)+" micron^2/s\n";
+    //s+="jump_propability = "+floattostr(jump_propability)+"\n";
+    s+="grid_constant = "+floattostr(grid_constant)+" micron\n";
+    s+="  => diff_coeff_from_grid = "+floattostr(grid_constant*grid_constant/6.0/sim_timestep)+" micron^2/s\n";
+    s+="set_obstacle_fraction = "+floattostr(obstacle_fraction)+"\n";
+    s+="numobstacles = "+inttostr(numobstacles)+"\n";
+    s+="real_obstacle_fraction = "+floattostr(double(numobstacles)/double(obstacle_size))+"\n";
+
     if (save_msd_every_n_timesteps>0) s+="saving MSD every "+inttostr(save_msd_every_n_timesteps)+" timesteps with "+inttostr(msd_size)+" items\n";
 
     return s;

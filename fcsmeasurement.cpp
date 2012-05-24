@@ -405,15 +405,28 @@ void FCSMeasurement::save() {
     f=fopen(fn, "w");
     double psf_r0=1.0/sqrt(1.0/detpsf_r0/detpsf_r0+1.0/expsf_r0/expsf_r0);
     double psf_z0=1.0/sqrt(1.0/detpsf_z0/detpsf_z0+1.0/expsf_z0/expsf_z0);
-    fprintf(f, "g(t)=1.0+1.0/N/(1.0+t/tauD)/sqrt(1.0+t/gamma/gamma/tauD)\n");
+    fprintf(f, "g(t,N,tauD,gamma,alpha)=1.0+1.0/N/(1.0+((t/tauD)**alpha))/sqrt(1.0+((t/tauD)**alpha)/gamma/gamma)\n");
     fprintf(f, "N=1\n");
     fprintf(f, "tauD=100e-6\n");
     fprintf(f, "gamma=%lf\n", psf_z0/psf_r0);
+    fprintf(f, "Nf=1\n");
+    fprintf(f, "tauDf=100e-6\n");
+    fprintf(f, "gammaf=%lf\n", psf_z0/psf_r0);
+    fprintf(f, "Na=1\n");
+    fprintf(f, "tauDa=100e-6\n");
+    fprintf(f, "gammaa=%lf\n", psf_z0/psf_r0);
+    fprintf(f, "alphaa=1\n");
     fprintf(f, "wxy=%lf\n", psf_r0);
-    fprintf(f, "fit g(x) \"%s\" via N, tauD,gamma\n", extract_file_name(corrfn).c_str());
+    fprintf(f, "fit g(x, N, tauD, gamma, 1) \"%s\" via N, tauD,gamma\n", extract_file_name(corrfn).c_str());
+    fprintf(f, "fit g(x, Nf, tauDf, gammaf, 1) \"%s\" via Nf, tauDf\n", extract_file_name(corrfn).c_str());
+    fprintf(f, "fit g(x, Na, tauDa, gammaa, alphaa) \"%s\" via Na, tauDa, alphaa\n", extract_file_name(corrfn).c_str());
 
     fprintf(f, "set logscale x\n");
-    fprintf(f, "plot \"%s\" title \"simulation data\" with points, g(x) title sprintf(\"fit N=%%f, tauD=%%f microSecs, gamma=%%f, D=%%f micron^2/s\",N, tauD*1e6, gamma, wxy*wxy/4.0/tauD)\n", extract_file_name(corrfn).c_str());
+    fprintf(f, "plot \"%s\" title \"simulation data\" with points, "
+               "g(x,N,tauD,gamma,1) title sprintf(\"fit N=%%f, tauD=%%f uS, gamma=%%f, D=%%f um^2/s\",N, tauD*1e6, gamma, wxy*wxy/4.0/tauD), "
+               "g(x,Nf,tauDf,gammaf,1) title sprintf(\"fit N=%%f, tauD=%%f uS, gamma=%%f, D=%%f um^2/s\",Nf, tauDf*1e6, gammaf, wxy*wxy/4.0/tauDf), "
+               "g(x,Na,tauDa,gammaa,alphaa) title sprintf(\"fit N=%%f, tauD=%%f uS, gamma=%%f, alpha=%%f, D=%%f um^2/s\",Na, tauDa*1e6, gammaa,alphaa,  wxy*wxy/4.0/tauDa)"
+               "\n", extract_file_name(corrfn).c_str());
     fprintf(f, "pause -1\n");
     fclose(f);
     printf(" done!\n");

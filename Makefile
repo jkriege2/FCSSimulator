@@ -6,7 +6,7 @@ LDFLAGS = -lgsl -lgslcblas -lm
 Debug: CC += -DDEBUG -g
 Release: CFLAGS += -O2
 
-EXECUTABLE=diffusion4.exe
+EXECUTABLE=diffusion4
 SRC_FILE= browniandynamics.cpp \
           diffusiontools.cpp \
           dynamicsfromfiles2.cpp \
@@ -26,19 +26,33 @@ SRC_FILE= browniandynamics.cpp \
 
 SRC_FILE_O = $(subst .cpp,.o,$(SRC_FILE))
 
-Debug: ${EXECUTABLE}
 
-Release: ${EXECUTABLE}
+ifeq ($(findstring Msys,$(OS)),Msys)
+PREFIX=/mingw
+EXE_SUFFIX=.exe
+SO_SUFFIX=.dll
+SO_PATH=$(PREFIX)/bin
+else
+PREFIX=/usr/local
+EXE_SUFFIX=
+SO_SUFFIX=.so
+SO_PATH=$(PREFIX)/lib
+endif
+
+
+Debug: ${EXECUTABLE}$(EXE_SUFFIX)
+
+Release: ${EXECUTABLE}$(EXE_SUFFIX)
 
 ${EXECUTABLE}: ${SRC_FILE_O}
-	$(CC) $(CFLAGS) --enable-auto-import -o $(EXECUTABLE) ${SRC_FILE_O} $(LDFLAGS)
+	$(CC) $(CFLAGS) --enable-auto-import -o $(EXECUTABLE)$(EXE_SUFFIX) ${SRC_FILE_O} $(LDFLAGS)
 
 $(SRC_FILE_O): %.o: %.cpp
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
 	rm -f *.exe
-	rm -f ${EXECUTABLE}
+	rm -f ${EXECUTABLE}$(EXE_SUFFIX)
 
 	rm -f *.o
 

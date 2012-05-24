@@ -24,9 +24,15 @@ class GridRandomWalkDynamics : public FluorophorDynamics
         /** \brief width of a grid cell in [micrometers] */
         double grid_constant;
 
-        int32_t gridsize_X;
-        int32_t gridsize_Y;
-        int32_t gridsize_Z;
+        int64_t gridsize_X;
+        int64_t gridsize_Y;
+        int64_t gridsize_Z;
+
+        uint8_t* obstacles;
+        int64_t obstacle_size;
+
+        double obstacle_fraction;
+        int64_t numobstacles;
 
         double jump_propability;
 
@@ -52,7 +58,13 @@ class GridRandomWalkDynamics : public FluorophorDynamics
          */
         virtual void read_config_internal(jkINIParser2& parser);
 
+        /** \brief calculate the new jump propability from the given diffusion coefficient, grid_size and timestep */
         void recalcJumpProp();
+
+        /** \brief calculate the new grid size from the given diffusion coefficient and simulation timestep */
+        void recalcGridSize();
+
+        void init_obstacles();
 
     public:
         /** Default constructor */
