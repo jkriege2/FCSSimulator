@@ -7,6 +7,7 @@ FluorescenceMeasurement::FluorescenceMeasurement(FluorophorManager* fluorophors,
     this->object_name=objectname;
     sim_time=0;
     sim_timestep=1e-6;
+    description=objectname;
 
      // init GSL random number generator
     gsl_rng_env_setup();
@@ -95,6 +96,7 @@ void FluorescenceMeasurement::read_config(jkINIParser2& parser, std::string grou
             parser.enterGroup(group);
         }
 
+        description=parser.getAsString("description", description);
         read_config_internal(parser);
 
         parser.leaveGroup();
@@ -107,6 +109,7 @@ void FluorescenceMeasurement::read_config(jkINIParser2& parser, std::string grou
 std::string FluorescenceMeasurement::report() {
     std::string s="";
     s+="object_name = "+object_name+"\n";
+    s+="description = "+description+"\n";
     s+="runtime = "+floattostr(runtime)+" secs\n";
     s+="rng = "+std::string(gsl_rng_name(rng))+"\n";
     s+="data from: ";

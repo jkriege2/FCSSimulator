@@ -87,12 +87,21 @@
     - the SPIM illumination is gaussian only in the z-direction, whereas it is uniform in the lateral xy-plane.
   .
 
-  The detection modes are:
+  The detection PSF modes are:
     - The gaussian detection is gaussian in all three axes
     - square_pixel detection is gaussian in z-direction and laterally it resembles a square function of width \c pixel_size
       convolved with a gaussian of the given lateral width:
         \[ \int\limits_{-a/2}^{a/2} \exp\left(-2\cdot\frac{(x-u)^2}{\sigma^2}\;\mathrm{d}u=\frac{\erf\left(\frac{a-2x}{\sqrt{2}\cdot s}\right)+\erf\left(\frac{a+2x}{\sqrt{2}\cdot s}\right)}{2\cdot\erf\left(a/(\sqrt{2}\cdot s)\right)} \]
   .
+
+  It is possible to simulate different detectors with different properties:
+    - <b>photon counting detectors:</b> Here the number of detected photons is simply determined by drawing a random number from a poissonian
+      distribution (mean=variance!!!) with the given men photon number.
+    - <b>linear detectors (camera FCS):</b> The average detected ADU value is calculated as
+        \f[ n_{lin}(t)=\mbox{lindet\_gain}\cdot  n_{phot}(t) \f]
+      Then the actual detected value is drawn from a gaussian distribution with average \f$ n_{lin}(t) \f$  and variance
+      \f$ n_{lin}(t)\cdot\text{lindet\_var\_factor} \f$. Then the value is cast to an integer (i.e. quantisation by an analog to digital converter).
+      The range of these values is then limited to \f$ 0..2^{\text{lindet}_bits}}-1 \f$ to account for the finite resolution of the ADC.
 
  */
 class FCSMeasurement: public FluorescenceMeasurement {
@@ -137,7 +146,10 @@ class FCSMeasurement: public FluorescenceMeasurement {
         GetSetMacro(unsigned int, P);
         GetSetMacro(unsigned int, correlator_type);
         GetSetMacro(unsigned long long, timesteps);
-
+        GetSetMacro(unsigned int, detector_type);
+        GetSetMacro(unsigned int, lindet_bits);
+        GetSetMacro(double, lindet_gain);
+        GetSetMacro(double, lindet_var_factor);
     protected:
         /** \brief run the actual FCS simulation */
         void run_fcs_simulation();
@@ -235,7 +247,7 @@ class FCSMeasurement: public FluorescenceMeasurement {
         unsigned int P;
 
         /** \brief this array holds the generated time series */
-        uint16_t* timeseries;
+        uint32_t* timeseries;
 
         /** \brief this array holds the generated binned time series */
         uint32_t* binned_timeseries;
@@ -299,6 +311,29 @@ class FCSMeasurement: public FluorescenceMeasurement {
               - 1: gaussian_SPIM (lateral: uniform, longitudinal: gaussian)
          */
          int ill_distribution;
+
+         /*! \brief type of the detector
+
+             possible values:
+               - 0: photon counting detector
+               - 1: digitized linear detector
+          */
+         unsigned int detector_type;
+
+         /*! \brief for linear detectors: factor between detector noise variance and detected intensity
+
+             example values for Andor iXon X3 860:
+               <code>lindet_var_factor = EMGain/10</code>
+          */
+         double lindet_var_factor;
+
+         /** \brief resolution of linear detector digitization (range is <code>0..2^lindet_bits-1</code>) */
+         unsigned int lindet_bits;
+
+         /** \brief gain of linear detector  */
+         double lindet_gain;
+
+
 
          std::string ill_distribution_to_str(int i) const;
          int str_to_ill_distribution(std::string i) const;

@@ -110,6 +110,9 @@ class FluorescenceMeasurement: public TickTock
         /** \brief an object name */
         std::string object_name;
 
+        /** \brief a description that can e.g. be used in plots */
+        std::string description;
+
         /** \brief a pointer to a vector of FluorophorDynamics::walkerState arrays.
          *
          * The vector actually contains tuples where the first element contains the number of

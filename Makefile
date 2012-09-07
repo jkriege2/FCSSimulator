@@ -3,7 +3,7 @@ CC=g++
 CFLAGS =  -Wall #--enable-auto-import
 LDFLAGS = -lgsl -lgslcblas -lm
 
-Release: CFLAGS += -O2
+Release: CFLAGS += -O2 -march=native -ffast-math
 
 Debug: CC += -DDEBUG -g
 

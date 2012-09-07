@@ -17,6 +17,11 @@ FCSMeasurement::FCSMeasurement(FluorophorManager* fluorophors, std::string objec
     det_distribution=0;
     pixel_size=0.4;
 
+    detector_type=0;
+    lindet_bits=14;
+    lindet_gain=10;
+    lindet_var_factor=10;
+
     expsf_r0=0.5;
     expsf_z0=0.5*6;
     detpsf_r0=0.53;
@@ -154,7 +159,12 @@ void FCSMeasurement::read_config_internal(jkINIParser2& parser) {
     save_binning_time=parser.getSetAsDouble("save_binning_time", save_binning_time);
     save_timeseries=parser.getSetAsBool("save_timeseries", save_timeseries);
 
-
+    std::string dt=tolower(parser.getAsString("detector_type", "photon_counting"));
+    if (dt=="0" || dt=="photon" || dt=="photon_counting") detector_type=0;
+    if (dt=="1" || dt=="linear" || dt=="emccd" || dt=="ccd" || dt=="camera") detector_type=1;
+    lindet_bits=parser.getSetAsInt("lindet_bits", lindet_bits);
+    lindet_gain=parser.getSetAsDouble("lindet_gain", lindet_gain);
+    lindet_var_factor=parser.getSetAsDouble("lindet_var_factor", lindet_var_factor);
     init();
 }
 
@@ -170,7 +180,7 @@ void FCSMeasurement::init(){
     // if the user selects to get a binned_timeseries we create a biined_timeseries
     // array. In non-online_correlation mode the binned series may be calculated from
     // the raw timeseries, so there is no need for a binned_timeseries array!
-    if (!online_correlation)  timeseries=(uint16_t*)calloc((unsigned long long)ceil(duration/corr_taumin), sizeof(uint16_t));
+    if (!online_correlation)  timeseries=(uint32_t*)calloc((unsigned long long)ceil(duration/corr_taumin), sizeof(uint32_t));
     if (save_binning && online_correlation) {
         int b=round(save_binning_time/corr_taumin);
         binned_timeseries=(uint32_t*)calloc((timesteps)/b+10, sizeof(uint32_t));
@@ -183,7 +193,7 @@ void FCSMeasurement::init(){
     //corr=(double*)calloc(correlation_slots, sizeof(double));
     //corr_tau=(double*)calloc(correlation_slots, sizeof(double));
     correlator=new MultiTauCorrelator<double, double>(S, m, P, corr_taumin);
-    corrjanb=new correlatorjb<double, double>(S, P);
+    corrjanb=new correlatorjb<double, double>(S, P, double(0.0));
     Ephoton=6.626e-34*2.99e8/(lambda_ex*1e-9);
 
     if (corr_taumin<0.99*sim_timestep) {
@@ -229,11 +239,11 @@ void FCSMeasurement::propagate(){
             } else if (correlator_type==2) {
                 statisticsAutocorrelateCreateMultiTau(taus, S, m, P);
                 corr=(double*)malloc(S*P*sizeof(double));
-                statisticsAutocorrelateMultiTauSymmetric(corr, timeseries, timesteps, taus, S*P);
+                statisticsAutocorrelateMultiTauSymmetric<uint32_t,uint64_t>(corr, timeseries, timesteps, taus, S*P);
             } else if (correlator_type==3) {
                 statisticsAutocorrelateCreateMultiTau(taus, S, m, P);
                 corr=(double*)malloc(S*P*sizeof(double));
-                statisticsAutocorrelateMultiTauAvgSymmetric<uint16_t,uint64_t>(corr, timeseries, timesteps, S, m, P, 1);
+                statisticsAutocorrelateMultiTauAvgSymmetric<uint32_t,uint64_t,uint64_t>(corr, timeseries, timesteps, S, m, P, 1);
             }
         }
         if (correlator_type==0) {
@@ -341,7 +351,15 @@ void FCSMeasurement::run_fcs_simulation(){
     //std::cout<<"sim_time="<<sim_time<<"   endCurrentStep="<<endCurrentStep<<"\n";
     if (sim_time>=endCurrentStep) {
         endCurrentStep=sim_time+corr_taumin;
-        register uint16_t N=gsl_ran_poisson(rng, nphot_sum);
+        register uint32_t N=0;
+        if (detector_type==0) N=gsl_ran_poisson(rng, nphot_sum);
+        else {
+            double d=gsl_ran_gaussian_ziggurat(rng, sqrt(nphot_sum*lindet_gain*lindet_var_factor))+nphot_sum*lindet_gain;
+            const uint32_t Nmax=gsl_pow_int(2,lindet_bits)-1;
+            if (d>Nmax) d=Nmax;
+            if (d<0) d=0;
+            N=floor(d);
+        }
         if (background_rate>0) {
             N=N+gsl_ran_poisson(rng, background_rate*corr_taumin);
         }
@@ -422,6 +440,7 @@ void FCSMeasurement::save() {
     fprintf(f, "fit g(x, Na, tauDa, gammaa, alphaa) \"%s\" via Na, tauDa, alphaa\n", extract_file_name(corrfn).c_str());
 
     fprintf(f, "set logscale x\n");
+    fprintf(f, "set title \"object description: %1\"\n", description.c_str());
     fprintf(f, "plot \"%s\" title \"simulation data\" with points, "
                "g(x,N,tauD,gamma,1) title sprintf(\"fit N=%%f, tauD=%%f uS, gamma=%%f, D=%%f um^2/s\",N, tauD*1e6, gamma, wxy*wxy/4.0/tauD), "
                "g(x,Nf,tauDf,gammaf,1) title sprintf(\"fit N=%%f, tauD=%%f uS, gamma=%%f, D=%%f um^2/s\",Nf, tauDf*1e6, gammaf, wxy*wxy/4.0/tauDf), "
@@ -435,6 +454,7 @@ void FCSMeasurement::save() {
     printf("writing '%s' ...", fn);
     f=fopen(fn, "w");
     fprintf(f, "set logscale x\n");
+    fprintf(f, "set title \"object description: %1\"\n", description.c_str());
     fprintf(f, "plot \"%s\" title \"simulation data\" with points\n", extract_file_name(corrfn).c_str());
     fprintf(f, "pause -1\n");
     fclose(f);
@@ -459,10 +479,12 @@ void FCSMeasurement::save() {
             f=fopen(fn, "w");
             fprintf(f, "set xlabel \"time [seconds]\"\n");
             fprintf(f, "set ylabel \"photon count [photons/%lfsec]\"\n", corr_taumin);
+            fprintf(f, "set title \"object description: %1\"\n", description.c_str());
             fprintf(f, "plot \"%s\" with steps\n", extract_file_name(tsfn).c_str());
             fprintf(f, "pause -1\n");
             fprintf(f, "set xlabel \"time [seconds]\"\n");
             fprintf(f, "set ylabel \"photon count [Hz]\"\n");
+            fprintf(f, "set title \"object description: %1\"\n", description.c_str());
             fprintf(f, "plot \"%s\" using 1:(($2)/%lf) with steps\n", extract_file_name(tsfn).c_str(), corr_taumin);
             fprintf(f, "pause -1\n");
             fclose(f);
@@ -491,10 +513,12 @@ void FCSMeasurement::save() {
             f=fopen(fn, "w");
             fprintf(f, "set xlabel \"time [seconds]\"\n");
             fprintf(f, "set ylabel \"photon count [photons/%lfsec]\"\n", corr_taumin*b);
+            fprintf(f, "set title \"object description: %1\"\n", description.c_str());
             fprintf(f, "plot \"%s\" with steps\n", extract_file_name(tsfn).c_str());
             fprintf(f, "pause -1\n");
             fprintf(f, "set xlabel \"time [seconds]\"\n");
             fprintf(f, "set ylabel \"photon count [Hz]\"\n");
+            fprintf(f, "set title \"object description: %1\"\n", description.c_str());
             fprintf(f, "plot \"%s\" using 1:(($2)/%lf) with steps\n", extract_file_name(tsfn).c_str(), corr_taumin*b);
             fprintf(f, "pause -1\n");
             fclose(f);
@@ -525,10 +549,12 @@ void FCSMeasurement::save() {
             f=fopen(fn, "w");
             fprintf(f, "set xlabel \"time [seconds]\"\n");
             fprintf(f, "set ylabel \"photon count [photons/%lfsec]\"\n", corr_taumin*b);
+            fprintf(f, "set title \"object description: %1\"\n", description.c_str());
             fprintf(f, "plot \"%s\" with steps\n", extract_file_name(tsfn).c_str());
             fprintf(f, "pause -1\n");
             fprintf(f, "set xlabel \"time [seconds]\"\n");
             fprintf(f, "set ylabel \"photon count [Hz]\"\n");
+            fprintf(f, "set title \"object description: %1\"\n", description.c_str());
             fprintf(f, "plot \"%s\" using 1:(($2)/%lf) with steps\n", extract_file_name(tsfn).c_str(), corr_taumin*b);
             fprintf(f, "pause -1\n");
             fclose(f);
@@ -580,6 +606,16 @@ std::string FCSMeasurement::report(){
         s+="non-polarised detection\n";
     }
     s+="max_photons = "+inttostr(max_photons)+"\n";
+
+    if (detector_type==1) {
+        s+="detector_type = linear\n";
+        s+="detector_resolution = "+inttostr(lindet_bits)+"bits  =>  range = 0..."+inttostr(pow(2,lindet_bits))+"\n";
+        s+="detector_gain = "+floattostr(lindet_gain)+"\n";
+        s+="detector_intensity_vs_variance = "+floattostr(lindet_var_factor)+"\n";
+    } else {
+        s+="detector_type = photon_counting\n";
+    }
+
     s+="lambda_ex = "+floattostr(lambda_ex)+" nm\n";
     if (det_wavelength_min>0 && det_wavelength_max>0) {
         s+="det_wavelength_min = "+floattostr(det_wavelength_min)+" nm\n";
