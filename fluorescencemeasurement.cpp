@@ -96,8 +96,8 @@ void FluorescenceMeasurement::read_config(jkINIParser2& parser, std::string grou
             parser.enterGroup(group);
         }
 
-        description=parser.getAsString("description", description);
         read_config_internal(parser);
+        description=parser.getAsString("description", description);
 
         parser.leaveGroup();
     }

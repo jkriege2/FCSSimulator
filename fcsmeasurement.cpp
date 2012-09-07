@@ -440,7 +440,7 @@ void FCSMeasurement::save() {
     fprintf(f, "fit g(x, Na, tauDa, gammaa, alphaa) \"%s\" via Na, tauDa, alphaa\n", extract_file_name(corrfn).c_str());
 
     fprintf(f, "set logscale x\n");
-    fprintf(f, "set title \"object description: %1\"\n", description.c_str());
+    fprintf(f, "set title \"object description: %s\"\n", description.c_str());
     fprintf(f, "plot \"%s\" title \"simulation data\" with points, "
                "g(x,N,tauD,gamma,1) title sprintf(\"fit N=%%f, tauD=%%f uS, gamma=%%f, D=%%f um^2/s\",N, tauD*1e6, gamma, wxy*wxy/4.0/tauD), "
                "g(x,Nf,tauDf,gammaf,1) title sprintf(\"fit N=%%f, tauD=%%f uS, gamma=%%f, D=%%f um^2/s\",Nf, tauDf*1e6, gammaf, wxy*wxy/4.0/tauDf), "
@@ -454,7 +454,7 @@ void FCSMeasurement::save() {
     printf("writing '%s' ...", fn);
     f=fopen(fn, "w");
     fprintf(f, "set logscale x\n");
-    fprintf(f, "set title \"object description: %1\"\n", description.c_str());
+    fprintf(f, "set title \"object description: %s\"\n", description.c_str());
     fprintf(f, "plot \"%s\" title \"simulation data\" with points\n", extract_file_name(corrfn).c_str());
     fprintf(f, "pause -1\n");
     fclose(f);
@@ -479,12 +479,12 @@ void FCSMeasurement::save() {
             f=fopen(fn, "w");
             fprintf(f, "set xlabel \"time [seconds]\"\n");
             fprintf(f, "set ylabel \"photon count [photons/%lfsec]\"\n", corr_taumin);
-            fprintf(f, "set title \"object description: %1\"\n", description.c_str());
+            fprintf(f, "set title \"object description: %s\"\n", description.c_str());
             fprintf(f, "plot \"%s\" with steps\n", extract_file_name(tsfn).c_str());
             fprintf(f, "pause -1\n");
             fprintf(f, "set xlabel \"time [seconds]\"\n");
             fprintf(f, "set ylabel \"photon count [Hz]\"\n");
-            fprintf(f, "set title \"object description: %1\"\n", description.c_str());
+            fprintf(f, "set title \"object description: %s\"\n", description.c_str());
             fprintf(f, "plot \"%s\" using 1:(($2)/%lf) with steps\n", extract_file_name(tsfn).c_str(), corr_taumin);
             fprintf(f, "pause -1\n");
             fclose(f);
@@ -513,12 +513,12 @@ void FCSMeasurement::save() {
             f=fopen(fn, "w");
             fprintf(f, "set xlabel \"time [seconds]\"\n");
             fprintf(f, "set ylabel \"photon count [photons/%lfsec]\"\n", corr_taumin*b);
-            fprintf(f, "set title \"object description: %1\"\n", description.c_str());
+            fprintf(f, "set title \"object description: %s\"\n", description.c_str());
             fprintf(f, "plot \"%s\" with steps\n", extract_file_name(tsfn).c_str());
             fprintf(f, "pause -1\n");
             fprintf(f, "set xlabel \"time [seconds]\"\n");
             fprintf(f, "set ylabel \"photon count [Hz]\"\n");
-            fprintf(f, "set title \"object description: %1\"\n", description.c_str());
+            fprintf(f, "set title \"object description: %s\"\n", description.c_str());
             fprintf(f, "plot \"%s\" using 1:(($2)/%lf) with steps\n", extract_file_name(tsfn).c_str(), corr_taumin*b);
             fprintf(f, "pause -1\n");
             fclose(f);
@@ -549,12 +549,12 @@ void FCSMeasurement::save() {
             f=fopen(fn, "w");
             fprintf(f, "set xlabel \"time [seconds]\"\n");
             fprintf(f, "set ylabel \"photon count [photons/%lfsec]\"\n", corr_taumin*b);
-            fprintf(f, "set title \"object description: %1\"\n", description.c_str());
+            fprintf(f, "set title \"object description: %s\"\n", description.c_str());
             fprintf(f, "plot \"%s\" with steps\n", extract_file_name(tsfn).c_str());
             fprintf(f, "pause -1\n");
             fprintf(f, "set xlabel \"time [seconds]\"\n");
             fprintf(f, "set ylabel \"photon count [Hz]\"\n");
-            fprintf(f, "set title \"object description: %1\"\n", description.c_str());
+            fprintf(f, "set title \"object description: %s\"\n", description.c_str());
             fprintf(f, "plot \"%s\" using 1:(($2)/%lf) with steps\n", extract_file_name(tsfn).c_str(), corr_taumin*b);
             fprintf(f, "pause -1\n");
             fclose(f);
