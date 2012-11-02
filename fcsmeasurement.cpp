@@ -377,7 +377,8 @@ void FCSMeasurement::run_fcs_simulation(){
             N=N+gsl_ran_poisson(rng, background_rate*corr_taumin);
         }
         if (offset_rate>0 && offset_std>0) {
-            N=N+gsl_ran_gaussian_ziggurat(rng, offset_std)+offset_rate;
+            double o=gsl_ran_gaussian_ziggurat(rng, offset_std)+offset_rate;
+            N=N+o;
         }
         N=N-offset_correction;
         if (N<0) N=0;
@@ -457,9 +458,9 @@ void FCSMeasurement::save() {
     fprintf(f, "fit g(x, Nf, tauDf, gammaf, 1) \"%s\" via Nf, tauDf\n", extract_file_name(corrfn).c_str());
     fprintf(f, "fit g(x, Na, tauDa, gammaa, alphaa) \"%s\" via Na, tauDa, alphaa\n", extract_file_name(corrfn).c_str());
 
-    fprintf(f, "Veffa=pi**(3/2)*wxy*wxy*wxy*gammaa\n");
-    fprintf(f, "Vefff=pi**(3/2)*wxy*wxy*wxy*gammaf\n");
-    fprintf(f, "Veff=pi**(3/2)*wxy*wxy*wxy*gamma\n");
+    fprintf(f, "Veffa=sqrt(pi*pi*pi)*wxy*wxy*wxy*1e-15*gammaa\n");
+    fprintf(f, "Vefff=sqrt(pi*pi*pi)*wxy*wxy*wxy*1e-15*gammaf\n");
+    fprintf(f, "Veff=sqrt(pi*pi*pi)*wxy*wxy*wxy*1e-15*gamma\n");
     for (int plt=0; plt<2; plt++) {
         if (plt==0) {
             fprintf(f, "set terminal pdfcairo color solid font \"Arial, 7\" linewidth 2 size 20cm,15cm\n");
@@ -574,9 +575,9 @@ void FCSMeasurement::save() {
                 fprintf(f, "plot \"%s\" with steps\n", extract_file_name(tsfn).c_str());
                 if (plt==1) fprintf(f, "pause -1\n");
                 fprintf(f, "set xlabel \"time [seconds]\"\n");
-                fprintf(f, "set ylabel \"photon count [Hz]\"\n");
+                fprintf(f, "set ylabel \"photon count [kcps]\"\n");
                 fprintf(f, "set title \"object description: %s\"\n", description.c_str());
-                fprintf(f, "plot \"%s\" using 1:(($2)/%lf) with steps\n", extract_file_name(tsfn).c_str(), corr_taumin*b);
+                fprintf(f, "plot \"%s\" using 1:(($2)/%lf/1000.0) with steps\n", extract_file_name(tsfn).c_str(), corr_taumin*b);
                 if (plt==1) fprintf(f, "pause -1\n");
             }
             fclose(f);
@@ -596,7 +597,7 @@ void FCSMeasurement::save() {
                 }
                 fprintf(f, "%15.10lf, %lu\n", t, ts);
                 //fprintf(stdout, "%15.10lf, %lu\n", t, ts);
-                t=t+corr_taumin;
+                t=t+corr_taumin*b;
             }
             fclose(f);
             std::string tsfn=fn;
@@ -619,9 +620,9 @@ void FCSMeasurement::save() {
                 fprintf(f, "plot \"%s\" with steps\n", extract_file_name(tsfn).c_str());
                 if (plt==1) fprintf(f, "pause -1\n");
                 fprintf(f, "set xlabel \"time [seconds]\"\n");
-                fprintf(f, "set ylabel \"photon count [Hz]\"\n");
+                fprintf(f, "set ylabel \"photon count [kcps]\"\n");
                 fprintf(f, "set title \"object description: %s\"\n", description.c_str());
-                fprintf(f, "plot \"%s\" using 1:(($2)/%lf) with steps\n", extract_file_name(tsfn).c_str(), corr_taumin*b);
+                fprintf(f, "plot \"%s\" using 1:(($2)/%lf/1000.0) with steps\n", extract_file_name(tsfn).c_str(), corr_taumin*b);
                 if (plt==1) fprintf(f, "pause -1\n");
             }
             fclose(f);
