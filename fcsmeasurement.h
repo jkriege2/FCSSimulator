@@ -252,9 +252,11 @@ class FCSMeasurement: public FluorescenceMeasurement {
 
         /** \brief this array holds the generated time series */
         uint32_t* timeseries;
+	uint64_t timeseries_size;
 
         /** \brief this array holds the generated binned time series */
         uint32_t* binned_timeseries;
+	uint64_t binned_timeseries_size;
 
         /** \brief the number of timesteps recorded in timeseries */
         unsigned long long timesteps;

@@ -72,7 +72,9 @@ FCSMeasurement::FCSMeasurement(FluorophorManager* fluorophors, std::string objec
     corr=NULL;
     corr_tau=NULL;
     timeseries=NULL;
+    timeseries_size=0;
     binned_timeseries=NULL;
+    binned_timeseries_size=0;
     slots=0;
 
     correlation_runtime=0;
@@ -83,15 +85,15 @@ FCSMeasurement::~FCSMeasurement()
 {
     if (correlator!=NULL) delete correlator; correlator=NULL;
     if (corrjanb!=NULL) delete corrjanb; corrjanb=NULL;
-    if (timeseries!=NULL) free(timeseries); timeseries=NULL;
-    if (binned_timeseries!=NULL) free(binned_timeseries); binned_timeseries=NULL;
+    if (timeseries!=NULL) free(timeseries); timeseries=NULL;; timeseries_size=0;
+    if (binned_timeseries!=NULL) free(binned_timeseries); binned_timeseries=NULL; binned_timeseries_size=0;
 }
 
 void FCSMeasurement::clear() {
     if (correlator!=NULL) delete correlator; correlator=NULL;
     if (corrjanb!=NULL) delete corrjanb; corrjanb=NULL;
-    if (timeseries!=NULL) free(timeseries); timeseries=NULL;
-    if (binned_timeseries!=NULL) free(binned_timeseries); binned_timeseries=NULL;
+    if (timeseries!=NULL) free(timeseries); timeseries=NULL; timeseries_size=0;
+    if (binned_timeseries!=NULL) free(binned_timeseries); binned_timeseries=NULL; binned_timeseries_size=0;
     slots=0;
     corr=NULL;
     corr_tau=NULL;
@@ -187,10 +189,14 @@ void FCSMeasurement::init(){
     // if the user selects to get a binned_timeseries we create a biined_timeseries
     // array. In non-online_correlation mode the binned series may be calculated from
     // the raw timeseries, so there is no need for a binned_timeseries array!
-    if (!online_correlation)  timeseries=(uint32_t*)calloc((unsigned long long)ceil(duration/corr_taumin), sizeof(uint32_t));
+    if (!online_correlation)  {
+      timeseries=(uint32_t*)calloc((unsigned long long)ceil(duration/corr_taumin)+5, sizeof(uint32_t));
+      timeseries_size=(unsigned long long)ceil(duration/corr_taumin)+5;
+    }
     if (save_binning && online_correlation) {
         int b=round(save_binning_time/corr_taumin);
         binned_timeseries=(uint32_t*)calloc((timesteps)/b+10, sizeof(uint32_t));
+	binned_timeseries_size=(timesteps)/b+10;
     }
     slots=0;
     corr=NULL;
@@ -384,7 +390,7 @@ void FCSMeasurement::run_fcs_simulation(){
                 corrjanb->run(N,N);
             }
         } else {
-            timeseries[current_timestep]=N;
+            if (current_timestep<timeseries_size) timeseries[current_timestep]=N;
         }
         if (save_binning && online_correlation) {
             bin_sum=bin_sum+N;
