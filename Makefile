@@ -1,3 +1,5 @@
+all: Release
+
 LIB=../../../LIB/trunk
 CC=g++
 CFLAGS =  -Wall #--enable-auto-import

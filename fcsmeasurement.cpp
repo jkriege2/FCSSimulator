@@ -13,6 +13,10 @@ FCSMeasurement::FCSMeasurement(FluorophorManager* fluorophors, std::string objec
     det_wavelength_max=-1;
     det_wavelength_min=-1;
     background_rate=0;
+    offset_rate=0;
+    offset_std=0;
+    offset_correction=0;
+
     ill_distribution=0;
     det_distribution=0;
     pixel_size=0.4;
@@ -102,6 +106,9 @@ void FCSMeasurement::read_config_internal(jkINIParser2& parser) {
     det_wavelength_max=parser.getAsDouble("det_wavelength_max", det_wavelength_max);
 
     background_rate=parser.getAsDouble("background_rate", background_rate);
+    offset_rate=parser.getAsDouble("offset_rate", offset_rate);
+    offset_std=parser.getAsDouble("offset_std", offset_std);
+    offset_correction=parser.getAsDouble("offset_correction", offset_correction);
     psf_region_factor=parser.getAsDouble("psf_region_factor", psf_region_factor);
 
     ill_distribution=str_to_ill_distribution(parser.getSetAsString("ill_distribution", ill_distribution_to_str(ill_distribution)));
@@ -351,7 +358,7 @@ void FCSMeasurement::run_fcs_simulation(){
     //std::cout<<"sim_time="<<sim_time<<"   endCurrentStep="<<endCurrentStep<<"\n";
     if (sim_time>=endCurrentStep) {
         endCurrentStep=sim_time+corr_taumin;
-        register uint32_t N=0;
+        register int32_t N=0;
         if (detector_type==0) N=gsl_ran_poisson(rng, nphot_sum);
         else {
             double d=gsl_ran_gaussian_ziggurat(rng, sqrt(nphot_sum*lindet_gain*lindet_var_factor))+nphot_sum*lindet_gain;
@@ -363,6 +370,11 @@ void FCSMeasurement::run_fcs_simulation(){
         if (background_rate>0) {
             N=N+gsl_ran_poisson(rng, background_rate*corr_taumin);
         }
+        if (offset_rate>0 && offset_std>0) {
+            N=N+gsl_ran_gaussian_ziggurat(rng, offset_std)+offset_rate;
+        }
+        N=N-offset_correction;
+        if (N<0) N=0;
         N=mmin(N, max_photons);
         //std::cout<<"nphot_sum="<<nphot_sum<<"    N="<<N<<std::endl;
         if (online_correlation) {
@@ -439,13 +451,25 @@ void FCSMeasurement::save() {
     fprintf(f, "fit g(x, Nf, tauDf, gammaf, 1) \"%s\" via Nf, tauDf\n", extract_file_name(corrfn).c_str());
     fprintf(f, "fit g(x, Na, tauDa, gammaa, alphaa) \"%s\" via Na, tauDa, alphaa\n", extract_file_name(corrfn).c_str());
 
-    fprintf(f, "set logscale x\n");
-    fprintf(f, "set title \"object description: %s\"\n", description.c_str());
-    fprintf(f, "plot \"%s\" title \"simulation data\" with points, "
-               "g(x,N,tauD,gamma,1) title sprintf(\"fit N=%%f, tauD=%%f uS, gamma=%%f, D=%%f um^2/s\",N, tauD*1e6, gamma, wxy*wxy/4.0/tauD), "
-               "g(x,Nf,tauDf,gammaf,1) title sprintf(\"fit N=%%f, tauD=%%f uS, gamma=%%f, D=%%f um^2/s\",Nf, tauDf*1e6, gammaf, wxy*wxy/4.0/tauDf), "
-               "g(x,Na,tauDa,gammaa,alphaa) title sprintf(\"fit N=%%f, tauD=%%f uS, gamma=%%f, alpha=%%f, D=%%f um^2/s\",Na, tauDa*1e6, gammaa,alphaa,  wxy*wxy/4.0/tauDa)"
-               "\n", extract_file_name(corrfn).c_str());
+    fprintf(f, "Veffa=pi**(3/2)*wxy*wxy*wxy*gammaa\n");
+    fprintf(f, "Vefff=pi**(3/2)*wxy*wxy*wxy*gammaf\n");
+    fprintf(f, "Veff=pi**(3/2)*wxy*wxy*wxy*gamma\n");
+    for (int plt=0; plt<2; plt++) {
+        if (plt==0) {
+            fprintf(f, "set terminal pdfcairo color solid font \"Arial, 7\" linewidth 2 size 20cm,15cm\n");
+            fprintf(f, "set output \"%s\"\n", extract_file_name(basename+object_name+"corrplot.pdf").c_str());
+        } else if (plt==1) {
+            fprintf(f, "set terminal wxt font \"Arial, 8\"\n");
+            fprintf(f, "set output\n");
+        }
+        fprintf(f, "set logscale x\n");
+        fprintf(f, "set title \"object description: %s\"\n", description.c_str());
+        fprintf(f, "plot \"%s\" title \"simulation data\" with points, "
+                   "g(x,N,tauD,gamma,1) title sprintf(\"fit N=%%.3f, tauD=%%.3f uS, gamma=%%.3f, D=%%.3f um^2/s, c=%%.3f nM\",N, tauD*1e6, gamma, wxy*wxy/4.0/tauD, N/6.022e14/Veff), "
+                   "g(x,Nf,tauDf,gammaf,1) title sprintf(\"fit N=%%.3f, tauD=%%.3f uS, gamma=%%.3f, D=%%.3f um^2/s, c=%%.3f nM\",Nf, tauDf*1e6, gammaf, wxy*wxy/4.0/tauDf, Nf/6.022e14/Vefff), "
+                   "g(x,Na,tauDa,gammaa,alphaa) title sprintf(\"fit N=%%.3f, tauD=%%.3f uS, gamma=%%.3f, alpha=%%.3f, D=%%.3f um^2/s, c=%%.3f nM\",Na, tauDa*1e6, gammaa,alphaa,  wxy*wxy/4.0/tauDa, Na/6.022e14/Veffa)"
+                   "\n", extract_file_name(corrfn).c_str());
+    }
     fprintf(f, "pause -1\n");
     fclose(f);
     printf(" done!\n");
@@ -453,9 +477,19 @@ void FCSMeasurement::save() {
     sprintf(fn, "%s%scorrplot_simple.plt", basename.c_str(), object_name.c_str());
     printf("writing '%s' ...", fn);
     f=fopen(fn, "w");
-    fprintf(f, "set logscale x\n");
-    fprintf(f, "set title \"object description: %s\"\n", description.c_str());
-    fprintf(f, "plot \"%s\" title \"simulation data\" with points\n", extract_file_name(corrfn).c_str());
+    for (int plt=0; plt<2; plt++) {
+        if (plt==0) {
+            fprintf(f, "set terminal pdfcairo color solid font \"Arial, 7\" linewidth 2 size 20cm,15cm\n");
+            fprintf(f, "set output \"%s\"\n", extract_file_name(basename+object_name+"corrplot_simple.pdf").c_str());
+        } else if (plt==1) {
+            fprintf(f, "set terminal wxt font \"Arial, 8\"\n");
+            fprintf(f, "set output\n");
+        }
+
+        fprintf(f, "set logscale x\n");
+        fprintf(f, "set title \"object description: %s\"\n", description.c_str());
+        fprintf(f, "plot \"%s\" title \"simulation data\" with points\n", extract_file_name(corrfn).c_str());
+    }
     fprintf(f, "pause -1\n");
     fclose(f);
     printf(" done!\n");
@@ -477,16 +511,25 @@ void FCSMeasurement::save() {
             sprintf(fn, "%s%stsplot.plt", basename.c_str(), object_name.c_str());
             printf("writing '%s' ...", fn);
             f=fopen(fn, "w");
-            fprintf(f, "set xlabel \"time [seconds]\"\n");
-            fprintf(f, "set ylabel \"photon count [photons/%lfsec]\"\n", corr_taumin);
-            fprintf(f, "set title \"object description: %s\"\n", description.c_str());
-            fprintf(f, "plot \"%s\" with steps\n", extract_file_name(tsfn).c_str());
-            fprintf(f, "pause -1\n");
-            fprintf(f, "set xlabel \"time [seconds]\"\n");
-            fprintf(f, "set ylabel \"photon count [Hz]\"\n");
-            fprintf(f, "set title \"object description: %s\"\n", description.c_str());
-            fprintf(f, "plot \"%s\" using 1:(($2)/%lf) with steps\n", extract_file_name(tsfn).c_str(), corr_taumin);
-            fprintf(f, "pause -1\n");
+            for (int plt=0; plt<2; plt++) {
+                if (plt==0) {
+                    fprintf(f, "set terminal pdfcairo color solid font \"Arial, 7\" linewidth 2 size 20cm,15cm\n");
+                    fprintf(f, "set output \"%s\"\n", extract_file_name(basename+object_name+"tsplot.pdf").c_str());
+                } else if (plt==1) {
+                    fprintf(f, "set terminal wxt font \"Arial, 8\"\n");
+                    fprintf(f, "set output\n");
+                }
+                fprintf(f, "set xlabel \"time [seconds]\"\n");
+                fprintf(f, "set ylabel \"photon count [photons/%lfsec]\"\n", corr_taumin);
+                fprintf(f, "set title \"object description: %s\"\n", description.c_str());
+                fprintf(f, "plot \"%s\" with steps\n", extract_file_name(tsfn).c_str());
+                if (plt==1) fprintf(f, "pause -1\n");
+                fprintf(f, "set xlabel \"time [seconds]\"\n");
+                fprintf(f, "set ylabel \"photon count [Hz]\"\n");
+                fprintf(f, "set title \"object description: %s\"\n", description.c_str());
+                fprintf(f, "plot \"%s\" using 1:(($2)/%lf) with steps\n", extract_file_name(tsfn).c_str(), corr_taumin);
+                if (plt==1) fprintf(f, "pause -1\n");
+            }
             fclose(f);
             printf(" done!\n");
         }
@@ -511,16 +554,25 @@ void FCSMeasurement::save() {
             sprintf(fn, "%s%sbtsplot.plt", basename.c_str(), object_name.c_str());
             printf("writing '%s' ...", fn);
             f=fopen(fn, "w");
-            fprintf(f, "set xlabel \"time [seconds]\"\n");
-            fprintf(f, "set ylabel \"photon count [photons/%lfsec]\"\n", corr_taumin*b);
-            fprintf(f, "set title \"object description: %s\"\n", description.c_str());
-            fprintf(f, "plot \"%s\" with steps\n", extract_file_name(tsfn).c_str());
-            fprintf(f, "pause -1\n");
-            fprintf(f, "set xlabel \"time [seconds]\"\n");
-            fprintf(f, "set ylabel \"photon count [Hz]\"\n");
-            fprintf(f, "set title \"object description: %s\"\n", description.c_str());
-            fprintf(f, "plot \"%s\" using 1:(($2)/%lf) with steps\n", extract_file_name(tsfn).c_str(), corr_taumin*b);
-            fprintf(f, "pause -1\n");
+            for (int plt=0; plt<2; plt++) {
+                if (plt==0) {
+                    fprintf(f, "set terminal pdfcairo color solid font \"Arial, 7\" linewidth 2 size 20cm,15cm\n");
+                    fprintf(f, "set output \"%s\"\n", extract_file_name(basename+object_name+"btsplot.pdf").c_str());
+                } else if (plt==1) {
+                    fprintf(f, "set terminal wxt font \"Arial, 8\"\n");
+                    fprintf(f, "set output\n");
+                }
+                fprintf(f, "set xlabel \"time [seconds]\"\n");
+                fprintf(f, "set ylabel \"photon count [photons/%lfsec]\"\n", corr_taumin*b);
+                fprintf(f, "set title \"object description: %s\"\n", description.c_str());
+                fprintf(f, "plot \"%s\" with steps\n", extract_file_name(tsfn).c_str());
+                if (plt==1) fprintf(f, "pause -1\n");
+                fprintf(f, "set xlabel \"time [seconds]\"\n");
+                fprintf(f, "set ylabel \"photon count [Hz]\"\n");
+                fprintf(f, "set title \"object description: %s\"\n", description.c_str());
+                fprintf(f, "plot \"%s\" using 1:(($2)/%lf) with steps\n", extract_file_name(tsfn).c_str(), corr_taumin*b);
+                if (plt==1) fprintf(f, "pause -1\n");
+            }
             fclose(f);
             printf(" done!\n");
         } else {
@@ -532,7 +584,7 @@ void FCSMeasurement::save() {
             double t=0;
             int b=round(save_binning_time/corr_taumin);
             for (unsigned long long i=0; i<timesteps-b; i=i+b) {
-                register uint32_t ts=0;
+                register long unsigned int ts=0;
                 for (int j=0; j<b; j++) {
                     ts=ts+timeseries[i+j];
                 }
@@ -547,16 +599,25 @@ void FCSMeasurement::save() {
             sprintf(fn, "%s%sbtsplot.plt", basename.c_str(), object_name.c_str());
             printf("writing '%s' ...", fn);
             f=fopen(fn, "w");
-            fprintf(f, "set xlabel \"time [seconds]\"\n");
-            fprintf(f, "set ylabel \"photon count [photons/%lfsec]\"\n", corr_taumin*b);
-            fprintf(f, "set title \"object description: %s\"\n", description.c_str());
-            fprintf(f, "plot \"%s\" with steps\n", extract_file_name(tsfn).c_str());
-            fprintf(f, "pause -1\n");
-            fprintf(f, "set xlabel \"time [seconds]\"\n");
-            fprintf(f, "set ylabel \"photon count [Hz]\"\n");
-            fprintf(f, "set title \"object description: %s\"\n", description.c_str());
-            fprintf(f, "plot \"%s\" using 1:(($2)/%lf) with steps\n", extract_file_name(tsfn).c_str(), corr_taumin*b);
-            fprintf(f, "pause -1\n");
+            for (int plt=0; plt<2; plt++) {
+                if (plt==0) {
+                    fprintf(f, "set terminal pdfcairo color solid font \"Arial, 7\" linewidth 2 size 20cm,15cm\n");
+                    fprintf(f, "set output \"%s\"\n", extract_file_name(basename+object_name+"btsplot.pdf").c_str());
+                } else if (plt==1) {
+                    fprintf(f, "set terminal wxt font \"Arial, 8\"\n");
+                    fprintf(f, "set output\n");
+                }
+                fprintf(f, "set xlabel \"time [seconds]\"\n");
+                fprintf(f, "set ylabel \"photon count [photons/%lfsec]\"\n", corr_taumin*b);
+                fprintf(f, "set title \"object description: %s\"\n", description.c_str());
+                fprintf(f, "plot \"%s\" with steps\n", extract_file_name(tsfn).c_str());
+                if (plt==1) fprintf(f, "pause -1\n");
+                fprintf(f, "set xlabel \"time [seconds]\"\n");
+                fprintf(f, "set ylabel \"photon count [Hz]\"\n");
+                fprintf(f, "set title \"object description: %s\"\n", description.c_str());
+                fprintf(f, "plot \"%s\" using 1:(($2)/%lf) with steps\n", extract_file_name(tsfn).c_str(), corr_taumin*b);
+                if (plt==1) fprintf(f, "pause -1\n");
+            }
             fclose(f);
             printf(" done!\n");
         }
@@ -624,7 +685,13 @@ std::string FCSMeasurement::report(){
         s+="detecting all photons (no \"fluorescence filter\")\n";
     }
     if (background_rate>0) s+="background_rate = "+floattostr(background_rate)+" Hz (poissonian distribution)\n";
-    else s+="no background photons\n;";
+    else s+="no background photons\n";
+    if (offset_rate>0 && offset_std>0) {
+        s+="offset = "+floattostr(offset_rate/sim_timestep)+"Hz = "+floattostr(offset_rate)+"photons/detectionstep\n";
+        s+="offset_std = "+floattostr(offset_std)+" photons   (gaussian distribution)\n";
+    } else s+="no offset photons\n";
+    if (offset_correction!=0) s+="offset_correction = "+floattostr(offset_correction)+" photons/detectionstep\n";
+    else s+="no offset correction\n";
     s+="EPhoton_ex = "+floattostr(Ephoton/1.602176487e-19/1e-3)+" meV\n";
     s+="I0 = "+floattostr(I0)+" uW/m^2  =  "+floattostr(I0/1e12)+" uW/micron^2  =  "+floattostr(I0/1e6)+" uW/mm^2\n";
     s+="P0 [on focus, i.e. on A=pi*(2*expsf_r0)^2] = "+floattostr(I0*(M_PI*gsl_pow_2(2.0*expsf_r0*1e-6)))+" uW\n";

@@ -76,6 +76,10 @@
     \f[ n_{phot+back}=\mathcal{P}_{Poisson}(n_{phot})+\mathcal{P}_{Poisson}(r_{back}\cdot\Delta t_{sample}) \f]
   where \f$ r_{back} \f$ is the background count rate in photons/second.
 
+  In addition a number of offset photons may be added with a gaussian distribution of definable variance:
+    \f[ n_{phot+back+offset}=\f[ n_{phot+back}+\mathcal{P}_{Gaussian}(n_{offset}, \sigma_{offset}^2) \f]
+
+
   The detection may be limited to a certain number of photons per simulation timestep.
 
   It is possible to select different PDPs for the detection and illumination. If gaussian functions are selected,
@@ -303,6 +307,13 @@ class FCSMeasurement: public FluorescenceMeasurement {
         double det_wavelength_max;
         /** \brief background photon count rate in 1/second=Hz */
         double background_rate;
+        /** \brief offset  photon count rate in [photons/(detection step)] */
+        double offset_rate;
+        /** \brief offset  photon counts standard deviation [photons] */
+        double offset_std;
+        /** \brief remove this offset photon counts [photons/(detection step)] from the acquired signal before correlation */
+        double offset_correction;
+
 
         /*! \brief illumination intensity distribution
 

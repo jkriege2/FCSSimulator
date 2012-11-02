@@ -132,7 +132,7 @@ void FluorophorManager::init_spectra() {
     std::string dirname=include_trailing_backslash("."+std::string(PATHSEPARATOR_STRING)+"spectra");
     dp = opendir (dirname.c_str());
     if (dp != NULL) {
-        while (ep = readdir(dp)) {
+        while ((ep = readdir(dp))) {
             //std::cout<<ep->d_name<<"   "<<extract_file_ext(ep->d_name)<<std::endl;
             if (extract_file_ext(ep->d_name)=="spec") {
                 std::string fn=dirname;
