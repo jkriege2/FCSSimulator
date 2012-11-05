@@ -33,6 +33,7 @@ FCSMeasurement::FCSMeasurement(FluorophorManager* fluorophors, std::string objec
     I0=200/0.25e-12;
 
     max_photons=0xFFFFFF;
+    min_photons=0;
 
     // Rho 6G
     lambda_ex=527;
@@ -104,6 +105,7 @@ void FCSMeasurement::read_config_internal(jkINIParser2& parser) {
     online_correlation=parser.getSetAsBool("online_correlation", online_correlation);
 
     max_photons=parser.getAsInt("max_photons", max_photons);
+    min_photons=parser.getAsInt("min_photons", min_photons);
     det_wavelength_min=parser.getAsDouble("det_wavelength_min", det_wavelength_min);
     det_wavelength_max=parser.getAsDouble("det_wavelength_max", det_wavelength_max);
 
@@ -190,12 +192,12 @@ void FCSMeasurement::init(){
     // array. In non-online_correlation mode the binned series may be calculated from
     // the raw timeseries, so there is no need for a binned_timeseries array!
     if (!online_correlation)  {
-      timeseries=(uint32_t*)calloc((unsigned long long)ceil(duration/corr_taumin)+5, sizeof(uint32_t));
+      timeseries=(int32_t*)calloc((unsigned long long)ceil(duration/corr_taumin)+5, sizeof(int32_t));
       timeseries_size=(unsigned long long)ceil(duration/corr_taumin)+5;
     }
     if (save_binning && online_correlation) {
         int b=round(save_binning_time/corr_taumin);
-        binned_timeseries=(uint32_t*)calloc((timesteps)/b+10, sizeof(uint32_t));
+        binned_timeseries=(int32_t*)calloc((timesteps)/b+10, sizeof(int32_t));
 	binned_timeseries_size=(timesteps)/b+10;
     }
     slots=0;
@@ -252,11 +254,11 @@ void FCSMeasurement::propagate(){
             } else if (correlator_type==2) {
                 statisticsAutocorrelateCreateMultiTau(taus, S, m, P);
                 corr=(double*)malloc(S*P*sizeof(double));
-                statisticsAutocorrelateMultiTauSymmetric<uint32_t,uint64_t>(corr, timeseries, timesteps, taus, S*P);
+                statisticsAutocorrelateMultiTauSymmetric<int32_t,int64_t>(corr, timeseries, timesteps, taus, S*P);
             } else if (correlator_type==3) {
                 statisticsAutocorrelateCreateMultiTau(taus, S, m, P);
                 corr=(double*)malloc(S*P*sizeof(double));
-                statisticsAutocorrelateMultiTauAvgSymmetric<uint32_t,uint64_t,uint64_t>(corr, timeseries, timesteps, S, m, P, 1);
+                statisticsAutocorrelateMultiTauAvgSymmetric<int32_t,int64_t,int64_t>(corr, timeseries, timesteps, S, m, P, 1);
             }
         }
         if (correlator_type==0) {
@@ -368,9 +370,6 @@ void FCSMeasurement::run_fcs_simulation(){
         if (detector_type==0) N=gsl_ran_poisson(rng, nphot_sum);
         else {
             double d=gsl_ran_gaussian_ziggurat(rng, sqrt(nphot_sum*lindet_gain*lindet_var_factor))+nphot_sum*lindet_gain;
-            const uint32_t Nmax=gsl_pow_int(2,lindet_bits)-1;
-            if (d>Nmax) d=Nmax;
-            if (d<0) d=0;
             N=floor(d);
         }
         if (background_rate>0) {
@@ -378,10 +377,15 @@ void FCSMeasurement::run_fcs_simulation(){
         }
         if (offset_rate>0 && offset_std>0) {
             double o=gsl_ran_gaussian_ziggurat(rng, offset_std)+offset_rate;
-            N=N+o;
+            N=N+round(o);
         }
         N=N-offset_correction;
-        if (N<0) N=0;
+
+        if (detector_type==1) {
+            const int32_t Nmax=gsl_pow_int(2,lindet_bits)-1;
+            if (N>Nmax) N=Nmax;
+        }
+        if (N<min_photons) N=min_photons;
         N=mmin(N, max_photons);
         //std::cout<<"nphot_sum="<<nphot_sum<<"    N="<<N<<std::endl;
         if (online_correlation) {
@@ -456,7 +460,6 @@ void FCSMeasurement::save() {
     fprintf(f, "wxy=%lf\n", psf_r0);
     fprintf(f, "fit g(x, N, tauD, gamma, 1) \"%s\" via N, tauD,gamma\n", extract_file_name(corrfn).c_str());
     fprintf(f, "fit g(x, Nf, tauDf, gammaf, 1) \"%s\" via Nf, tauDf\n", extract_file_name(corrfn).c_str());
-    fprintf(f, "fit g(x, Na, tauDa, gammaa, alphaa) \"%s\" via Na, tauDa, alphaa\n", extract_file_name(corrfn).c_str());
 
     fprintf(f, "Veffa=sqrt(pi*pi*pi)*wxy*wxy*wxy*1e-15*gammaa\n");
     fprintf(f, "Vefff=sqrt(pi*pi*pi)*wxy*wxy*wxy*1e-15*gammaf\n");
@@ -473,11 +476,23 @@ void FCSMeasurement::save() {
         fprintf(f, "set title \"object description: %s\"\n", description.c_str());
         fprintf(f, "plot \"%s\" title \"simulation data\" with points, "
                    "g(x,N,tauD,gamma,1) title sprintf(\"fit N=%%.3f, tauD=%%.3f uS, gamma=%%.3f, D=%%.3f um^2/s, c=%%.3f nM\",N, tauD*1e6, gamma, wxy*wxy/4.0/tauD, N/6.022e14/Veff), "
+                   "g(x,Nf,tauDf,gammaf,1) title sprintf(\"fit N=%%.3f, tauD=%%.3f uS, gamma=%%.3f, D=%%.3f um^2/s, c=%%.3f nM\",Nf, tauDf*1e6, gammaf, wxy*wxy/4.0/tauDf, Nf/6.022e14/Vefff)"
+                   "\n", extract_file_name(corrfn).c_str());
+        if (plt==1) fprintf(f, "pause -1\n");
+        fprintf(f, "Na=Nf\n");
+        fprintf(f, "tauDa=tauDf\n");
+        fprintf(f, "gammaa=gamma\n");
+        fprintf(f, "fit g(x, Na, tauDa, gammaa, alphaa) \"%s\" via Na, tauDa, alphaa\n", extract_file_name(corrfn).c_str());
+        fprintf(f, "set logscale x\n");
+        fprintf(f, "set title \"object description: %s\"\n", description.c_str());
+        fprintf(f, "plot \"%s\" title \"simulation data\" with points, "
+                   "g(x,N,tauD,gamma,1) title sprintf(\"fit N=%%.3f, tauD=%%.3f uS, gamma=%%.3f, D=%%.3f um^2/s, c=%%.3f nM\",N, tauD*1e6, gamma, wxy*wxy/4.0/tauD, N/6.022e14/Veff), "
                    "g(x,Nf,tauDf,gammaf,1) title sprintf(\"fit N=%%.3f, tauD=%%.3f uS, gamma=%%.3f, D=%%.3f um^2/s, c=%%.3f nM\",Nf, tauDf*1e6, gammaf, wxy*wxy/4.0/tauDf, Nf/6.022e14/Vefff), "
                    "g(x,Na,tauDa,gammaa,alphaa) title sprintf(\"fit N=%%.3f, tauD=%%.3f uS, gamma=%%.3f, alpha=%%.3f, D=%%.3f um^2/s, c=%%.3f nM\",Na, tauDa*1e6, gammaa,alphaa,  wxy*wxy/4.0/tauDa, Na/6.022e14/Veffa)"
                    "\n", extract_file_name(corrfn).c_str());
+        if (plt==1) fprintf(f, "pause -1\n");
     }
-    fprintf(f, "pause -1\n");
+
     fclose(f);
     printf(" done!\n");
 
@@ -551,7 +566,7 @@ void FCSMeasurement::save() {
             double t=0;
             int b=round(save_binning_time/corr_taumin);
             for (unsigned long long i=0; i<timesteps/b-1; i++) {
-                fprintf(f, "%15.10lf, %u\n", t, binned_timeseries[i]);
+                fprintf(f, "%15.10lf, %d\n", t, binned_timeseries[i]);
                 t=t+save_binning_time;
             }
             fclose(f);
@@ -591,11 +606,11 @@ void FCSMeasurement::save() {
             double t=0;
             int b=round(save_binning_time/corr_taumin);
             for (unsigned long long i=0; i<timesteps-b; i=i+b) {
-                register long unsigned int ts=0;
+                register long int  ts=0;
                 for (int j=0; j<b; j++) {
                     ts=ts+timeseries[i+j];
                 }
-                fprintf(f, "%15.10lf, %lu\n", t, ts);
+                fprintf(f, "%15.10lf, %ld\n", t, ts);
                 //fprintf(stdout, "%15.10lf, %lu\n", t, ts);
                 t=t+corr_taumin*b;
             }
@@ -674,6 +689,7 @@ std::string FCSMeasurement::report(){
         s+="non-polarised detection\n";
     }
     s+="max_photons = "+inttostr(max_photons)+"\n";
+    s+="min_photons = "+inttostr(min_photons)+"\n";
 
     if (detector_type==1) {
         s+="detector_type = linear\n";

@@ -251,11 +251,11 @@ class FCSMeasurement: public FluorescenceMeasurement {
         unsigned int P;
 
         /** \brief this array holds the generated time series */
-        uint32_t* timeseries;
+        int32_t* timeseries;
 	uint64_t timeseries_size;
 
         /** \brief this array holds the generated binned time series */
-        uint32_t* binned_timeseries;
+        int32_t* binned_timeseries;
 	uint64_t binned_timeseries_size;
 
         /** \brief the number of timesteps recorded in timeseries */
@@ -291,7 +291,7 @@ class FCSMeasurement: public FluorescenceMeasurement {
         /** \brief counts the photons in one display period */
         double display_temp;
         /** \brief used to calculate the binned time series (sum over bins) */
-        uint32_t bin_sum;
+        int32_t bin_sum;
         /** \brief used to calculate the binned time series (how many bins have been summed up?) */
         uint32_t bin_counter;
         /** \brief index in the binned timeseries  */
@@ -301,7 +301,11 @@ class FCSMeasurement: public FluorescenceMeasurement {
 
         /** \brief this is the maximum number of photons that may be detected/counted during one measurement timestep. Before the correlation/storing,
          *         the number of detected photons is limited to this. */
-        uint32_t max_photons;
+        int64_t max_photons;
+
+        /** \brief this is the minimum number of photons that may be detected/counted during one measurement timestep. Before the correlation/storing,
+         *         the number of detected photons is limited to this. */
+        int64_t min_photons;
 
         /** \brief minimum wavelength of the detection filter (switched off if <0) */
         double det_wavelength_min;
