@@ -14,14 +14,14 @@ DynamicsFromFiles2::DynamicsFromFiles2(FluorophorManager* fluorophors, std::stri
     shift_trajectories=true;
     separator_char=',';
     comment_char='#';
-    time_factor=1;
+    //time_factor=1;
     position_factor=1;
     abs_factor=1;
     max_columns=10;
     qfluor_factor=1;
     //time_between_trajectories=0;
     shiftmode=HalfTime;
-   col_time=0;
+    col_time=0;
     col_posx=1;
     col_posy=2;
     col_posz=3;
@@ -108,7 +108,7 @@ void DynamicsFromFiles2::read_config_internal(jkINIParser2& parser) {
     if ((tolower(cc)=="sharp")) comment_char='#';
     else comment_char=cc[0];
 
-    time_factor=parser.getSetAsDouble("time_factor", time_factor);
+    //time_factor=parser.getSetAsDouble("time_factor", time_factor);
     position_factor=parser.getSetAsDouble("position_factor", position_factor);
     abs_factor=parser.getSetAsDouble("abs_factor", abs_factor);
     qfluor_factor=parser.getSetAsDouble("qfluor_factor", qfluor_factor);
@@ -157,9 +157,9 @@ void DynamicsFromFiles2::init() {
         int j=0;
         std::vector<double> r=csv_readline(f, separator_char, comment_char);
         int ccount=r.size();
-        double t0;
+        //double t0;
         while (r.size()>0) {
-            if (j==0) t0=r[0];
+            //if (j==0 && col_time>=0 && col_time<r.size()) t0=r[col_time];
             //if (j==1) set_sim_timestep(fabs(r[0]-t0)*time_factor);
             j++;
             if (shift_trajectories) {
@@ -363,7 +363,7 @@ std::string DynamicsFromFiles2::report() {
     if (tmode==Sequential) s+="play_mode = sequential\n";
     if (tmode==Parallel) s+="play_mode = parallel\n";
     //s+="max_columns = "+inttostr(max_columns)+"\n";
-    s+="time_factor = "+floattostr(time_factor)+"\n";
+    //s+="time_factor = "+floattostr(time_factor)+"\n";
     s+="position_factor = "+floattostr(position_factor)+"\n";
     s+="abs_factor = "+floattostr(abs_factor)+"\n";
     s+="qfluor_factor = "+floattostr(qfluor_factor)+"\n";

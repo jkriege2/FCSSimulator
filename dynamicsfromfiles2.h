@@ -14,8 +14,9 @@
  * center the trajectories around a certain point in space, i.e. the center of mass of the
  * trajectory may be shifted.
  *
- * All loaded files must have at least 4 columns (the first is the simulation time with
- * \b equidistant steps, and then the position of the fluorophor. In parallel mode all files
+ * All loaded files must have at least 3 columns (the simulation time with
+ * \b equidistant steps does not have to be in the file but is defined by sim_timestep, and
+ * then the position of the fluorophor. In parallel mode all files
  * have to have the same number of lines!!!
  *
  * Take care that it is importand that you don't simulate more steps than there are steps in the files!
@@ -98,7 +99,7 @@ class DynamicsFromFiles2 : public FluorophorDynamics
         /** \brief comment char in CSV files */
         char comment_char;
         /** \brief scaling factor of time column to seconds x[units of time_column]*factor=x[seconds] */
-        double time_factor;
+        //double time_factor;
         /** \brief scaling factor of position column to microns x[units of position_column]*factor=x[microns] */
         double position_factor;
         /** \brief scaling factor of absorbtion_corsssection column to meters^2 x[units of abs_column]*factor=x[m^2] */
