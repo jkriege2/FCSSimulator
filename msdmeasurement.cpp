@@ -15,6 +15,7 @@ MSDMeasurement::~MSDMeasurement()
         delete msds[i];
     }
     msds.clear();
+    trajectoryinfo.clear();
 }
 
 
@@ -23,6 +24,12 @@ void MSDMeasurement::init() {
     clear();
     for (int i=0; i<msd_for_trajectories; i++) {
         msds.push_back(new MultiTauMSD<double>(msd_s, msd_m, msd_p, sim_timestep));
+        MSDMeasurement::trajectory_info ti;
+        ti.sum2_x=ti.sum_x=0;
+        ti.sum2_y=ti.sum_y=0;
+        ti.sum2_z=ti.sum_z=0;
+        ti.cnt=0;
+        trajectoryinfo.push_back(ti);
     }
 }
 
@@ -36,6 +43,13 @@ void MSDMeasurement::propagate() {
         if (!dyn[d]->end_of_trajectory_reached()) for (unsigned long i=0; i<wc; i++) { // iterate through all walkers in the d-th dynamics object
             if (dynn[i].exists) {
                 msds[t]->contribute_step(dynn[i].x, dynn[i].y, dynn[i].z);
+                trajectoryinfo[t].sum_x=trajectoryinfo[t].sum_x+dynn[i].x;
+                trajectoryinfo[t].sum2_x=trajectoryinfo[t].sum2_x+dynn[i].x*dynn[i].x;
+                trajectoryinfo[t].sum_y=trajectoryinfo[t].sum_y+dynn[i].y;
+                trajectoryinfo[t].sum2_y=trajectoryinfo[t].sum2_y+dynn[i].y*dynn[i].y;
+                trajectoryinfo[t].sum_z=trajectoryinfo[t].sum_z+dynn[i].z;
+                trajectoryinfo[t].sum2_z=trajectoryinfo[t].sum2_z+dynn[i].z*dynn[i].z;
+                trajectoryinfo[t].cnt=trajectoryinfo[t].cnt+1;
             }
             t++;
             if (t>=msd_for_trajectories) break;
@@ -63,6 +77,26 @@ void MSDMeasurement::save() {
     char fn[255];
 
     if (msd_for_trajectories<=0) return;
+
+    sprintf(fn, "%s%strajectorystatistics.dat", basename.c_str(), object_name.c_str());
+    printf("writing '%s' ...", fn);
+    f=fopen(fn, "w");
+    fprintf(f, "# trajectory no, steps, mean_x, std_x, mean_y, std_y, mean_z, std_z\n\n");
+    for (int t=0; t<msd_for_trajectories; t++) {
+        double s=trajectoryinfo[t].sum_x;
+        double s2=trajectoryinfo[t].sum2_x;
+        double cnt=trajectoryinfo[t].cnt;
+        fprintf(f, "%d, %15.0lf, %15.10lf, %15.10lf", t, cnt, s/double(cnt), sqrt(1.0/(double(cnt)-1.0)*(s2-s*s/double(cnt))));
+        s=trajectoryinfo[t].sum_y;
+        s2=trajectoryinfo[t].sum2_y;
+        fprintf(f, ", %15.0lf, %15.10lf", s/double(cnt), sqrt(1.0/(double(cnt)-1.0)*(s2-s*s/double(cnt))));
+        s=trajectoryinfo[t].sum_z;
+        s2=trajectoryinfo[t].sum2_z;
+        fprintf(f, ", %15.0lf, %15.10lf\n", s/double(cnt), sqrt(1.0/(double(cnt)-1.0)*(s2-s*s/double(cnt))));
+    }
+    fclose(f);
+    printf(" done!\n");
+
 
     double* taus=msds[0]->getMSDTau();
     int slots=msds[0]->getSlots();
@@ -95,9 +129,9 @@ void MSDMeasurement::save() {
     fprintf(f, "f(tau, D, alpha)=6*D*(tau**alpha)\n");
     fprintf(f, "D=10\n");
     fprintf(f, "fit f(x, D, 1) \"%s\" using 1:%d:%d via D\n", extract_file_name(corrfn).c_str(), msd_for_trajectories+2, msd_for_trajectories+3);
-    fprintf(f, "Da=D\n");
+    fprintf(f, "Da=10\n");
     fprintf(f, "alpha=1\n");
-    fprintf(f, "fit f(x, Da, alpha) \"%s\" using 1:%d:%d via Da, alpha\n", extract_file_name(corrfn).c_str(), msd_for_trajectories+3);
+    fprintf(f, "fit f(x, Da, alpha) \"%s\" using 1:%d:%d via Da, alpha\n", extract_file_name(corrfn).c_str(), msd_for_trajectories+2, msd_for_trajectories+3);
     fprintf(f, "set xlabel \"lag time [seconds]\"\n");
     fprintf(f, "set ylabel \"msd [micron^2]\"\n");
 

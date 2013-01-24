@@ -53,6 +53,16 @@ class MSDMeasurement : public FluorescenceMeasurement
         int msd_m;
 
         std::vector<MultiTauMSD<double>* > msds;
+        struct trajectory_info {
+            double sum_x;
+            double sum2_x;
+            double sum_y;
+            double sum2_y;
+            double sum_z;
+            double sum2_z;
+            uint64_t cnt;
+        };
+        std::vector<trajectory_info> trajectoryinfo;
     private:
 };
 
