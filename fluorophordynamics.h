@@ -226,6 +226,9 @@ class FluorophorDynamics
         /** \brief initial z-component of dipole moment vector */
         double init_p_z;
 
+        /** \brief initial fluorophor name */
+        std::string init_fluorophor;
+
 
         /** \brief this string may be used to identify the object */
         std::string object_name;
@@ -353,6 +356,8 @@ class FluorophorDynamics
         /** \brief get state of i-th walker */
         inline walkerState get_walker_state(unsigned long i) { return walker_state_other[i]; };
 
+        /** \brief estimates teh runtime of the simulation, or return 0 if the simulation requires a given runtime */
+        virtual double estimate_runtime();
 
         inline double get_walker_sigma_times_qfl(unsigned long i) {
             register double s=0;
@@ -381,6 +386,10 @@ class FluorophorDynamics
         inline bool end_of_trajectory_reached() {
             return endoftrajectory;
         }
+
+        /** \brief this function is called once after the simulation has finished.
+         */
+        virtual void finalize_sim();
 
 
         /** \brief report the state of the object, as human-readable text */
@@ -466,6 +475,9 @@ class FluorophorDynamics
 
         /** \brief goes through all walkers and loads the spectra used by these walkers. */
         virtual void load_all_used_spectra();
+
+        /** \brief initialize all walkers to the default settings */
+        void init_walkers();
 };
 
 #endif // FLUOROPHORDYNAMICS_H

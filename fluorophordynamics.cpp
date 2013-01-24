@@ -14,6 +14,7 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, std::stri
     protocol_trajectories=0;
     sim_time=0;
     sim_timestep=1e-6;
+    init_fluorophor="atto488";
 
     use_two_walkerstates=false;
     depletion_propability=0;
@@ -63,6 +64,7 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, double si
     sim_time=0;
     sim_timestep=1e-6;
     use_two_walkerstates=false;
+    init_fluorophor="atto488";
 
      // init GSL random number generator
     gsl_rng_env_setup();
@@ -108,6 +110,7 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, double si
     sim_timestep=1e-6;
     use_two_walkerstates=false;
     depletion_propability=0;
+    init_fluorophor="atto488";
 
      // init GSL random number generator
     gsl_rng_env_setup();
@@ -174,27 +177,27 @@ void FluorophorDynamics::read_config_internal(jkINIParser2& parser) {
     init_p_x=parser.getSetAsDouble("init_p_x", init_p_x);
     init_p_y=parser.getSetAsDouble("init_p_y", init_p_y);
     init_p_z=parser.getSetAsDouble("init_p_z", init_p_z);
-    std::string spec="rho6g";
-    std::cout<<"fluorophor: "<<parser.getAsString("init_fluorophor")<<std::endl;
+    //std::string init_fluorophor="atto488";
+    //std::cout<<"fluorophor: "<<parser.getAsString("init_fluorophor")<<std::endl;
     if (parser.exists("init_fluorophor")) {
-        spec=tolower(parser.getSetAsString("init_fluorophor", spec));
-        //std::cout<<"fluorophor: "<<spec<<std::endl;
-        if (!fluorophors->fluorophorExists(spec)) {
-            throw FluorophorException(format("didn't find fluorophor %s in database", spec.c_str()));
+        init_fluorophor=tolower(parser.getSetAsString("init_fluorophor", init_fluorophor));
+        //std::cout<<"fluorophor: "<<init_fluorophor<<std::endl;
+        if (!fluorophors->fluorophorExists(init_fluorophor)) {
+            throw FluorophorException(format("didn't find fluorophor %s in database", init_fluorophor.c_str()));
         }
         for (int j=0; j<N_FLUORESCENT_STATES; j++) {
-            init_sigma_abs[j]=fluorophors->getFluorophorData(spec).sigma_abs;
-            //std::cout<<"fluorophor: "<<spec<<"   init_sigma_abs["<<j<<"]="<<init_sigma_abs[j]<<std::endl;
-            init_q_fluor[j]=fluorophors->getFluorophorData(spec).fluorescence_efficiency;
+            init_sigma_abs[j]=fluorophors->getFluorophorData(init_fluorophor).sigma_abs;
+            //std::cout<<"fluorophor: "<<init_fluorophor<<"   init_sigma_abs["<<j<<"]="<<init_sigma_abs[j]<<std::endl;
+            init_q_fluor[j]=fluorophors->getFluorophorData(init_fluorophor).fluorescence_efficiency;
         }
         /*
-        init_tau_fl=fluorophors->getFluorophorData(spec).fluorescence_lifetime;
-        init_bleaching_propability=fluorophors->getFluorophorData(spec).bleaching_propability;
-        init_triplet_lifetime=fluorophors->getFluorophorData(spec).triplet_lifetime;
-        init_triplet_propability=fluorophors->getFluorophorData(spec).triplet_propability;
-        std::cout<<spec<<": "<<init_q_fluor<<", "<<init_tau_fl<<", "<<init_sigma_abs<<std::endl;*/
+        init_tau_fl=fluorophors->getFluorophorData(init_fluorophor).fluorescence_lifetime;
+        init_bleaching_propability=fluorophors->getFluorophorData(init_fluorophor).bleaching_propability;
+        init_triplet_lifetime=fluorophors->getFluorophorData(init_fluorophor).triplet_lifetime;
+        init_triplet_propability=fluorophors->getFluorophorData(init_fluorophor).triplet_propability;
+        std::cout<<init_fluorophor<<": "<<init_q_fluor<<", "<<init_tau_fl<<", "<<init_sigma_abs<<std::endl;*/
     }
-    //std::cout<<"fluorophor: "<<spec<<std::endl;
+    //std::cout<<"fluorophor: "<<init_fluorophor<<std::endl;
     init_qm_state=parser.getSetAsInt("init_qm_state", init_qm_state);
     init_type=parser.getSetAsInt("init_type", init_type);
 
@@ -243,11 +246,12 @@ void FluorophorDynamics::read_config_internal(jkINIParser2& parser) {
     use_photophysics=parser.getSetAsBool("use_photophysics", use_photophysics);
     depletion_propability=parser.getSetAsDouble("depletion_propability", depletion_propability);
 
+    std::string spec=init_fluorophor;
     if (parser.exists("init_spectrum")) {
         spec=tolower(parser.getSetAsString("init_spectrum", spec));
         //init_spectrum=-1;
     }
-
+    std::cout<<"spec="<<spec<<"   init_spectrum="<<init_spectrum<<std::endl;
     if (fluorophors->getFluorophorData(spec).spectrum!=-1) {
         init_spectrum=fluorophors->getFluorophorData(spec).spectrum;
     } else {
@@ -335,7 +339,7 @@ void FluorophorDynamics::read_config(jkINIParser2& parser, std::string group, st
         parser.leaveGroup();
     }
 
-    init();
+    //init();
 }
 
 void FluorophorDynamics::change_walker_count(unsigned long N_walker){
@@ -356,6 +360,12 @@ void FluorophorDynamics::change_walker_count(unsigned long N_walker){
         }
     }
     walker_count=N_walker;
+    init_walkers();
+}
+void FluorophorDynamics::init_walkers() {
+    for (int i=0; i<walker_count; i++) {
+        init_walker(i);
+    }
 }
 
 void FluorophorDynamics::init_walker(unsigned long i, double x, double y, double z) {
@@ -385,6 +395,8 @@ void FluorophorDynamics::init_walker(unsigned long i, double x, double y, double
     walker_state[i].spectrum=init_spectrum;
     //walker_state[i].user_data=NULL;
     fluorophors->load_spectrum(init_spectrum);
+
+    //std::cout<<"init_walker: init_spectrum="<<init_spectrum<<" init_fluorophor="<<init_fluorophor<<std::endl;
 }
 
 void FluorophorDynamics::init(){
@@ -700,3 +712,10 @@ void FluorophorDynamics::set_sim_sphere(double rad) {
     sim_radius=rad;
     change_walker_count(calc_walker_count());
 };
+
+void FluorophorDynamics::finalize_sim() {
+};
+
+double FluorophorDynamics::estimate_runtime() {
+    return 0;
+}

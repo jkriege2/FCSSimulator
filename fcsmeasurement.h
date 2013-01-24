@@ -77,7 +77,7 @@
   where \f$ r_{back} \f$ is the background count rate in photons/second.
 
   In addition a number of offset photons may be added with a gaussian distribution of definable variance:
-    \f[ n_{phot+back+offset}=\f[ n_{phot+back}+\mathcal{P}_{Gaussian}(n_{offset}, \sigma_{offset}^2) \f]
+    \f[ n_{phot+back+offset}= n_{phot+back}+\mathcal{P}_{Gaussian}(n_{offset}, \sigma_{offset}^2) \f]
 
 
   The detection may be limited to a certain number of photons per simulation timestep.
@@ -105,7 +105,7 @@
         \f[ n_{lin}(t)=\mbox{lindet\_gain}\cdot  n_{phot}(t) \f]
       Then the actual detected value is drawn from a gaussian distribution with average \f$ n_{lin}(t) \f$  and variance
       \f$ n_{lin}(t)\cdot\text{lindet\_var\_factor} \f$. Then the value is cast to an integer (i.e. quantisation by an analog to digital converter).
-      The range of these values is then limited to \f$ 0..2^{\text{lindet}_bits}}-1 \f$ to account for the finite resolution of the ADC.
+      The range of these values is then limited to \f$ 0..2^{\text{lindet\_bits}}-1 \f$ to account for the finite resolution of the ADC.
 
  */
 class FCSMeasurement: public FluorescenceMeasurement {
@@ -129,6 +129,8 @@ class FCSMeasurement: public FluorescenceMeasurement {
          *         ts001.dat, ts002.dat, corr001.dat, corr002.dat ... as comma-separated values
          */
         virtual void save();
+
+        virtual void finalize_sim();
 
         GetSetMacro(double, expsf_r0);
         GetSetMacro(double, expsf_z0);

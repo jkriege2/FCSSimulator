@@ -9,11 +9,18 @@ DynamicsFromFiles2::DynamicsFromFiles2(FluorophorManager* fluorophors, std::stri
     shift_x=NULL;
     shift_y=NULL;
     shift_z=NULL;
+    max_lines=-1;
     trajectory_count=0;
     tmode=Sequential;
     shift_trajectories=true;
     separator_char=',';
     comment_char='#';
+    randomdisplace_x_min=-1;
+    randomdisplace_x_max=1;
+    randomdisplace_y_min=-1;
+    randomdisplace_y_max=1;
+    randomdisplace_z_min=-1;
+    randomdisplace_z_max=1;
     //time_factor=1;
     position_factor=1;
     abs_factor=1;
@@ -71,6 +78,12 @@ void DynamicsFromFiles2::read_config_internal(jkINIParser2& parser) {
     col_qfluor=parser.getSetAsInt("col_qfluor", col_qfluor);
     col_abs=parser.getSetAsInt("col_abs", col_abs);
     col_qmstate=parser.getSetAsInt("col_qmstate", col_qmstate);
+    randomdisplace_x_min=parser.getSetAsDouble("randomdisplace_x_min", parser.getSetAsDouble("randomdisplace_min", randomdisplace_x_min));
+    randomdisplace_x_max=parser.getSetAsDouble("randomdisplace_x_max", parser.getSetAsDouble("randomdisplace_max", randomdisplace_x_max));
+    randomdisplace_y_min=parser.getSetAsDouble("randomdisplace_y_min", parser.getSetAsDouble("randomdisplace_min", randomdisplace_y_min));
+    randomdisplace_y_max=parser.getSetAsDouble("randomdisplace_y_max", parser.getSetAsDouble("randomdisplace_max", randomdisplace_y_max));
+    randomdisplace_z_min=parser.getSetAsDouble("randomdisplace_z_min", parser.getSetAsDouble("randomdisplace_min", randomdisplace_z_min));
+    randomdisplace_z_max=parser.getSetAsDouble("randomdisplace_z_max", parser.getSetAsDouble("randomdisplace_max", randomdisplace_z_max));
 
     // read trajectories, specified as file0=, file1=, file2=, ...
     trajectory_files.clear();
@@ -83,13 +96,27 @@ void DynamicsFromFiles2::read_config_internal(jkINIParser2& parser) {
         num_start=parser.getSetAsInt("num_start", num_start);
         num_stop=parser.getSetAsInt("num_stop", num_stop);
         filenames=parser.getSetAsString("filename", filenames);
-        for (i=num_start; i<=num_stop; i++) {
-            std::string fn=format(filenames, i);
-            std::cout<<"testing "<<fn<<std::endl;
-            if (file_exists(fn)) {
-                trajectory_files.push_back(fn);
-                std::cout<<"adding "<<fn<<std::endl;
-                trajectory_count++;
+        std::cout<<filenames<<std::endl;
+        if (filenames.find('*')!=std::string::npos || filenames.find('?')!=std::string::npos) {
+            std::vector<std::string> l=listfiles_wildcard(filenames);
+            for (size_t j=0; j<l.size(); j++) {
+                std::string fn=l[j];
+                std::cout<<"testing "<<fn<<std::endl;
+                if (file_exists(fn)) {
+                    trajectory_files.push_back(fn);
+                    std::cout<<"adding "<<fn<<std::endl;
+                    trajectory_count++;
+                }
+            }
+        } else {
+            for (i=num_start; i<=num_stop; i++) {
+                std::string fn=format(filenames, i);
+                std::cout<<"testing "<<fn<<std::endl;
+                if (file_exists(fn)) {
+                    trajectory_files.push_back(fn);
+                    std::cout<<"adding "<<fn<<std::endl;
+                    trajectory_count++;
+                }
             }
         }
     }
@@ -113,21 +140,28 @@ void DynamicsFromFiles2::read_config_internal(jkINIParser2& parser) {
     abs_factor=parser.getSetAsDouble("abs_factor", abs_factor);
     qfluor_factor=parser.getSetAsDouble("qfluor_factor", qfluor_factor);
     max_columns=parser.getSetAsInt("max_columns", max_columns);
+    max_lines=parser.getSetAsInt("max_lines", max_lines);
 
 
     std::string t=(tmode==Sequential)?"sequential":"parallel";
     if (tolower(parser.getSetAsString("play_mode", t))=="parallel") {
         tmode=Parallel;
     }
-
-    t=(shiftmode==HalfTime)?"halftime":"mean";
-    if (tolower(parser.getSetAsString("shift_mode", t))=="mean") {
+    if (shiftmode==HalfTime) t="halftime";
+    else if (shiftmode==RandomDisplacedMean) t="mean_random";
+    else t="mean";
+    std::string sm=tolower(parser.getSetAsString("shift_mode", t));
+    if (sm=="halftime") {
+        shiftmode=HalfTime;
+    } else if (sm=="mean_random" || sm=="meanrandom" || sm=="random_mean" || sm=="randommean") {
+        shiftmode=RandomDisplacedMean;
+    } else {
         shiftmode=Mean;
     }
 
     //time_between_trajectories=parser.getAsDouble("time_between_trajectories", time_between_trajectories);
 
-    init();
+    //init();
 }
 
 void DynamicsFromFiles2::init() {
@@ -149,6 +183,7 @@ void DynamicsFromFiles2::init() {
         std::cout<<"checking file "<<trajectory_files[i]<<" [sc="+chartoprintablestr(separator_char)+", cc="+chartoprintablestr(comment_char)+", ";
         //data[i].load_csv(trajectory_files[i], separator_char, comment_char);
         unsigned long long lcount=count_lines(trajectory_files[i], comment_char);
+        if (max_lines>0 && lcount>max_lines) lcount=max_lines;
         if (lcount<1) throw FluorophorException(format("file '%s' does not contain data or does not exist", trajectory_files[i].c_str()));
         std::cout<<"lines="<<lcount<<"] ... "<<std::endl;
 
@@ -158,13 +193,13 @@ void DynamicsFromFiles2::init() {
         std::vector<double> r=csv_readline(f, separator_char, comment_char);
         int ccount=r.size();
         //double t0;
-        while (r.size()>0) {
+        while (r.size()>0 && ((max_lines<=0) || (j<max_lines))) {
             //if (j==0 && col_time>=0 && col_time<r.size()) t0=r[col_time];
             //if (j==1) set_sim_timestep(fabs(r[0]-t0)*time_factor);
             j++;
             if (shift_trajectories) {
                 // calculate center of mass (COM) of trajectory and then shift it to 0
-                if (shiftmode==Mean) {
+                if (shiftmode==Mean || shiftmode==RandomDisplacedMean) {
                     shift_x[i]=shift_x[i]+r[col_posx]*position_factor;
                     shift_y[i]=shift_y[i]+r[col_posy]*position_factor;
                     shift_z[i]=shift_z[i]+r[col_posz]*position_factor;
@@ -182,12 +217,23 @@ void DynamicsFromFiles2::init() {
                 shift_z[i]=0;
                 if (j>1) break;
             }
-            r=csv_readline(f);
+            /*std::cout<<j;
+            for (size_t kk=0; kk<r.size(); kk++) {
+                std::cout<<", "<<r[kk];
+            }
+            std::cout<<std::endl;*/
+            r=csv_readline(f, separator_char, comment_char);
         }
         if (shift_trajectories && shiftmode==Mean) {
-            shift_x[i]=shift_x[i]/j;
-            shift_y[i]=shift_y[i]/j;
-            shift_z[i]=shift_z[i]/j;
+            shift_x[i]=shift_x[i]/double(j);
+            shift_y[i]=shift_y[i]/double(j);
+            shift_z[i]=shift_z[i]/double(j);
+        } else if (shift_trajectories && shiftmode==RandomDisplacedMean) {
+            //std::cout<<"shift_x: "<<randomdisplace_x_min<<" ... "<<randomdisplace_x_max<<std::endl;
+            shift_x[i]=shift_x[i]/double(j)+gsl_ran_flat(rng, randomdisplace_x_min, randomdisplace_x_max);
+            shift_y[i]=shift_y[i]/double(j)+gsl_ran_flat(rng, randomdisplace_y_min, randomdisplace_y_max);
+            shift_z[i]=shift_z[i]/double(j)+gsl_ran_flat(rng, randomdisplace_z_min, randomdisplace_z_max);
+
         }
         fclose(f);
         f=fopen(trajectory_files[i].c_str(), "r");
@@ -296,7 +342,7 @@ void DynamicsFromFiles2::propagate(bool boundary_check) {
                 walker_state[file_counter].qm_state=init_qm_state;
                 walker_state[file_counter].type=init_type;
                 walker_state[file_counter].spectrum=init_spectrum;
-                //std::cout<<walker_state[file_counter].x<<", "<<walker_state[file_counter].y<<", "<<walker_state[file_counter].z<<std::endl;
+                //std::cout<<line_counter<<", "<<lc<<", x="<<walker_state[file_counter].x<<", y="<<walker_state[file_counter].y<<", z="<<walker_state[file_counter].z<<std::endl;
                 if ( (cc>col_px) && (cc>col_py) && (cc>col_pz) &&
                      (col_px>=0) && (col_py>=0) && (col_pz>=0) &&
                      (max_columns>col_px) && (max_columns>col_py) && (max_columns>col_pz) ){
@@ -347,11 +393,22 @@ std::string DynamicsFromFiles2::report() {
         s+=trajectory_files[i]+"  [ lines="+inttostr(linecount[i])+" columns="+inttostr(columncount[i])+"shift_x="+floattostr(shift_x[i])+" shift_y="+floattostr(shift_y[i])+" shift_z="+floattostr(shift_z[i])+" ] microns";
     }
     s+="\n";
-    if (shiftmode==Mean) s+="shift_mode = mean (to center-of-mass)\n";
+    if (shiftmode==Mean) s+="shift_mode = mean (center-of-mass)\n";
+    if (shiftmode==RandomDisplacedMean) {
+        s+="shift_mode = mean_random (randomly displaced center-of-mass)\n";
+        s+="mean_shift_range_x = "+floattostr(randomdisplace_x_min)+" ... "+floattostr(randomdisplace_x_max)+" micron\n";
+        s+="mean_shift_range_y = "+floattostr(randomdisplace_y_min)+" ... "+floattostr(randomdisplace_y_max)+" micron\n";
+        s+="mean_shift_range_z = "+floattostr(randomdisplace_z_min)+" ... "+floattostr(randomdisplace_z_max)+" micron\n";
+    }
     if (shiftmode==HalfTime) s+="shift_mode = halftime (to position at file_duration/2)\n";
     s+="timing_loadall = "+floattostr(timing_loadall)+" secs\n";
     s+="timing_load1 = "+floattostr(timing_load1)+" secs\n";
     s+="max_columns = "+inttostr(max_columns)+"\n";
+    if (max_lines<=0) {
+        s+="max_lines = [all lines]\n";
+    } else {
+        s+="max_lines = "+inttostr(max_lines)+"\n";
+    }
     s+="col_time = "+inttostr(col_time)+"\n";
     s+="col_posx, col_posy, col_posz = "+inttostr(col_posx)+", "+inttostr(col_posy)+", "+inttostr(col_posz)+"\n";
     s+="col_px, col_py, col_pz = "+inttostr(col_px)+", "+inttostr(col_py)+", "+inttostr(col_pz)+"\n";
@@ -367,6 +424,7 @@ std::string DynamicsFromFiles2::report() {
     s+="position_factor = "+floattostr(position_factor)+"\n";
     s+="abs_factor = "+floattostr(abs_factor)+"\n";
     s+="qfluor_factor = "+floattostr(qfluor_factor)+"\n";
+    s+="estimated_runtime = "+floattostr(estimate_runtime())+" secs\n";
     return s;
 }
 
@@ -387,4 +445,24 @@ void DynamicsFromFiles2::clear() {
     linecount.clear();
     trajectory_files.clear();
     trajectory_count=0;
+}
+
+double DynamicsFromFiles2::estimate_runtime() {
+    double rt=0;
+    if (tmode==Sequential) {
+        std::cout<<"sequential runtime estimation";
+        for (file_counter=0; file_counter<trajectory_count; file_counter++) {
+            int lc=linecount[file_counter];
+            rt=rt+double(lc)*sim_timestep;
+        }
+    } else {
+        std::cout<<"parallel runtime estimation";
+        for (file_counter=0; file_counter<trajectory_count; file_counter++) {
+            int lc=linecount[file_counter];
+            double d=double(lc)*sim_timestep;
+            if (d>rt) rt=d;
+        }
+    }
+    std::cout<<"   runtime="<<rt<<std::endl;
+    return rt;
 }

@@ -50,6 +50,8 @@ class DynamicsFromFiles2 : public FluorophorDynamics
 
         /** \brief report the state of the object, as human-readable text */
         virtual std::string report();
+
+        virtual double estimate_runtime();
     protected:
         /** \brief read configuration from INI file */
         virtual void read_config_internal(jkINIParser2& parser);
@@ -82,8 +84,21 @@ class DynamicsFromFiles2 : public FluorophorDynamics
         /** \brief the possible shift modes */
         enum ShiftMode {
             Mean,
-            HalfTime
+            HalfTime,
+            RandomDisplacedMean
         };
+        /** \brief range minimum for random mean displacement in x-direction */
+        double randomdisplace_x_min;
+        /** \brief range maximum for random mean displacement in x-direction */
+        double randomdisplace_x_max;
+        /** \brief range minimum for random mean displacement in y-direction */
+        double randomdisplace_y_min;
+        /** \brief range maximum for random mean displacement in y-direction */
+        double randomdisplace_y_max;
+        /** \brief range minimum for random mean displacement in z-direction */
+        double randomdisplace_z_min;
+        /** \brief range maximum for random mean displacement in z-direction */
+        double randomdisplace_z_max;
         /** \brief how to shift the trajectories */
         ShiftMode shiftmode;
         /** \brief the mode in which to use several trajectory files */
@@ -108,6 +123,8 @@ class DynamicsFromFiles2 : public FluorophorDynamics
         double qfluor_factor;
         /** \brief how many columns to read */
         int max_columns;
+        /** \brief how many lines to read at most (or -1 if all)*/
+        int max_lines;
         /** \brief start numbered input files here */
         int num_start;
         /** \brief stop numbered input files here */

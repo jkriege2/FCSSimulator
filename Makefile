@@ -19,6 +19,7 @@ SRC_FILE= browniandynamics.cpp \
           fluorophordynamics.cpp \
           main.cpp \
           gridrandomwalkdynamics.cpp \
+          msdmeasurement.cpp \
           $(LIB)/datatable.cpp \
           $(LIB)/highrestimer.cpp \
           $(LIB)/jkiniparser2.cpp \

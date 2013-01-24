@@ -80,6 +80,10 @@ class FluorescenceMeasurement: public TickTock
          */
         virtual void save()=0;
 
+        /** \brief this function is called once after the simulation has finished.
+         */
+        virtual void finalize_sim();
+
         GetSetMacro(double, sim_timestep);
         GetMacro(double, sim_time);
         GetSetMacro(std::string, basename);

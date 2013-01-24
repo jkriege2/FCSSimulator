@@ -50,7 +50,7 @@
      \f[ \vec{\mu}_{n+1}=\mathbf{R(\theta, \vec{\mu}_{n}\times\Delta\vec{\mu})}\;\vec{\mu}_{n} \f]
    From <a href="http://de.wikipedia.org/wiki/Drehmatrix">http://de.wikipedia.org/wiki/Drehmatrix</a> we get this formulation for
    a rotation matrix around an arbitrary axis (unit vector) \f$ \vec{v}=(v_1,v_2,v_3)^t \f$:
-     \f[ \mathbf{R}(\alpha, \vec{v})=\begin{pmatrix} \cos \alpha +v_1^2 \left(1-\cos \alpha\right)   & v_1 v_2 \left(1-\cos \alpha\right) - v_3 \sin \alpha &  v_1 v_3 \left(1-\cos \alpha\right) + v_2 \sin \alpha \\   v_2 v_1 \left(1-\cos \alpha\right) + v_3 \sin \alpha  & \cos \alpha + v_2^2\left(1-\cos \alpha\right) &   v_2 v_3 \left(1-\cos \alpha\right) - v_1 \sin \alpha         \\ v_3 v_1 \left(1-\cos \alpha\right) - v_2 \sin \alpha &  v_3 v_2 \left(1-\cos \alpha\right) + v_1 \sin \alpha & \cos \alpha + v_3^2\left(1-\cos \alpha\right)\end{pmatrix}  \f]
+     \f[ \mathbf{R}(\alpha, \vec{v})=\begin{pmatrix} \cos \alpha +v_1^2 \left(1-\cos \alpha\right) & v_1 v_2 \left(1-\cos \alpha\right) - v_3 \sin \alpha &  v_1 v_3 \left(1-\cos \alpha\right) + v_2 \sin \alpha \\   v_2 v_1 \left(1-\cos \alpha\right) + v_3 \sin \alpha  & \cos \alpha + v_2^2\left(1-\cos \alpha\right) &   v_2 v_3 \left(1-\cos \alpha\right) - v_1 \sin \alpha         \\ v_3 v_1 \left(1-\cos \alpha\right) - v_2 \sin \alpha &  v_3 v_2 \left(1-\cos \alpha\right) + v_1 \sin \alpha & \cos \alpha + v_3^2\left(1-\cos \alpha\right)\end{pmatrix}  \f]
 
 
 

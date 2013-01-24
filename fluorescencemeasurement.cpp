@@ -102,7 +102,7 @@ void FluorescenceMeasurement::read_config(jkINIParser2& parser, std::string grou
         parser.leaveGroup();
     }
 
-    init();
+    //init();
 }
 
 
@@ -128,6 +128,11 @@ void FluorescenceMeasurement::init() {
 void FluorescenceMeasurement::propagate() {
     sim_time=sim_time+sim_timestep;
     //std::cout<<">>> meas   sim_time = "<<sim_time<<"\n";
+
+}
+
+
+void FluorescenceMeasurement::finalize_sim() {
 
 }
 

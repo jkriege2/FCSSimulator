@@ -114,7 +114,7 @@ void GridRandomWalkDynamics::read_config_internal(jkINIParser2& parser) {
     msd_size=parser.getSetAsInt("msd_size", msd_size);
     obstacle_fraction=parser.getSetAsDouble("obstacle_fraction", obstacle_fraction);
     //set_grid_constant(parser.getSetAsDouble("grid_constant", grid_constant));
-    init();
+    //init();
 }
 
 

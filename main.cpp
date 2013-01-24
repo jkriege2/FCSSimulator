@@ -7,6 +7,7 @@
 #include "../../../LIB/trunk/datatable.h"
 #include "dynamicsfromfiles2.h"
 #include "gridrandomwalkdynamics.h"
+#include "msdmeasurement.h"
 #include <gsl/gsl_matrix.h>
 
 #include <cstdio>
@@ -42,13 +43,23 @@ void do_sim(std::string inifilename) {
         ini.writeFile(basename+"config.ini");
         cout<<"done!\n\n";
 
-        // create all dynamics objects
+        // first we read all groups in the ini file into a list, as the inifile may be changed by the
+        // following instructions ... so also groups may be added and then the iteration is skrewed.
+        std::vector<std::string> groups_in_ini;
         for (unsigned long i=0; i<ini.getGroupCount(); i++) {
-            std::string gname=ini.getGroupName(i);
-            std::string lgname=tolower(ini.getGroupName(i));
+            groups_in_ini.push_back(ini.getGroupName(i));
+        }
+
+        double estimated_max_runtime=0;
+
+        // create all dynamics objects
+        for (unsigned long i=0; i<groups_in_ini.size(); i++) {
+            std::string gname=groups_in_ini[i];
+            std::string lgname=tolower(gname);
             std::string oname=ini.getAsString(gname+".object_name", lgname);
             std::string supergroup="";
             FluorophorDynamics* d=NULL;
+            //std::cout<<"** i="<<i<<"/"<<groups_in_ini.size()<<" gname="<<gname<<"  lgname="<<lgname<<"  oname="<<oname<<std::endl;
             if (lgname.find("brownian")==0 && lgname.size()>8) {
                 supergroup="brownian";
                 d=new BrownianDynamics(fluorophors, oname);
@@ -72,17 +83,28 @@ void do_sim(std::string inifilename) {
                 }
                 d->read_config(ini, gname, supergroup);
                 std::cout<<"created "<<supergroup<<" dynamics object '"<<oname<<"' ("<<lgname<<")\n";
+                d->init();
+                std::cout<<"initialized "<<supergroup<<" dynamics object '"<<oname<<"' ("<<lgname<<")\n";
+                double rt=d->estimate_runtime();
+                if (rt>estimated_max_runtime) estimated_max_runtime=rt;
             }
         }
 
+        if (duration<=0 && estimated_max_runtime>0)  {
+            duration=estimated_max_runtime;
+            ini.setProperty("simulation.duration", duration);
+            std::cout<<"\nno fixed simulation runtime given!!!\n";
+            std::cout<<"  simulation runtime was estimated to be "<<duration<<" seconds\n\n";
+        }
         // create all measurement objects and connect them to the dynamics
-        for (unsigned long i=0; i<ini.getGroupCount(); i++) {
-            std::string gname=ini.getGroupName(i);
-            std::string lgname=tolower(ini.getGroupName(i));
+        for (unsigned long i=0; i<groups_in_ini.size(); i++) {
+            std::string gname=groups_in_ini[i];
+            std::string lgname=tolower(gname);
             std::string oname=ini.getAsString(gname+".object_name", lgname);
             std::vector<std::string> sources=tokenize_string(ini.getAsString(gname+".sources", ""), ",");
             std::string supergroup="";
             FluorescenceMeasurement* m=NULL;
+            //std::cout<<"## i="<<i<<"/"<<groups_in_ini.size()<<"  gname="<<gname<<"  lgname="<<lgname<<"  oname="<<oname<<"  sources.size="<<sources.size()<<std::endl;
             if (sources.size()>0) {
                 if (lgname.find("fcs")==0 && lgname.size()>3) {
                     supergroup="fcs";
@@ -90,13 +112,17 @@ void do_sim(std::string inifilename) {
                 } else if (lgname.find("imaging")==0 && lgname.size()>7) {
                     supergroup="imaging";
                     m=new FluorescenceImaging(fluorophors, oname);
+                } else if (lgname.find("msd")==0 && lgname.size()>3) {
+                    supergroup="msd";
+                    m=new MSDMeasurement(fluorophors, oname);
                 }
                 if (m!=NULL) {
                     meas.push_back(m);
                     measmap[oname]=m;
                     measmap[lgname]=m;
                     m->read_config(ini, gname, supergroup);
-                    std::cout<<"created "<<supergroup<<" measurement object '"<<oname<<"' connected to: ";
+                    m->init();
+                    std::cout<<"created & initialized "<<supergroup<<" measurement object '"<<oname<<"' connected to: ";
                     m->clearDynamics();
                     for (size_t s=0; s<sources.size(); s++) {
                         std::cout<<"'"<<sources[s]<<"'/";
@@ -104,6 +130,7 @@ void do_sim(std::string inifilename) {
                         if (s>0) std::cout<<", ";
                         std::cout<<dynmap[tolower(strstrip(sources[s]))]->get_object_name();
                     }
+                    m->init();
                     std::cout<<std::endl;
                 }
             }
@@ -133,7 +160,6 @@ void do_sim(std::string inifilename) {
 
         if (duration>0) {
             // run simulation while any of the sim_time properties is <duration
-            // we do not have to call init(), as this is done by the read_config() methods
             while (dyn[0]->get_sim_time()<duration) {
                 for (size_t i=0; i<dyn.size(); i++) {
                     dyn[i]->propagate();
@@ -142,9 +168,14 @@ void do_sim(std::string inifilename) {
                     meas[i]->propagate();
                 }
             }
+            for (size_t i=0; i<dyn.size(); i++) {
+                dyn[i]->finalize_sim();
+            }
+            for (size_t i=0; i<meas.size(); i++) {
+                meas[i]->finalize_sim();
+            }
         } else {
             // run the simulation until all trajectories have ended
-            // we do not have to call init(), as this is done by the read_config() methods
             bool done=false;
             while (!done) {
                 done=true;
@@ -155,6 +186,12 @@ void do_sim(std::string inifilename) {
                 for (size_t i=0; i<meas.size(); i++) {
                     meas[i]->propagate();
                 }
+            }
+            for (size_t i=0; i<dyn.size(); i++) {
+                dyn[i]->finalize_sim();
+            }
+            for (size_t i=0; i<meas.size(); i++) {
+                meas[i]->finalize_sim();
             }
         }
         filestr.open ((basename+"config.txt").c_str(), fstream::out);

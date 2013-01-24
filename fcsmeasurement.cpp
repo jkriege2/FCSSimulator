@@ -236,9 +236,9 @@ void FCSMeasurement::propagate(){
     tick();
     FluorescenceMeasurement::propagate();
     run_fcs_simulation();
-    if (sim_time>=duration) {
+    /*if ((duration>=0)&&(sim_time>=duration)) {
         // calculate correlation function
-        printf("correlating ...\n");
+        printf("correlating ... dur=%lf\n", duration);
         PublicTickTock tim;
         tim.tick();
         long* taus=(long*)malloc(S*P*sizeof(long));
@@ -288,11 +288,67 @@ void FCSMeasurement::propagate(){
         tim.tock();
         correlation_runtime+=tim.get_duration();
         printf(" done!\n");
-    }
+    }*/
     tock();
     runtime=runtime+get_duration();
 }
 
+void FCSMeasurement::finalize_sim(){
+    tick();
+    // calculate correlation function
+    printf("correlating ... dur=%lf\n", duration);
+    PublicTickTock tim;
+    tim.tick();
+    long* taus=(long*)malloc(S*P*sizeof(long));
+    if (!online_correlation) {
+        if (correlator_type==0) {
+            for (int i=0; i<timesteps; i++) {
+                correlator->correlate_step(timeseries[i]);
+            }
+        } else if (correlator_type==1) {
+            for (int i=0; i<timesteps; i++) {
+                corrjanb->run(timeseries[i], timeseries[i]);
+            }
+        } else if (correlator_type==2) {
+            statisticsAutocorrelateCreateMultiTau(taus, S, m, P);
+            corr=(double*)malloc(S*P*sizeof(double));
+            statisticsAutocorrelateMultiTauSymmetric<int32_t,int64_t>(corr, timeseries, timesteps, taus, S*P);
+        } else if (correlator_type==3) {
+            statisticsAutocorrelateCreateMultiTau(taus, S, m, P);
+            corr=(double*)malloc(S*P*sizeof(double));
+            statisticsAutocorrelateMultiTauAvgSymmetric<int32_t,int64_t,int64_t>(corr, timeseries, timesteps, S, m, P, 1);
+        }
+    }
+    if (correlator_type==0) {
+        correlator->normalize();
+        corr=correlator->getCor();
+        corr_tau=correlator->getCorTau();
+        slots=correlator->getSlots();
+    } else if (correlator_type==1) {
+        slots=S*P;
+        double** corr1=corrjanb->get_array_G();
+        corr=(double*)malloc(slots*sizeof(double));
+        corr_tau=(double*)malloc(slots*sizeof(double));
+        for (int i=0; i<slots; i++) {
+            corr_tau[i]=corr1[0][i]*corr_taumin;
+            corr[i]=corr1[1][i];
+        }
+    } else if (correlator_type==2 || correlator_type==3) {
+        slots=S*P;
+        corr_tau=(double*)malloc(slots*sizeof(double));
+        for (int i=0; i<slots; i++) {
+            corr_tau[i]=(double)taus[i]*corr_taumin;
+        }
+    }
+
+    free(taus);
+
+    tim.tock();
+    correlation_runtime+=tim.get_duration();
+    printf(" done!\n");
+    tock();
+    runtime=runtime+get_duration();
+}
 
 
 void FCSMeasurement::run_fcs_simulation(){
@@ -605,14 +661,16 @@ void FCSMeasurement::save() {
             f=fopen(fn, "w");
             double t=0;
             int b=round(save_binning_time/corr_taumin);
-            for (unsigned long long i=0; i<timesteps-b; i=i+b) {
-                register long int  ts=0;
-                for (int j=0; j<b; j++) {
-                    ts=ts+timeseries[i+j];
+            if (timesteps>b) {
+                for (unsigned long long i=0; i<timesteps-b; i=i+b) {
+                    register long int  ts=0;
+                    for (int j=0; j<b; j++) {
+                        ts=ts+timeseries[i+j];
+                    }
+                    fprintf(f, "%15.10lf, %ld\n", t, ts);
+                    //fprintf(stdout, "%15.10lf, %lu\n", t, ts);
+                    t=t+corr_taumin*b;
                 }
-                fprintf(f, "%15.10lf, %ld\n", t, ts);
-                //fprintf(stdout, "%15.10lf, %lu\n", t, ts);
-                t=t+corr_taumin*b;
             }
             fclose(f);
             std::string tsfn=fn;
