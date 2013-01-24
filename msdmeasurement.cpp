@@ -89,10 +89,10 @@ void MSDMeasurement::save() {
         fprintf(f, "%d, %15.0lf, %15.10lf, %15.10lf", t, cnt, s/double(cnt), sqrt(1.0/(double(cnt)-1.0)*(s2-s*s/double(cnt))));
         s=trajectoryinfo[t].sum_y;
         s2=trajectoryinfo[t].sum2_y;
-        fprintf(f, ", %15.0lf, %15.10lf", s/double(cnt), sqrt(1.0/(double(cnt)-1.0)*(s2-s*s/double(cnt))));
+        fprintf(f, ", %15.10lf, %15.10lf", s/double(cnt), sqrt(1.0/(double(cnt)-1.0)*(s2-s*s/double(cnt))));
         s=trajectoryinfo[t].sum_z;
         s2=trajectoryinfo[t].sum2_z;
-        fprintf(f, ", %15.0lf, %15.10lf\n", s/double(cnt), sqrt(1.0/(double(cnt)-1.0)*(s2-s*s/double(cnt))));
+        fprintf(f, ", %15.10lf, %15.10lf\n", s/double(cnt), sqrt(1.0/(double(cnt)-1.0)*(s2-s*s/double(cnt))));
     }
     fclose(f);
     printf(" done!\n");

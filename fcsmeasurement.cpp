@@ -757,6 +757,7 @@ std::string FCSMeasurement::report(){
     } else {
         s+="detector_type = photon_counting\n";
     }
+    s+="detection_efficiency = "+floattostr(q_det*100.0)+"%\n";
 
     s+="lambda_ex = "+floattostr(lambda_ex)+" nm\n";
     if (det_wavelength_min>0 && det_wavelength_max>0) {
