@@ -121,9 +121,9 @@ void DynamicsFromFiles2::read_config_internal(jkINIParser2& parser) {
         }
     }
 
-    std::string d=chartostr(comment_char);
-    if (comment_char==' ') d="space";
-    if (comment_char=='\t') d="tab";
+    std::string d=chartostr(separator_char);
+    if (separator_char==' ') d="space";
+    if (separator_char=='\t') d="tab";
     std::string sc=strstrip(parser.getSetAsString("separator_char", d));
     if ((tolower(sc)=="space") || (sc.size()==0)) separator_char=' ';
     else if (tolower(sc)=="tab") separator_char='\t';
@@ -186,7 +186,7 @@ void DynamicsFromFiles2::init() {
     timing_load1=0;
     for (int i=0; i<trajectory_count; i++) {
         tim1.tick();
-        std::cout<<"checking file "<<trajectory_files[i]<<" [sc="+chartoprintablestr(separator_char)+", cc="+chartoprintablestr(comment_char)+", ";
+        std::cout<<"checking file "<<i+1<<"/"<<trajectory_count+1<<": "<<trajectory_files[i]<<" [sc="+chartoprintablestr(separator_char)+", cc="+chartoprintablestr(comment_char)+", ";
         //data[i].load_csv(trajectory_files[i], separator_char, comment_char);
         unsigned long long lcount=count_lines(trajectory_files[i], comment_char);
         if (max_lines>0 && lcount>max_lines) lcount=max_lines;
@@ -250,12 +250,12 @@ void DynamicsFromFiles2::init() {
             shift_y[i]=shift_y[i]/double(j)+gsl_ran_flat(rng, randomdisplace_y_min, randomdisplace_y_max);
             shift_z[i]=shift_z[i]/double(j)+gsl_ran_flat(rng, randomdisplace_z_min, randomdisplace_z_max);
         } else if (shift_trajectories && shiftmode==EndEndDistanceCenter) {
-            std::cout<<"** p1x="<<shift_x[i]<<"   p2x="<<lastPos[0]<<std::endl;
+            //std::cout<<"** p1x="<<shift_x[i]<<"   p2x="<<lastPos[0]<<std::endl;
             shift_x[i]=(shift_x[i]+lastPos[0])/2.0;
             shift_y[i]=(shift_y[i]+lastPos[1])/2.0;
             shift_z[i]=(shift_z[i]+lastPos[2])/2.0;
         } else if (shift_trajectories && shiftmode==EndEndDistanceCenterRandom) {
-            std::cout<<"## p1x="<<shift_x[i]<<"   p2x="<<lastPos[0]<<std::endl;
+            //std::cout<<"## p1x="<<shift_x[i]<<"   p2x="<<lastPos[0]<<std::endl;
             shift_x[i]=(shift_x[i]+lastPos[0])/2.0+gsl_ran_flat(rng, randomdisplace_x_min, randomdisplace_x_max);
             shift_y[i]=(shift_y[i]+lastPos[1])/2.0+gsl_ran_flat(rng, randomdisplace_y_min, randomdisplace_y_max);
             shift_z[i]=(shift_z[i]+lastPos[2])/2.0+gsl_ran_flat(rng, randomdisplace_z_min, randomdisplace_z_max);
@@ -290,6 +290,7 @@ void DynamicsFromFiles2::init() {
 void DynamicsFromFiles2::propagate(bool boundary_check) {
     FluorophorDynamics::propagate(boundary_check);
     if (file.size()<=0) return;
+    endoftrajectory=trajectory_count<=0;
     if (endoftrajectory) return;
     if (tmode==Sequential) {
         int lc=linecount[file_counter]; //data[file_counter].get_line_count();
@@ -419,6 +420,8 @@ std::string DynamicsFromFiles2::report() {
         s+=trajectory_files[i]+"  [ lines="+inttostr(linecount[i])+" columns="+inttostr(columncount[i])+"shift_x="+floattostr(shift_x[i])+" shift_y="+floattostr(shift_y[i])+" shift_z="+floattostr(shift_z[i])+" ] microns";
     }
     s+="\n";
+    s+="separator_char = "+chartoprintablestr(separator_char)+"\n";
+    s+="comment_char = "+chartoprintablestr(comment_char)+"\n";
     if (shiftmode==Mean) s+="shift_mode = mean (center-of-mass)\n";
     if (shiftmode==RandomDisplacedMean) {
         s+="shift_mode = mean_random (randomly displaced center-of-mass)\n";

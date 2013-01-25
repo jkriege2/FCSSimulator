@@ -237,6 +237,14 @@ int main(int argc, char* argv[])
         std::vector<std::string> files;
         for (int i=1; i<argc; i++) {
             std::vector<std::string> files1=listfiles_wildcard(argv[i]);
+	    std::string fn=argv[i];
+	    if (fn.find('*')!=std::string::npos || fn.find('?')!=std::string::npos) {
+	        files1=listfiles_wildcard(argv[i]);
+	    } else {
+	        files1.clear();
+		files1.push_back(fn);
+	    }  
+	    
             for (size_t j=0; j<files1.size(); j++) {
                 files.push_back(files1[j]);
                 std::cout<<"   will simluate '"<<files1[j]<<"' ...\n";
