@@ -28,6 +28,9 @@ void MSDMeasurement::init() {
         ti.sum2_x=ti.sum_x=0;
         ti.sum2_y=ti.sum_y=0;
         ti.sum2_z=ti.sum_z=0;
+        ti.xmax=ti.xmax=0;
+        ti.ymax=ti.ymax=0;
+        ti.zmax=ti.zmax=0;
         ti.cnt=0;
         trajectoryinfo.push_back(ti);
     }
@@ -42,13 +45,28 @@ void MSDMeasurement::propagate() {
         unsigned long wc=dyn[d]->get_walker_count();
         if (!dyn[d]->end_of_trajectory_reached()) for (unsigned long i=0; i<wc; i++) { // iterate through all walkers in the d-th dynamics object
             if (dynn[i].exists) {
-                msds[t]->contribute_step(dynn[i].x, dynn[i].y, dynn[i].z);
-                trajectoryinfo[t].sum_x=trajectoryinfo[t].sum_x+dynn[i].x;
-                trajectoryinfo[t].sum2_x=trajectoryinfo[t].sum2_x+dynn[i].x*dynn[i].x;
-                trajectoryinfo[t].sum_y=trajectoryinfo[t].sum_y+dynn[i].y;
-                trajectoryinfo[t].sum2_y=trajectoryinfo[t].sum2_y+dynn[i].y*dynn[i].y;
-                trajectoryinfo[t].sum_z=trajectoryinfo[t].sum_z+dynn[i].z;
-                trajectoryinfo[t].sum2_z=trajectoryinfo[t].sum2_z+dynn[i].z*dynn[i].z;
+                const double x=dynn[i].x;
+                const double y=dynn[i].y;
+                const double z=dynn[i].z;
+                msds[t]->contribute_step(x, y,z);
+                if (trajectoryinfo[t].cnt<=0) {
+                    trajectoryinfo[t].xmin=trajectoryinfo[t].xmax=x;
+                    trajectoryinfo[t].ymin=trajectoryinfo[t].ymax=y;
+                    trajectoryinfo[t].zmin=trajectoryinfo[t].zmax=z;
+                } else {
+                    if (x<trajectoryinfo[t].xmin) trajectoryinfo[t].xmin=x;
+                    if (x>trajectoryinfo[t].xmax) trajectoryinfo[t].xmax=x;
+                    if (y<trajectoryinfo[t].ymin) trajectoryinfo[t].ymin=y;
+                    if (y>trajectoryinfo[t].ymax) trajectoryinfo[t].ymax=y;
+                    if (z<trajectoryinfo[t].zmin) trajectoryinfo[t].zmin=z;
+                    if (z>trajectoryinfo[t].zmax) trajectoryinfo[t].zmax=z;
+                }
+                trajectoryinfo[t].sum_x=trajectoryinfo[t].sum_x+x;
+                trajectoryinfo[t].sum2_x=trajectoryinfo[t].sum2_x+x*x;
+                trajectoryinfo[t].sum_y=trajectoryinfo[t].sum_y+y;
+                trajectoryinfo[t].sum2_y=trajectoryinfo[t].sum2_y+y*y;
+                trajectoryinfo[t].sum_z=trajectoryinfo[t].sum_z+z;
+                trajectoryinfo[t].sum2_z=trajectoryinfo[t].sum2_z+z*z;
                 trajectoryinfo[t].cnt=trajectoryinfo[t].cnt+1;
             }
             t++;
@@ -81,18 +99,25 @@ void MSDMeasurement::save() {
     sprintf(fn, "%s%strajectorystatistics.dat", basename.c_str(), object_name.c_str());
     printf("writing '%s' ...", fn);
     f=fopen(fn, "w");
-    fprintf(f, "# trajectory no, steps, mean_x, std_x, mean_y, std_y, mean_z, std_z\n\n");
+    fprintf(f, "# trajectory no,           steps,          mean_x,           std_x,            minx,            maxx,          mean_y,           std_y,            miny,            maxy,          mean_z,           std_z,           minz,             maxz\n\n");
     for (int t=0; t<msd_for_trajectories; t++) {
         double s=trajectoryinfo[t].sum_x;
         double s2=trajectoryinfo[t].sum2_x;
+        double mi=trajectoryinfo[t].xmin;
+        double ma=trajectoryinfo[t].xmax;
         double cnt=trajectoryinfo[t].cnt;
-        fprintf(f, "%d, %15.0lf, %15.10lf, %15.10lf", t, cnt, s/double(cnt), sqrt(1.0/(double(cnt)-1.0)*(s2-s*s/double(cnt))));
+        fprintf(f, "%15d, %15.0lf, ", t, cnt);
+        fprintf(f, "%15.10lf, %15.10lf, %15.10lf, %15.10lf", s/double(cnt), sqrt(1.0/(double(cnt)-1.0)*(s2-s*s/double(cnt))), mi, ma);
         s=trajectoryinfo[t].sum_y;
         s2=trajectoryinfo[t].sum2_y;
-        fprintf(f, ", %15.10lf, %15.10lf", s/double(cnt), sqrt(1.0/(double(cnt)-1.0)*(s2-s*s/double(cnt))));
+        mi=trajectoryinfo[t].ymin;
+        ma=trajectoryinfo[t].ymax;
+        fprintf(f, ", %15.10lf, %15.10lf, %15.10lf, %15.10lf", s/double(cnt), sqrt(1.0/(double(cnt)-1.0)*(s2-s*s/double(cnt))), mi, ma);
         s=trajectoryinfo[t].sum_z;
         s2=trajectoryinfo[t].sum2_z;
-        fprintf(f, ", %15.10lf, %15.10lf\n", s/double(cnt), sqrt(1.0/(double(cnt)-1.0)*(s2-s*s/double(cnt))));
+        mi=trajectoryinfo[t].zmin;
+        ma=trajectoryinfo[t].zmax;
+        fprintf(f, ", %15.10lf, %15.10lf, %15.10lf, %15.10lf\n", s/double(cnt), sqrt(1.0/(double(cnt)-1.0)*(s2-s*s/double(cnt))), mi, ma);
     }
     fclose(f);
     printf(" done!\n");

@@ -61,6 +61,12 @@ class MSDMeasurement : public FluorescenceMeasurement
             double sum_z;
             double sum2_z;
             uint64_t cnt;
+            double xmin;
+            double xmax;
+            double ymin;
+            double ymax;
+            double zmin;
+            double zmax;
         };
         std::vector<trajectory_info> trajectoryinfo;
     private:

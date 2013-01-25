@@ -85,7 +85,9 @@ class DynamicsFromFiles2 : public FluorophorDynamics
         enum ShiftMode {
             Mean,
             HalfTime,
-            RandomDisplacedMean
+            RandomDisplacedMean,
+            EndEndDistanceCenter,
+            EndEndDistanceCenterRandom
         };
         /** \brief range minimum for random mean displacement in x-direction */
         double randomdisplace_x_min;
