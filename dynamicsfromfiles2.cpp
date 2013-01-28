@@ -10,6 +10,7 @@ DynamicsFromFiles2::DynamicsFromFiles2(FluorophorManager* fluorophors, std::stri
     shift_y=NULL;
     shift_z=NULL;
     max_lines=-1;
+    max_files=-1;
     trajectory_count=0;
     tmode=Sequential;
     shift_trajectories=true;
@@ -47,6 +48,7 @@ DynamicsFromFiles2::DynamicsFromFiles2(FluorophorManager* fluorophors, std::stri
     filenames="traj%.3d.dat";
     shiftmode=HalfTime;
     tmode=Sequential;
+    parallelTrajectories=10;
 }
 
 DynamicsFromFiles2::~DynamicsFromFiles2()
@@ -64,6 +66,7 @@ void DynamicsFromFiles2::read_config_internal(jkINIParser2& parser) {
 
     shift_trajectories=parser.getSetAsBool("shift_trajectories", shift_trajectories);
 
+    max_files=parser.getSetAsInt("max_files", max_files);
     col_time=parser.getSetAsInt("col_time", col_time);
     col_posx=parser.getSetAsInt("col_posx", col_posx);
     col_posy=parser.getSetAsInt("col_posy", col_posy);
@@ -78,6 +81,7 @@ void DynamicsFromFiles2::read_config_internal(jkINIParser2& parser) {
     col_qfluor=parser.getSetAsInt("col_qfluor", col_qfluor);
     col_abs=parser.getSetAsInt("col_abs", col_abs);
     col_qmstate=parser.getSetAsInt("col_qmstate", col_qmstate);
+    parallelTrajectories=parser.getSetAsInt("parallel_trajectories", parallelTrajectories);
     randomdisplace_x_min=parser.getSetAsDouble("randomdisplace_x_min", parser.getSetAsDouble("randomdisplace_min", randomdisplace_x_min));
     randomdisplace_x_max=parser.getSetAsDouble("randomdisplace_x_max", parser.getSetAsDouble("randomdisplace_max", randomdisplace_x_max));
     randomdisplace_y_min=parser.getSetAsDouble("randomdisplace_y_min", parser.getSetAsDouble("randomdisplace_min", randomdisplace_y_min));
@@ -99,7 +103,9 @@ void DynamicsFromFiles2::read_config_internal(jkINIParser2& parser) {
         std::cout<<filenames<<std::endl;
         if (filenames.find('*')!=std::string::npos || filenames.find('?')!=std::string::npos) {
             std::vector<std::string> l=listfiles_wildcard(filenames);
-            for (size_t j=0; j<l.size(); j++) {
+            int fc=l.size();
+            if (max_files>0 && fc>max_files) fc=max_files;
+            for (size_t j=0; j<fc; j++) {
                 std::string fn=l[j];
                 std::cout<<"testing "<<fn<<std::endl;
                 if (file_exists(fn)) {
@@ -112,7 +118,7 @@ void DynamicsFromFiles2::read_config_internal(jkINIParser2& parser) {
             for (i=num_start; i<=num_stop; i++) {
                 std::string fn=format(filenames, i);
                 std::cout<<"testing "<<fn<<std::endl;
-                if (file_exists(fn)) {
+                if (file_exists(fn) && ((max_files<=0) || ((max_files>0) && (trajectory_count<max_files)))) {
                     trajectory_files.push_back(fn);
                     std::cout<<"adding "<<fn<<std::endl;
                     trajectory_count++;
@@ -142,11 +148,18 @@ void DynamicsFromFiles2::read_config_internal(jkINIParser2& parser) {
     max_columns=parser.getSetAsInt("max_columns", max_columns);
     max_lines=parser.getSetAsInt("max_lines", max_lines);
 
-
-    std::string t=(tmode==Sequential)?"sequential":"parallel";
-    if (tolower(parser.getSetAsString("play_mode", t))=="parallel") {
+    
+    std::string t="sequential";
+    if (tmode==Parallel) t="parallel";
+    if (tmode==SequentialParallel) t="sequentialparallel";
+    t=tolower(parser.getSetAsString("play_mode", t));
+    if (t=="parallel") {
         tmode=Parallel;
+    } else if (t=="sequentialparallel") {
+        tmode=SequentialParallel;
     }
+    
+    
     if (shiftmode==HalfTime) t="halftime";
     else if (shiftmode==RandomDisplacedMean) t="mean_random";
     else if (shiftmode==EndEndDistanceCenter) t="end_end_center";
@@ -186,7 +199,7 @@ void DynamicsFromFiles2::init() {
     timing_load1=0;
     for (int i=0; i<trajectory_count; i++) {
         tim1.tick();
-        std::cout<<"checking file "<<i+1<<"/"<<trajectory_count+1<<": "<<trajectory_files[i]<<" [sc="+chartoprintablestr(separator_char)+", cc="+chartoprintablestr(comment_char)+", ";
+        std::cout<<"checking file "<<i+1<<"/"<<trajectory_count<<": "<<trajectory_files[i]<<" [sc="+chartoprintablestr(separator_char)+", cc="+chartoprintablestr(comment_char)+", ";
         //data[i].load_csv(trajectory_files[i], separator_char, comment_char);
         unsigned long long lcount=count_lines(trajectory_files[i], comment_char);
         if (max_lines>0 && lcount>max_lines) lcount=max_lines;
@@ -279,7 +292,9 @@ void DynamicsFromFiles2::init() {
     FluorophorDynamics::init();
 
     if (tmode==Sequential) {
-        change_walker_count(1);
+        change_walker_count(trajectory_count);
+    } else if (tmode==SequentialParallel) {
+        change_walker_count(trajectory_count);
     } else { // tmode==Parallel
         change_walker_count(trajectory_count);
     }
@@ -287,58 +302,70 @@ void DynamicsFromFiles2::init() {
     propagate();
 }
 
+void DynamicsFromFiles2::setAllDone() {
+    for (int i=0; i<trajectory_count; i++) {
+	walker_state[i].exists=false;
+    }
+    endoftrajectory=true;
+}
+
+
 void DynamicsFromFiles2::propagate(bool boundary_check) {
     FluorophorDynamics::propagate(boundary_check);
     if (file.size()<=0) return;
     endoftrajectory=trajectory_count<=0;
     if (endoftrajectory) return;
     if (tmode==Sequential) {
+        for (int i=0; i<trajectory_count; i++) {
+	    walker_state[i].exists= (i==file_counter);
+	}
+      
         int lc=linecount[file_counter]; //data[file_counter].get_line_count();
         int cc=columncount[file_counter]; //data[file_counter].get_column_count();
         //std::cout<<"fc="<<file_counter<<"   lc="<<lc<<"   cc="<<cc<<"   f="<<file[file_counter]<<"   f.size()="<<file.size()<<std::endl;
         std::vector<double> data =csv_readline(file[file_counter], separator_char, comment_char);
-        walker_state[0].time++;
-        walker_state[0].x=data[col_posx]*position_factor-shift_x[file_counter];
-        walker_state[0].y=data[col_posy]*position_factor-shift_y[file_counter];
-        walker_state[0].z=data[col_posz]*position_factor-shift_z[file_counter];
-        walker_state[0].p_x=init_p_x;
-        walker_state[0].p_y=init_p_y;
-        walker_state[0].p_z=init_p_z;
-        walker_state[0].qm_state=init_qm_state;
-        walker_state[0].type=init_type;
-        walker_state[0].spectrum=init_spectrum;
+        walker_state[file_counter].time++;
+        walker_state[file_counter].x=data[col_posx]*position_factor-shift_x[file_counter];
+        walker_state[file_counter].y=data[col_posy]*position_factor-shift_y[file_counter];
+        walker_state[file_counter].z=data[col_posz]*position_factor-shift_z[file_counter];
+        walker_state[file_counter].p_x=init_p_x;
+        walker_state[file_counter].p_y=init_p_y;
+        walker_state[file_counter].p_z=init_p_z;
+        walker_state[file_counter].qm_state=init_qm_state;
+        walker_state[file_counter].type=init_type;
+        walker_state[file_counter].spectrum=init_spectrum;
         //std::cout<<walker_state[0].x<<", "<<walker_state[0].y<<", "<<walker_state[0].z<<std::endl;
         if ( (cc>col_px) && (cc>col_py) && (cc>col_pz) &&
              (col_px>=0) && (col_py>=0) && (col_pz>=0) &&
              (max_columns>col_px) && (max_columns>col_py) && (max_columns>col_pz) ){
-            walker_state[0].p_x=data[col_px];
-            walker_state[0].p_y=data[col_py];
-            walker_state[0].p_z=data[col_pz];
+            walker_state[file_counter].p_x=data[col_px];
+            walker_state[file_counter].p_y=data[col_py];
+            walker_state[file_counter].p_z=data[col_pz];
         }
         if ( (p_fraction<1.0) &&
              (cc>col_px1) && (cc>col_py1) && (cc>col_pz1) &&
              (col_px1>=0) && (col_py1>=0) && (col_pz1>=0) &&
              (max_columns>col_px) && (max_columns>col_py) && (max_columns>col_pz) ){
-            walker_state[0].p_x=p_fraction*walker_state[0].p_x+(1.0-p_fraction)*data[col_px1];
-            walker_state[0].p_y=p_fraction*walker_state[0].p_y+(1.0-p_fraction)*data[col_py1];
-            walker_state[0].p_z=p_fraction*walker_state[0].p_z+(1.0-p_fraction)*data[col_pz1];
-            double sqrsum=sqrt(walker_state[0].p_x*walker_state[0].p_x+walker_state[0].p_y*walker_state[0].p_y+walker_state[0].p_z*walker_state[0].p_z);
+            walker_state[file_counter].p_x=p_fraction*walker_state[file_counter].p_x+(1.0-p_fraction)*data[col_px1];
+            walker_state[file_counter].p_y=p_fraction*walker_state[file_counter].p_y+(1.0-p_fraction)*data[col_py1];
+            walker_state[file_counter].p_z=p_fraction*walker_state[file_counter].p_z+(1.0-p_fraction)*data[col_pz1];
+            double sqrsum=sqrt(walker_state[file_counter].p_x*walker_state[file_counter].p_x+walker_state[file_counter].p_y*walker_state[file_counter].p_y+walker_state[file_counter].p_z*walker_state[file_counter].p_z);
             if (sqrsum>0) {
-                walker_state[0].p_x=walker_state[0].p_x/sqrsum;
-                walker_state[0].p_y=walker_state[0].p_y/sqrsum;
-                walker_state[0].p_z=walker_state[0].p_z/sqrsum;
+                walker_state[file_counter].p_x=walker_state[file_counter].p_x/sqrsum;
+                walker_state[file_counter].p_y=walker_state[file_counter].p_y/sqrsum;
+                walker_state[file_counter].p_z=walker_state[file_counter].p_z/sqrsum;
             }
         }
         // normalize p
 
         if ((cc>col_qfluor) && (col_qfluor>=0) && (max_columns>col_qfluor)) {
-            walker_state[0].q_fluor[0]=data[col_qfluor]*qfluor_factor;
+            walker_state[file_counter].q_fluor[file_counter]=data[col_qfluor]*qfluor_factor;
         }
         if ((cc>col_abs) && (col_abs>=0) && (max_columns>col_abs)) {
-            walker_state[0].sigma_abs[0]=data[col_abs]*abs_factor;
+            walker_state[file_counter].sigma_abs[file_counter]=data[col_abs]*abs_factor;
         }
         if ((cc>col_qmstate) && (col_qmstate>=0) && (max_columns>col_qmstate)) {
-            walker_state[0].qm_state=(int)round(data[col_qmstate]);
+            walker_state[file_counter].qm_state=(int)round(data[col_qmstate]);
         }
         //std::cout<<line_counter<<": x="<<walker_state[0].x<<" y="<<walker_state[0].y<<" z="<<walker_state[0].z<<" p_x="<<walker_state[0].p_x<<" p_y="<<walker_state[0].p_y<<" p_z="<<walker_state[0].p_z<<" q_fluor="<<walker_state[0].q_fluor<<" sigma_abs="<<walker_state[0].sigma_abs<<std::endl;
         line_counter++;
@@ -348,10 +375,83 @@ void DynamicsFromFiles2::propagate(bool boundary_check) {
                 line_counter=0;
             } else {
                  line_counter--;
-                 walker_state[0].exists=false;
-                 endoftrajectory=true;
+		 setAllDone();
             };
         }
+    } else if (tmode==SequentialParallel) {
+        
+        if (file_counter<0 || file_counter+parallelTrajectories>trajectory_count) {
+	    setAllDone();	  
+	} else {
+	    for (int i=0; i<trajectory_count; i++) {
+                walker_state[i].exists= ((i>=file_counter) && (i<file_counter+parallelTrajectories));
+	    }
+	    
+	    bool anyRunning=false;
+	    
+	    for (int f=file_counter; f<file_counter+parallelTrajectories; f++) {
+		int lc=linecount[f]; //data[file_counter].get_line_count();
+		int cc=columncount[f]; //data[file_counter].get_column_count();
+		//std::cout<<"fc="<<file_counter<<"   lc="<<lc<<"   cc="<<cc<<"   f="<<file[file_counter]<<"   f.size()="<<file.size()<<std::endl;
+		if (line_counter<lc) {
+                    std::vector<double> data =csv_readline(file[f], separator_char, comment_char);
+                    walker_state[f].time++;
+                    walker_state[f].x=data[col_posx]*position_factor-shift_x[f];
+                    walker_state[f].y=data[col_posy]*position_factor-shift_y[f];
+                    walker_state[f].z=data[col_posz]*position_factor-shift_z[f];
+                    walker_state[f].p_x=init_p_x;
+                    walker_state[f].p_y=init_p_y;
+                    walker_state[f].p_z=init_p_z;
+                    walker_state[f].qm_state=init_qm_state;
+                    walker_state[f].type=init_type;
+                    walker_state[f].spectrum=init_spectrum;
+                    //std::cout<<walker_state[0].x<<", "<<walker_state[0].y<<", "<<walker_state[0].z<<std::endl;
+                    if ( (cc>col_px) && (cc>col_py) && (cc>col_pz) &&
+                        (col_px>=0) && (col_py>=0) && (col_pz>=0) &&
+                        (max_columns>col_px) && (max_columns>col_py) && (max_columns>col_pz) ){
+                    walker_state[f].p_x=data[col_px];
+                    walker_state[f].p_y=data[col_py];
+                    walker_state[f].p_z=data[col_pz];
+                    }
+                    if ( (p_fraction<1.0) &&
+                        (cc>col_px1) && (cc>col_py1) && (cc>col_pz1) &&
+                        (col_px1>=0) && (col_py1>=0) && (col_pz1>=0) &&
+                        (max_columns>col_px) && (max_columns>col_py) && (max_columns>col_pz) ){
+                    walker_state[f].p_x=p_fraction*walker_state[f].p_x+(1.0-p_fraction)*data[col_px1];
+                    walker_state[f].p_y=p_fraction*walker_state[f].p_y+(1.0-p_fraction)*data[col_py1];
+                    walker_state[f].p_z=p_fraction*walker_state[f].p_z+(1.0-p_fraction)*data[col_pz1];
+                    double sqrsum=sqrt(walker_state[f].p_x*walker_state[f].p_x+walker_state[f].p_y*walker_state[f].p_y+walker_state[f].p_z*walker_state[f].p_z);
+                    if (sqrsum>0) {
+                        walker_state[f].p_x=walker_state[f].p_x/sqrsum;
+                        walker_state[f].p_y=walker_state[f].p_y/sqrsum;
+                        walker_state[f].p_z=walker_state[f].p_z/sqrsum;
+                    }
+                    }
+                    // normalize p
+
+                    if ((cc>col_qfluor) && (col_qfluor>=0) && (max_columns>col_qfluor)) {
+                        walker_state[f].q_fluor[f]=data[col_qfluor]*qfluor_factor;
+                    }
+                    if ((cc>col_abs) && (col_abs>=0) && (max_columns>col_abs)) {
+                        walker_state[f].sigma_abs[f]=data[col_abs]*abs_factor;
+                    }
+                    if ((cc>col_qmstate) && (col_qmstate>=0) && (max_columns>col_qmstate)) {
+                        walker_state[f].qm_state=(int)round(data[col_qmstate]);
+                    }
+                    //std::cout<<line_counter<<": x="<<walker_state[0].x<<" y="<<walker_state[0].y<<" z="<<walker_state[0].z<<" p_x="<<walker_state[0].p_x<<" p_y="<<walker_state[0].p_y<<" p_z="<<walker_state[0].p_z<<" q_fluor="<<walker_state[0].q_fluor<<" sigma_abs="<<walker_state[0].sigma_abs<<std::endl;
+                    
+                    anyRunning=true;
+                } 
+	    }
+	    line_counter++;
+            if (!anyRunning) {
+                file_counter=file_counter+parallelTrajectories;
+                line_counter=0;
+                if (file_counter+parallelTrajectories>=trajectory_count) {
+                    setAllDone();
+                }
+            }
+	}
     } else { // tmode==Parallel
         bool anyon=false;
         for (file_counter=0; file_counter<trajectory_count; file_counter++) {
@@ -441,6 +541,7 @@ std::string DynamicsFromFiles2::report() {
     if (shiftmode==HalfTime) s+="shift_mode = halftime (to position at file_duration/2)\n";
     s+="timing_loadall = "+floattostr(timing_loadall)+" secs\n";
     s+="timing_load1 = "+floattostr(timing_load1)+" secs\n";
+    s+="max_files = "+inttostr(max_files)+"\n";
     s+="max_columns = "+inttostr(max_columns)+"\n";
     if (max_lines<=0) {
         s+="max_lines = [all lines]\n";
@@ -456,6 +557,7 @@ std::string DynamicsFromFiles2::report() {
     s+="col_qmstate = "+inttostr(col_qmstate)+"\n";
     s+="col_qfluor = "+inttostr(col_qfluor)+"\n";
     if (tmode==Sequential) s+="play_mode = sequential\n";
+    if (tmode==SequentialParallel) s+="play_mode = sequential_parallel\nparallel_trajectories = "+inttostr(parallelTrajectories)+"\n";
     if (tmode==Parallel) s+="play_mode = parallel\n";
     //s+="max_columns = "+inttostr(max_columns)+"\n";
     //s+="time_factor = "+floattostr(time_factor)+"\n";
@@ -493,6 +595,18 @@ double DynamicsFromFiles2::estimate_runtime() {
             int lc=linecount[fc];
             rt=rt+double(lc)*sim_timestep;
         }
+    } else if (tmode==SequentialParallel) {
+        std::cout<<"sequential parallel runtime estimation (parallelTrajectories="<<parallelTrajectories<<"  trajectory_count="<<trajectory_count<<")";
+        for (int fc=0; fc<trajectory_count; fc=fc+parallelTrajectories) {
+            double llc=0;
+            if (fc+parallelTrajectories<=trajectory_count) {
+                for (int kk=fc; kk<fc+parallelTrajectories; kk++) {
+                    int lc=linecount[fc];
+                    if (lc>llc) llc=lc;
+                }
+            }
+            rt=rt+double(llc)*sim_timestep;
+        }
     } else {
         std::cout<<"parallel runtime estimation";
         for (int fc=0; fc<trajectory_count; fc++) {
@@ -501,6 +615,6 @@ double DynamicsFromFiles2::estimate_runtime() {
             if (d>rt) rt=d;
         }
     }
-    std::cout<<"   runtime="<<rt<<std::endl;
+    std::cout<<"   => runtime="<<rt<<std::endl;
     return rt;
 }

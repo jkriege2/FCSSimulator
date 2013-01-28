@@ -55,6 +55,9 @@ class DynamicsFromFiles2 : public FluorophorDynamics
     protected:
         /** \brief read configuration from INI file */
         virtual void read_config_internal(jkINIParser2& parser);
+	
+	/** \brief set all walkers to non-existent and set end of trajectory true */
+	void setAllDone();
 
 
 
@@ -79,7 +82,8 @@ class DynamicsFromFiles2 : public FluorophorDynamics
         /** \brief the possible simulation modes */
         enum TrajectoryMode {
             Parallel,
-            Sequential
+            Sequential,
+	    SequentialParallel
         };
         /** \brief the possible shift modes */
         enum ShiftMode {
@@ -127,6 +131,8 @@ class DynamicsFromFiles2 : public FluorophorDynamics
         int max_columns;
         /** \brief how many lines to read at most (or -1 if all)*/
         int max_lines;
+        /** \brief maximum number of files to use, even if wildcard search finds more (-1 for all) )*/
+        int max_files;
         /** \brief start numbered input files here */
         int num_start;
         /** \brief stop numbered input files here */
@@ -163,6 +169,9 @@ class DynamicsFromFiles2 : public FluorophorDynamics
         /** \brief if you use a linear combination of polarisation vectors, this compination is \f$ f\cdot\vec{p}+(1-f)\cdot\vec{p}_1 \f$
                    where \f$ f \f$ is this parameter. */
         double p_fraction;
+	
+	/** \brief number of trajectories to run in parallel in SequentialParallel mode */
+	int parallelTrajectories;
 
 
         /** \brief how long did it take to load all files */

@@ -537,7 +537,6 @@ void FCSMeasurement::save() {
         if (plt==1) fprintf(f, "pause -1\n");
         fprintf(f, "Na=Nf\n");
         fprintf(f, "tauDa=tauDf\n");
-        fprintf(f, "gammaa=gamma\n");
         fprintf(f, "fit g(x, Na, tauDa, gammaa, alphaa) \"%s\" via Na, tauDa, alphaa\n", extract_file_name(corrfn).c_str());
         fprintf(f, "set logscale x\n");
         fprintf(f, "set title \"object description: %s\"\n", description.c_str());
