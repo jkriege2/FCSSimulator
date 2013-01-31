@@ -31,7 +31,11 @@ FCSMeasurement::FCSMeasurement(FluorophorManager* fluorophors, std::string objec
     detpsf_r0=0.53;
     detpsf_z0=0.53*6;
     I0=200/0.25e-12;
-
+    
+    psfplot_xmax=2;
+    psfplot_ymax=2;
+    psfplot_zmax=10;
+    
     max_photons=0xFFFFFF;
     min_photons=0;
 
@@ -159,6 +163,10 @@ void FCSMeasurement::read_config_internal(jkINIParser2& parser) {
     d_x=parser.getSetAsDouble("d_x", d_x);
     d_y=parser.getSetAsDouble("d_y", d_y);
     d_z=parser.getSetAsDouble("d_z", d_z);
+    
+    psfplot_xmax=parser.getSetAsDouble("psfplot_xmax", psfplot_xmax);
+    psfplot_ymax=parser.getSetAsDouble("psfplot_ymax", psfplot_ymax);
+    psfplot_zmax=parser.getSetAsDouble("psfplot_zmax", psfplot_zmax);
 
     le=sqrt(d_x*d_x+d_y*d_y+d_z*d_z);
     d_x/=le; d_y/=le; d_z/=le;
@@ -236,59 +244,7 @@ void FCSMeasurement::propagate(){
     tick();
     FluorescenceMeasurement::propagate();
     run_fcs_simulation();
-    /*if ((duration>=0)&&(sim_time>=duration)) {
-        // calculate correlation function
-        printf("correlating ... dur=%lf\n", duration);
-        PublicTickTock tim;
-        tim.tick();
-        long* taus=(long*)malloc(S*P*sizeof(long));
-        if (!online_correlation) {
-            if (correlator_type==0) {
-                for (int i=0; i<timesteps; i++) {
-                    correlator->correlate_step(timeseries[i]);
-                }
-            } else if (correlator_type==1) {
-                for (int i=0; i<timesteps; i++) {
-                    corrjanb->run(timeseries[i], timeseries[i]);
-                }
-            } else if (correlator_type==2) {
-                statisticsAutocorrelateCreateMultiTau(taus, S, m, P);
-                corr=(double*)malloc(S*P*sizeof(double));
-                statisticsAutocorrelateMultiTauSymmetric<int32_t,int64_t>(corr, timeseries, timesteps, taus, S*P);
-            } else if (correlator_type==3) {
-                statisticsAutocorrelateCreateMultiTau(taus, S, m, P);
-                corr=(double*)malloc(S*P*sizeof(double));
-                statisticsAutocorrelateMultiTauAvgSymmetric<int32_t,int64_t,int64_t>(corr, timeseries, timesteps, S, m, P, 1);
-            }
-        }
-        if (correlator_type==0) {
-            correlator->normalize();
-            corr=correlator->getCor();
-            corr_tau=correlator->getCorTau();
-            slots=correlator->getSlots();
-        } else if (correlator_type==1) {
-            slots=S*P;
-            double** corr1=corrjanb->get_array_G();
-            corr=(double*)malloc(slots*sizeof(double));
-            corr_tau=(double*)malloc(slots*sizeof(double));
-            for (int i=0; i<slots; i++) {
-                corr_tau[i]=corr1[0][i]*corr_taumin;
-                corr[i]=corr1[1][i];
-            }
-        } else if (correlator_type==2 || correlator_type==3) {
-            slots=S*P;
-            corr_tau=(double*)malloc(slots*sizeof(double));
-            for (int i=0; i<slots; i++) {
-                corr_tau[i]=(double)taus[i]*corr_taumin;
-            }
-        }
-
-        free(taus);
-
-        tim.tock();
-        correlation_runtime+=tim.get_duration();
-        printf(" done!\n");
-    }*/
+    
     tock();
     runtime=runtime+get_duration();
 }
@@ -350,6 +306,34 @@ void FCSMeasurement::finalize_sim(){
     runtime=runtime+get_duration();
 }
 
+double FCSMeasurement::detectionEfficiency(double dx, double dy, double dz) const {
+    double eff=0;
+    const double sq2=sqrt(2.0);
+    switch (det_distribution) {
+        case 0:
+            eff=exp(-2.0*(gsl_pow_2(dx)+gsl_pow_2(dy))/gsl_pow_2(detpsf_r0)-2.0*gsl_pow_2(dz)/gsl_pow_2(detpsf_z0));
+            break;
+        case 1:
+            eff=exp(-2.0*gsl_pow_2(dz)/gsl_pow_2(detpsf_z0))
+                *(erf((pixel_size-2.0*dx)/(sq2*gsl_pow_2(detpsf_r0)))+erf((pixel_size+2.0*dx)/(gsl_pow_2(detpsf_r0)*sq2)))/(2.0*erf(pixel_size/(sq2*gsl_pow_2(detpsf_r0))))
+                *(erf((pixel_size-2.0*dy)/(sq2*gsl_pow_2(detpsf_r0)))+erf((pixel_size+2.0*dy)/(gsl_pow_2(detpsf_r0)*sq2)))/(2.0*erf(pixel_size/(sq2*gsl_pow_2(detpsf_r0))));
+            break;
+    }
+    return eff;
+}
+
+double FCSMeasurement::illuminationEfficiency(double dx, double dy, double dz) const {
+    double eff=0;
+    switch (ill_distribution) {
+        case 0:
+            eff=exp(-2.0*(gsl_pow_2(dx)+gsl_pow_2(dy))/gsl_pow_2(expsf_r0)-2.0*gsl_pow_2(dz)/gsl_pow_2(expsf_z0));
+            break;
+        case 1:
+            eff=exp(-2.0*gsl_pow_2(dz)/gsl_pow_2(expsf_z0));
+            break;
+    }
+    return eff;
+}
 
 void FCSMeasurement::run_fcs_simulation(){
     // number of fluorescence photons per molecule and sim_timestep, but you have to multiply by sigma_abs and q_fluor (walker dependent!)
@@ -388,21 +372,22 @@ void FCSMeasurement::run_fcs_simulation(){
                     if (polarised_excitation) {
                         n0=n0*(1.0-e_pol_fraction+e_pol_fraction*gsl_pow_2(dpx*e_x+dpy*e_y+dpz*e_z));
                     }
-                    switch (ill_distribution) {
+                    /*switch (ill_distribution) {
                         case 0:
                             n0=n0*exp(-2.0*(edxs+edys)/gsl_pow_2(expsf_r0)-2.0*gsl_pow_2(edz)/gsl_pow_2(expsf_z0));
                             break;
                         case 1:
                             n0=n0*exp(-2.0*gsl_pow_2(edz)/gsl_pow_2(expsf_z0));
                             break;
-                    }
+                    }*/
+                    n0=n0*illuminationEfficiency(edx, edy, edz);
                     if (polarised_detection) {
                         n0=n0*gsl_pow_2(dpx*d_x+dpy*d_y+dpz*d_z);
                     }
                     if (det_wavelength_min>0 && det_wavelength_max>0) {
                         n0=n0*fluorophors->get_spectral_fluorescence(dynn[i].spectrum, det_wavelength_min, det_wavelength_max);
                     }
-                    double sq2=sqrt(2.0);
+                    /*double sq2=sqrt(2.0);
                     switch (det_distribution) {
                         case 0:
                             nphot_sum=nphot_sum+n0*q_det*exp(-2.0*(dxs+dys)/gsl_pow_2(detpsf_r0)-2.0*gsl_pow_2(dz)/gsl_pow_2(detpsf_z0));
@@ -410,7 +395,8 @@ void FCSMeasurement::run_fcs_simulation(){
                         case 1:
                             nphot_sum=nphot_sum+n0*q_det*exp(gsl_pow_2(dz)/gsl_pow_2(detpsf_z0))*(erf((pixel_size-2.0*dx)/(sq2*gsl_pow_2(detpsf_r0)))+erf((pixel_size+2.0*dy)/(gsl_pow_2(detpsf_r0)*sq2)))/(2.0*erf(pixel_size/(sq2*gsl_pow_2(detpsf_r0))));
                             break;
-                    }
+                    }*/
+                    nphot_sum=nphot_sum+n0*q_det*detectionEfficiency(dx, dy, dz);
 
                     //std::cout<<"nphot_sum="<<nphot_sum<<"\n";
                 }
@@ -522,10 +508,10 @@ void FCSMeasurement::save() {
     fprintf(f, "Veff=sqrt(pi*pi*pi)*wxy*wxy*wxy*1e-15*gamma\n");
     for (int plt=0; plt<2; plt++) {
         if (plt==0) {
-            fprintf(f, "set terminal pdfcairo color solid font \"Arial, 7\" linewidth 2 size 20cm,15cm\n");
+            fprintf(f, "set terminal pdfcairo color solid font \"sans, 7\" linewidth 2 size 20cm,15cm\n");
             fprintf(f, "set output \"%s\"\n", extract_file_name(basename+object_name+"corrplot.pdf").c_str());
         } else if (plt==1) {
-            fprintf(f, "set terminal wxt font \"Arial, 8\"\n");
+            fprintf(f, "set terminal wxt font \"sans, 8\"\n");
             fprintf(f, "set output\n");
         }
         fprintf(f, "set logscale x\n");
@@ -556,10 +542,10 @@ void FCSMeasurement::save() {
     f=fopen(fn, "w");
     for (int plt=0; plt<2; plt++) {
         if (plt==0) {
-            fprintf(f, "set terminal pdfcairo color solid font \"Arial, 7\" linewidth 2 size 20cm,15cm\n");
+            fprintf(f, "set terminal pdfcairo color solid font \"sans, 7\" linewidth 2 size 20cm,15cm\n");
             fprintf(f, "set output \"%s\"\n", extract_file_name(basename+object_name+"corrplot_simple.pdf").c_str());
         } else if (plt==1) {
-            fprintf(f, "set terminal wxt font \"Arial, 8\"\n");
+            fprintf(f, "set terminal wxt font \"sans, 8\"\n");
             fprintf(f, "set output\n");
         }
 
@@ -568,6 +554,223 @@ void FCSMeasurement::save() {
         fprintf(f, "plot \"%s\" title \"simulation data\" with points\n", extract_file_name(corrfn).c_str());
     }
     fprintf(f, "pause -1\n");
+    fclose(f);
+    printf(" done!\n");
+    
+    
+    sprintf(fn, "%s%spsf.dat", basename.c_str(), object_name.c_str());
+    printf("writing '%s' ...", fn);
+    f=fopen(fn, "w");
+    long npoints=1000;
+    for (  long i=-npoints; i<=npoints; i++) {
+        double x=psfplot_xmax*double(i)/double(npoints);
+        double y=psfplot_ymax*double(i)/double(npoints);
+        double z=psfplot_zmax*double(i)/double(npoints);
+        
+        fprintf(f, "%15.10lf, %15.10lf, %15.10lf,  %15.10lf, %15.10lf, %15.10lf,  %15.10lf, %15.10lf, %15.10lf\n", x, illuminationEfficiency(x,0,0), detectionEfficiency(x,0,0), y, illuminationEfficiency(0,y,0), detectionEfficiency(0,y,0), z, illuminationEfficiency(0,0,z), detectionEfficiency(0,0,z));
+    }
+    fclose(f);
+    printf(" done!\n");
+    std::string psffn=fn;
+    
+    
+    sprintf(fn, "%s%spsfxy.dat", basename.c_str(), object_name.c_str());
+    printf("writing '%s' ...", fn);
+    f=fopen(fn, "w");
+    long npointsi=100;
+    for (  long i=-npointsi; i<=npointsi; i++) {
+        for (  long j=-npointsi; j<=npointsi; j++) {
+            double x=psfplot_xmax*double(j)/double(npointsi);
+            double y=psfplot_ymax*double(i)/double(npointsi);
+            
+            fprintf(f, "%15.10lf ", illuminationEfficiency(x,y,0));
+        }
+        fprintf(f, "\n");
+    }
+    fprintf(f, "\n\n");
+    for (  long i=-npointsi; i<=npointsi; i++) {
+        for (  long j=-npointsi; j<=npointsi; j++) {
+            double x=psfplot_xmax*double(j)/double(npointsi);
+            double z=psfplot_zmax*double(i)/double(npointsi);
+            
+            fprintf(f, "%15.10lf ", illuminationEfficiency(x,0,z));
+        }
+        fprintf(f, "\n");
+    }
+    fprintf(f, "\n\n");
+    for (  long i=-npointsi; i<=npointsi; i++) {
+        for (  long j=-npointsi; j<=npointsi; j++) {
+            double y=psfplot_ymax*double(j)/double(npointsi);
+            double z=psfplot_zmax*double(i)/double(npointsi);
+            
+            fprintf(f, "%15.10lf ", illuminationEfficiency(0,y,z));
+        }
+        fprintf(f, "\n");
+    }
+    fprintf(f, "\n\n");
+    for (  long i=-npointsi; i<=npointsi; i++) {
+        for (  long j=-npointsi; j<=npointsi; j++) {
+            double x=psfplot_xmax*double(j)/double(npointsi);
+            double y=psfplot_ymax*double(i)/double(npointsi);
+            
+            fprintf(f, "%15.10lf ", detectionEfficiency(x,y,0));
+        }
+        fprintf(f, "\n");
+    }
+    fprintf(f, "\n\n");
+    for (  long i=-npointsi; i<=npointsi; i++) {
+        for (  long j=-npointsi; j<=npointsi; j++) {
+            double x=psfplot_xmax*double(j)/double(npointsi);
+            double z=psfplot_zmax*double(i)/double(npointsi);
+            
+            fprintf(f, "%15.10lf ", detectionEfficiency(x,0,z));
+        }
+        fprintf(f, "\n");
+    }
+    fprintf(f, "\n\n");
+    for (  long i=-npointsi; i<=npointsi; i++) {
+        for (  long j=-npointsi; j<=npointsi; j++) {
+            double y=psfplot_ymax*double(j)/double(npointsi);
+            double z=psfplot_zmax*double(i)/double(npointsi);
+            
+            fprintf(f, "%15.10lf ", detectionEfficiency(0,y,z));
+        }
+        fprintf(f, "\n");
+    }
+    fprintf(f, "\n\n");
+    
+    for (  long i=-npointsi; i<=npointsi; i++) {
+        for (  long j=-npointsi; j<=npointsi; j++) {
+            double x=psfplot_xmax*double(j)/double(npointsi);
+            double y=psfplot_ymax*double(i)/double(npointsi);
+            
+            fprintf(f, "%15.10lf ", illuminationEfficiency(x,y,0)*detectionEfficiency(x,y,0));
+        }
+        fprintf(f, "\n");
+    }
+    fprintf(f, "\n\n");
+    for (  long i=-npointsi; i<=npointsi; i++) {
+        for (  long j=-npointsi; j<=npointsi; j++) {
+            double x=psfplot_xmax*double(j)/double(npointsi);
+            double z=psfplot_zmax*double(i)/double(npointsi);
+            
+            fprintf(f, "%15.10lf ", illuminationEfficiency(x,0,z)*detectionEfficiency(x,0,z));
+        }
+        fprintf(f, "\n");
+    }
+    fprintf(f, "\n\n");
+    for (  long i=-npointsi; i<=npointsi; i++) {
+        for (  long j=-npointsi; j<=npointsi; j++) {
+            double y=psfplot_ymax*double(j)/double(npointsi);
+            double z=psfplot_zmax*double(i)/double(npointsi);
+            
+            fprintf(f, "%15.10lf ", illuminationEfficiency(0,y,z)*detectionEfficiency(0,y,z));
+        }
+        fprintf(f, "\n");
+    }
+    fprintf(f, "\n\n");
+    fclose(f);
+    printf(" done!\n");
+    std::string psfxyfn=fn;
+    
+    
+    sprintf(fn, "%s%spsf.plt", basename.c_str(), object_name.c_str());
+    printf("writing '%s' ...", fn);
+    f=fopen(fn, "w");
+    fprintf(f, "deltax=%lf\n", psfplot_xmax/double(npoints));
+    fprintf(f, "deltay=%lf\n", psfplot_ymax/double(npoints));
+    fprintf(f, "deltaz=%lf\n", psfplot_zmax/double(npoints));
+    fprintf(f, "deltaxi=%lf\n", psfplot_xmax/double(npointsi));
+    fprintf(f, "deltayi=%lf\n", psfplot_ymax/double(npointsi));
+    fprintf(f, "deltazi=%lf\n", psfplot_zmax/double(npointsi));
+    for (int plt=0; plt<2; plt++) {
+        if (plt==0) {
+            fprintf(f, "set terminal pdfcairo color solid font \"sans, 5\" linewidth 2 size 20cm,15cm\n");
+            fprintf(f, "set output \"%s\"\n", extract_file_name(basename+object_name+"psf.pdf").c_str());
+        } else if (plt==1) {
+            fprintf(f, "set terminal wxt font \"sans, 5\"\n");
+            fprintf(f, "set output\n");
+        }
+        
+        fprintf(f, "set size noratio\n");
+        for (int mp=0; mp<2; mp++) {
+            if (mp==0) fprintf(f, "set multiplot layout 1,3\n");
+            fprintf(f, "set title \"PSF: x-direction: %s\"\n", description.c_str());
+            fprintf(f, "set xlabel \"position x [micron]\"\n");
+            fprintf(f, "set ylabel \"intensity / detection probability [0..1]\"\n");
+            fprintf(f, "plot \"%s\" using (($1)*deltax):2 title \"illumination\" with lines, "
+            "\"%s\" using (($1)*deltax):3 title \"detection\" with lines, "
+            "\"%s\" using (($1)*deltax):(($2)*($3)) title \"ill * det\" with lines"
+            "\n", extract_file_name(psffn).c_str(), extract_file_name(psffn).c_str(), extract_file_name(psffn).c_str());
+            if (mp==1 && plt==1) fprintf(f, "pause -1\n");
+            fprintf(f, "set title \"PSF: y-direction: %s\"\n", description.c_str());
+            fprintf(f, "set xlabel \"position y [micron]\"\n");
+            fprintf(f, "set ylabel \"intensity / detection probability [0..1]\"\n");
+            fprintf(f, "plot \"%s\" using (($4)*deltay):5 title \"illumination\" with lines, "
+            "\"%s\" using (($4)*deltay):6 title \"detection\" with lines, "
+            "\"%s\" using (($4)*deltay):(($5)*($6)) title \"ill * det\" with lines"
+            "\n", extract_file_name(psffn).c_str(), extract_file_name(psffn).c_str(), extract_file_name(psffn).c_str());
+            if (mp==1 && plt==1) fprintf(f, "pause -1\n");
+            fprintf(f, "set title \"PSF: z-direction: %s\"\n", description.c_str());
+            fprintf(f, "set xlabel \"position z [micron]\"\n");
+            fprintf(f, "set ylabel \"intensity / detection probability [0..1]\"\n");
+            fprintf(f, "plot \"%s\" using (($7)*deltaz):8 title \"illumination\" with lines, "
+            "\"%s\" using (($7)*deltaz):9 title \"detection\" with lines, "
+            "\"%s\" using (($7)*deltaz):(($8)*($9)) title \"ill * det\" with lines"
+            "\n", extract_file_name(psffn).c_str(), extract_file_name(psffn).c_str(), extract_file_name(psffn).c_str());
+            if (mp==0) fprintf(f, "unset multiplot\n");        
+            if (plt==1) fprintf(f, "pause -1\n");
+        }
+        fprintf(f, "set multiplot layout 1,3\n");
+        fprintf(f, "set xlabel \"position x [micron]\"\n");
+        fprintf(f, "set ylabel \"position y [micron]\"\n");
+        fprintf(f, "set size ratio deltayi/deltaxi\n");
+        fprintf(f, "set title \"xy-cut: illumination %s\"\n", description.c_str());
+        fprintf(f, "plot \"%s\" using (($1)*deltaxi):(($2)*deltayi):3 matrix index 0 notitle with image"
+        "\n", extract_file_name(psfxyfn).c_str());
+        fprintf(f, "set title \"xy-cut: detection %s\"\n", description.c_str());
+        fprintf(f, "plot \"%s\" using (($1)*deltaxi):(($2)*deltayi):3 matrix index 3 notitle with image"
+        "\n", extract_file_name(psfxyfn).c_str());
+        fprintf(f, "set title \"xy-cut: ill*det %s\"\n", description.c_str());
+        fprintf(f, "plot \"%s\" using (($1)*deltaxi):(($2)*deltayi):3 matrix index 6 notitle with image"
+        "\n", extract_file_name(psfxyfn).c_str());
+        fprintf(f, "unset multiplot\n");        
+        if (plt==1) fprintf(f, "pause -1\n");
+        
+        fprintf(f, "set multiplot layout 1,3\n");
+        fprintf(f, "set xlabel \"position x [micron]\"\n");
+        fprintf(f, "set ylabel \"position z [micron]\"\n");
+        fprintf(f, "set size ratio deltazi/deltaxi\n");
+        fprintf(f, "set title \"xz-cut: illumination %s\"\n", description.c_str());
+        fprintf(f, "plot \"%s\" using (($1)*deltaxi):(($2)*deltazi):3 matrix index 1 notitle with image"
+        "\n", extract_file_name(psfxyfn).c_str());
+        fprintf(f, "set title \"xz-cut: detection %s\"\n", description.c_str());
+        fprintf(f, "plot \"%s\" using (($1)*deltaxi):(($2)*deltazi):3 matrix index 4 notitle with image"
+        "\n", extract_file_name(psfxyfn).c_str());
+        fprintf(f, "set title \"xz-cut: ill*det %s\"\n", description.c_str());
+        fprintf(f, "plot \"%s\" using (($1)*deltaxi):(($2)*deltazi):3 matrix index 7 notitle with image"
+        "\n", extract_file_name(psfxyfn).c_str());
+        fprintf(f, "unset multiplot\n");        
+        if (plt==1) fprintf(f, "pause -1\n");
+        
+        fprintf(f, "set multiplot layout 1,3\n");
+        fprintf(f, "set xlabel \"position y [micron]\"\n");
+        fprintf(f, "set ylabel \"position z [micron]\"\n");
+        fprintf(f, "set size ratio deltazi/deltayi\n");
+        fprintf(f, "set title \"yz-cut: illumination %s\"\n", description.c_str());
+        fprintf(f, "plot \"%s\" using (($1)*deltayi):(($2)*deltazi):3 matrix index 2 notitle with image"
+        "\n", extract_file_name(psfxyfn).c_str());
+        fprintf(f, "set title \"yz-cut: detection %s\"\n", description.c_str());
+        fprintf(f, "plot \"%s\" using (($1)*deltayi):(($2)*deltazi):3 matrix index 5 notitle with image"
+        "\n", extract_file_name(psfxyfn).c_str());
+        fprintf(f, "set title \"yz-cut: ill*det %s\"\n", description.c_str());
+        fprintf(f, "plot \"%s\" using (($1)*deltayi):(($2)*deltazi):3 matrix index 8 notitle with image"
+        "\n", extract_file_name(psfxyfn).c_str());
+        fprintf(f, "unset multiplot\n");        
+        if (plt==1) fprintf(f, "pause -1\n");
+                
+    }
+    
     fclose(f);
     printf(" done!\n");
 
@@ -590,10 +793,10 @@ void FCSMeasurement::save() {
             f=fopen(fn, "w");
             for (int plt=0; plt<2; plt++) {
                 if (plt==0) {
-                    fprintf(f, "set terminal pdfcairo color solid font \"Arial, 7\" linewidth 2 size 20cm,15cm\n");
+                    fprintf(f, "set terminal pdfcairo color solid font \"sans, 7\" linewidth 2 size 20cm,15cm\n");
                     fprintf(f, "set output \"%s\"\n", extract_file_name(basename+object_name+"tsplot.pdf").c_str());
                 } else if (plt==1) {
-                    fprintf(f, "set terminal wxt font \"Arial, 8\"\n");
+                    fprintf(f, "set terminal wxt font \"sans, 8\"\n");
                     fprintf(f, "set output\n");
                 }
                 fprintf(f, "set xlabel \"time [seconds]\"\n");
@@ -633,10 +836,10 @@ void FCSMeasurement::save() {
             f=fopen(fn, "w");
             for (int plt=0; plt<2; plt++) {
                 if (plt==0) {
-                    fprintf(f, "set terminal pdfcairo color solid font \"Arial, 7\" linewidth 2 size 20cm,15cm\n");
+                    fprintf(f, "set terminal pdfcairo color solid font \"sans, 7\" linewidth 2 size 20cm,15cm\n");
                     fprintf(f, "set output \"%s\"\n", extract_file_name(basename+object_name+"btsplot.pdf").c_str());
                 } else if (plt==1) {
-                    fprintf(f, "set terminal wxt font \"Arial, 8\"\n");
+                    fprintf(f, "set terminal wxt font \"sans, 8\"\n");
                     fprintf(f, "set output\n");
                 }
                 fprintf(f, "set xlabel \"time [seconds]\"\n");
@@ -680,10 +883,10 @@ void FCSMeasurement::save() {
             f=fopen(fn, "w");
             for (int plt=0; plt<2; plt++) {
                 if (plt==0) {
-                    fprintf(f, "set terminal pdfcairo color solid font \"Arial, 7\" linewidth 2 size 20cm,15cm\n");
+                    fprintf(f, "set terminal pdfcairo color solid font \"sans, 7\" linewidth 2 size 20cm,15cm\n");
                     fprintf(f, "set output \"%s\"\n", extract_file_name(basename+object_name+"btsplot.pdf").c_str());
                 } else if (plt==1) {
-                    fprintf(f, "set terminal wxt font \"Arial, 8\"\n");
+                    fprintf(f, "set terminal wxt font \"sans, 8\"\n");
                     fprintf(f, "set output\n");
                 }
                 fprintf(f, "set xlabel \"time [seconds]\"\n");

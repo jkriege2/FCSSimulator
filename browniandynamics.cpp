@@ -281,10 +281,10 @@ void BrownianDynamics::propagate(bool boundary_check){
         fprintf(f, "fit msd_fit(x) \"%s\" using 1:2 via Diff\n", extract_file_name(basename+object_name+"msd.dat").c_str());
         for (int plt=0; plt<2; plt++) {
             if (plt==0) {
-                fprintf(f, "set terminal pdfcairo color solid font \"Arial, 7\" linewidth 2 size 20cm,15cm\n");
+                fprintf(f, "set terminal pdfcairo color solid font \"sans, 7\" linewidth 2 size 20cm,15cm\n");
                 fprintf(f, "set output \"%s\"\n", extract_file_name(basename+object_name+"msd.pdf").c_str());
             } else if (plt==1) {
-                fprintf(f, "set terminal wxt font \"Arial, 8\"\n");
+                fprintf(f, "set terminal wxt font \"sans, 8\"\n");
                 fprintf(f, "set output\n");
             }
             fprintf(f, "set title \"sigma_translation^2 against time\"\n");
@@ -412,10 +412,10 @@ void BrownianDynamics::test(unsigned int steps, unsigned int walkers) {
     fprintf(f, "reset\n");
     for (int plt=0; plt<2; plt++) {
         if (plt==0) {
-            fprintf(f, "set terminal pdfcairo color solid font \"Arial, 7\" linewidth 2 size 20cm,15cm\n");
+            fprintf(f, "set terminal pdfcairo color solid font \"sans, 7\" linewidth 2 size 20cm,15cm\n");
             fprintf(f, "set output \"%s\"\n", extract_file_name(basename+object_name+"test_plot.pdf").c_str());
         } else if (plt==1) {
-            fprintf(f, "set terminal wxt font \"Arial, 8\"\n");
+            fprintf(f, "set terminal wxt font \"sans, 8\"\n");
             fprintf(f, "set output\n");
         }
         fprintf(f, "set title \"3D Translation Trajectory\"\n");
