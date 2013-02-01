@@ -97,7 +97,7 @@ void MSDMeasurement::save() {
     if (msd_for_trajectories<=0) return;
 
     sprintf(fn, "%s%strajectorystatistics.dat", basename.c_str(), object_name.c_str());
-    printf("writing '%s' ...", fn);
+    std::cout<<"writing '"<<fn<<"' ...";
     f=fopen(fn, "w");
     fprintf(f, "# trajectory no,           steps,          mean_x,           std_x,            minx,            maxx,          mean_y,           std_y,            miny,            maxy,          mean_z,           std_z,           minz,             maxz\n\n");
     for (int t=0; t<msd_for_trajectories; t++) {
@@ -120,7 +120,7 @@ void MSDMeasurement::save() {
         fprintf(f, ", %15.10lf, %15.10lf, %15.10lf, %15.10lf\n", s/double(cnt), sqrt(1.0/(double(cnt)-1.0)*(s2-s*s/double(cnt))), mi, ma);
     }
     fclose(f);
-    printf(" done!\n");
+    std::cout<<" done!\n";
 
 
     double* taus=msds[0]->getMSDTau();
@@ -131,7 +131,7 @@ void MSDMeasurement::save() {
     }
 
     sprintf(fn, "%s%smsd.dat", basename.c_str(), object_name.c_str());
-    printf("writing '%s' ...", fn);
+    std::cout<<"writing '"<<fn<<"' ...";
     f=fopen(fn, "w");
     for (int i=0; i<slots; i++) {
         fprintf(f, "%15.10lf", taus[i]);
@@ -145,11 +145,11 @@ void MSDMeasurement::save() {
         fprintf(f, ", %15.10lf, %15.10lf\n", s/double(msd_for_trajectories), sqrt(1.0/(double(msd_for_trajectories)-1.0)*(s2-s*s/double(msd_for_trajectories))));
     }
     fclose(f);
-    printf(" done!\n");
+    std::cout<<" done!\n";
     std::string corrfn=fn;
 
     sprintf(fn, "%s%smsdplot.plt", basename.c_str(), object_name.c_str());
-    printf("writing '%s' ...", fn);
+    std::cout<<"writing '"<<fn<<"' ...";
     f=fopen(fn, "w");
     fprintf(f, "f(tau, D, alpha)=6*D*(tau**alpha)\n");
     fprintf(f, "D=10\n");
@@ -198,7 +198,7 @@ void MSDMeasurement::save() {
     }
 
     fclose(f);
-    printf(" done!\n");
+    std::cout<<" done!\n";
 }
 
 void MSDMeasurement::read_config_internal(jkINIParser2& parser) {

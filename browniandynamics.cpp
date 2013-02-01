@@ -351,7 +351,7 @@ void BrownianDynamics::test(unsigned int steps, unsigned int walkers) {
     unsigned int nw=walkers;
     use_rotational_diffusion=true;
     init();
-    change_walker_count(nw);
+    change_walker_count(nw, 1);
     std::cout<<"setup test ... ";
     for (unsigned int i=0; i<nw; i++) {
         walker_state[i].x=0;

@@ -31,12 +31,12 @@ FCSMeasurement::FCSMeasurement(FluorophorManager* fluorophors, std::string objec
     detpsf_r0=0.53;
     detpsf_z0=0.53*6;
     I0=200/0.25e-12;
-    
+
     psfplot_xmax=2;
     psfplot_ymax=2;
     psfplot_zmax=10;
-    
-    max_photons=0xFFFFFF;
+
+    max_photons=0xFFFFFFF;
     min_photons=0;
 
     // Rho 6G
@@ -83,6 +83,9 @@ FCSMeasurement::FCSMeasurement(FluorophorManager* fluorophors, std::string objec
     slots=0;
 
     correlation_runtime=0;
+
+    ndettest_max=300;
+    ndettest_step=1;
 
 }
 
@@ -163,7 +166,7 @@ void FCSMeasurement::read_config_internal(jkINIParser2& parser) {
     d_x=parser.getSetAsDouble("d_x", d_x);
     d_y=parser.getSetAsDouble("d_y", d_y);
     d_z=parser.getSetAsDouble("d_z", d_z);
-    
+
     psfplot_xmax=parser.getSetAsDouble("psfplot_xmax", psfplot_xmax);
     psfplot_ymax=parser.getSetAsDouble("psfplot_ymax", psfplot_ymax);
     psfplot_zmax=parser.getSetAsDouble("psfplot_zmax", psfplot_zmax);
@@ -244,7 +247,7 @@ void FCSMeasurement::propagate(){
     tick();
     FluorescenceMeasurement::propagate();
     run_fcs_simulation();
-    
+
     tock();
     runtime=runtime+get_duration();
 }
@@ -252,7 +255,7 @@ void FCSMeasurement::propagate(){
 void FCSMeasurement::finalize_sim(){
     tick();
     // calculate correlation function
-    printf("correlating ... dur=%lf\n", duration);
+    std::cout<<"correlating ... dur="<<duration<<"\n";
     PublicTickTock tim;
     tim.tick();
     long* taus=(long*)malloc(S*P*sizeof(long));
@@ -301,7 +304,7 @@ void FCSMeasurement::finalize_sim(){
 
     tim.tock();
     correlation_runtime+=tim.get_duration();
-    printf(" done!\n");
+    std::cout<<" done!\n";
     tock();
     runtime=runtime+get_duration();
 }
@@ -343,7 +346,7 @@ void FCSMeasurement::run_fcs_simulation(){
     // first we go through alle the fluorophors and integrate their contribution
     for (size_t d=0; d<dyn.size(); d++) { // go through all dynamics objects that provide data for this measurement object
         FluorophorDynamics::walkerState* dynn=dyn[d]->get_walker_state();
-        unsigned long wc=dyn[d]->get_walker_count();
+        unsigned long wc=dyn[d]->get_visible_walker_count();
         if (!dyn[d]->end_of_trajectory_reached()) for (unsigned long i=0; i<wc; i++) { // iterate through all walkers in the d-th dynamics object
             if (dynn[i].exists) {
                 double x0,y0,z0;
@@ -364,7 +367,6 @@ void FCSMeasurement::run_fcs_simulation(){
                     double dys=dy*dy;
                     double n0=n00*dyn[d]->get_walker_sigma_times_qfl(i);
                     n0=n0*fluorophors->get_spectral_absorbance(dynn[i].spectrum, lambda_ex);
-                    //dynn->get_walker_spectral_absorbance(i, lambda_ex);
                     double dpx, dpy, dpz;
                     dpx=dynn[i].p_x;
                     dpy=dynn[i].p_y;
@@ -372,14 +374,6 @@ void FCSMeasurement::run_fcs_simulation(){
                     if (polarised_excitation) {
                         n0=n0*(1.0-e_pol_fraction+e_pol_fraction*gsl_pow_2(dpx*e_x+dpy*e_y+dpz*e_z));
                     }
-                    /*switch (ill_distribution) {
-                        case 0:
-                            n0=n0*exp(-2.0*(edxs+edys)/gsl_pow_2(expsf_r0)-2.0*gsl_pow_2(edz)/gsl_pow_2(expsf_z0));
-                            break;
-                        case 1:
-                            n0=n0*exp(-2.0*gsl_pow_2(edz)/gsl_pow_2(expsf_z0));
-                            break;
-                    }*/
                     n0=n0*illuminationEfficiency(edx, edy, edz);
                     if (polarised_detection) {
                         n0=n0*gsl_pow_2(dpx*d_x+dpy*d_y+dpz*d_z);
@@ -387,15 +381,6 @@ void FCSMeasurement::run_fcs_simulation(){
                     if (det_wavelength_min>0 && det_wavelength_max>0) {
                         n0=n0*fluorophors->get_spectral_fluorescence(dynn[i].spectrum, det_wavelength_min, det_wavelength_max);
                     }
-                    /*double sq2=sqrt(2.0);
-                    switch (det_distribution) {
-                        case 0:
-                            nphot_sum=nphot_sum+n0*q_det*exp(-2.0*(dxs+dys)/gsl_pow_2(detpsf_r0)-2.0*gsl_pow_2(dz)/gsl_pow_2(detpsf_z0));
-                            break;
-                        case 1:
-                            nphot_sum=nphot_sum+n0*q_det*exp(gsl_pow_2(dz)/gsl_pow_2(detpsf_z0))*(erf((pixel_size-2.0*dx)/(sq2*gsl_pow_2(detpsf_r0)))+erf((pixel_size+2.0*dy)/(gsl_pow_2(detpsf_r0)*sq2)))/(2.0*erf(pixel_size/(sq2*gsl_pow_2(detpsf_r0))));
-                            break;
-                    }*/
                     nphot_sum=nphot_sum+n0*q_det*detectionEfficiency(dx, dy, dz);
 
                     //std::cout<<"nphot_sum="<<nphot_sum<<"\n";
@@ -408,27 +393,7 @@ void FCSMeasurement::run_fcs_simulation(){
     //std::cout<<"sim_time="<<sim_time<<"   endCurrentStep="<<endCurrentStep<<"\n";
     if (sim_time>=endCurrentStep) {
         endCurrentStep=sim_time+corr_taumin;
-        register int32_t N=0;
-        if (detector_type==0) N=gsl_ran_poisson(rng, nphot_sum);
-        else {
-            double d=gsl_ran_gaussian_ziggurat(rng, sqrt(nphot_sum*lindet_gain*lindet_var_factor))+nphot_sum*lindet_gain;
-            N=floor(d);
-        }
-        if (background_rate>0) {
-            N=N+gsl_ran_poisson(rng, background_rate*corr_taumin);
-        }
-        if (offset_rate>0 && offset_std>0) {
-            double o=gsl_ran_gaussian_ziggurat(rng, offset_std)+offset_rate;
-            N=N+round(o);
-        }
-        N=N-offset_correction;
-
-        if (detector_type==1) {
-            const int32_t Nmax=gsl_pow_int(2,lindet_bits)-1;
-            if (N>Nmax) N=Nmax;
-        }
-        if (N<min_photons) N=min_photons;
-        N=mmin(N, max_photons);
+        register int32_t N=getDetectedPhotons(nphot_sum);
         //std::cout<<"nphot_sum="<<nphot_sum<<"    N="<<N<<std::endl;
         if (online_correlation) {
             if (correlator_type==0) {
@@ -461,6 +426,42 @@ void FCSMeasurement::run_fcs_simulation(){
     }
 }
 
+int32_t FCSMeasurement::getDetectedPhotons(double nphot_sum) const {
+    register int32_t N=0;
+    if (detector_type==0) {
+        N=gsl_ran_poisson(rng, nphot_sum);
+    } else {
+        double d=gsl_ran_gaussian_ziggurat(rng, sqrt(nphot_sum*lindet_gain*lindet_gain*lindet_var_factor))+nphot_sum*lindet_gain;
+        N=floor(d);
+        if (d>max_photons) N=max_photons;
+    }
+    //if (detector_type==1) std::cout<<"#      nphot_sum="<<nphot_sum<<"  lindet_bits="<<lindet_bits"\n";
+    //if (detector_type==1) std::cout<<"*      "<<N<<"\n";
+    if (background_rate>0) {
+        N=N+gsl_ran_poisson(rng, background_rate*corr_taumin);
+    }
+    //if (detector_type==1) std::cout<<"**     "<<N<<"\n";
+    if (offset_rate>0 && offset_std>0) {
+        double o=gsl_ran_gaussian_ziggurat(rng, offset_std)+offset_rate;
+        N=N+round(o);
+    } else if (offset_rate>0 && offset_std<=0) {
+        N=N+round(offset_rate);
+    }
+    //if (detector_type==1) std::cout<<"***    "<<N<<"\n";
+    N=N-offset_correction;
+    //if (detector_type==1) std::cout<<"****   "<<N<<"\n";
+
+    if (detector_type==1) {
+        const int32_t Nmax=gsl_pow_int(2,lindet_bits)-1;
+        if (N>Nmax) N=Nmax;
+    }
+    //if (detector_type==1) std::cout<<"*****  "<<N<<"\n";
+    if (N<min_photons) N=min_photons;
+    //if (detector_type==1) std::cout<<"****** "<<N<<"\n";
+    if (N>max_photons) N=max_photons;
+    //if (detector_type==1) std::cout<<"*******"<<N<<"\n";
+    return N;
+}
 
 void FCSMeasurement::save() {
     FILE* f;
@@ -468,7 +469,7 @@ void FCSMeasurement::save() {
 
 
     sprintf(fn, "%s%scorr.dat", basename.c_str(), object_name.c_str());
-    printf("writing '%s' ...", fn);
+    std::cout<<"writing '"<<fn<<"' ...";
     f=fopen(fn, "w");
     unsigned long long istart=1;
     if (correlator_type==1) istart=0;
@@ -480,11 +481,11 @@ void FCSMeasurement::save() {
         else fprintf(f, "%15.10lf, %15.10lf\n", corr_tau[i], corr[i]);
     }
     fclose(f);
-    printf(" done!\n");
+    std::cout<<" done!\n";
     std::string corrfn=fn;
 
     sprintf(fn, "%s%scorrplot.plt", basename.c_str(), object_name.c_str());
-    printf("writing '%s' ...", fn);
+    std::cout<<"writing '"<<fn<<"' ...";
     f=fopen(fn, "w");
     double psf_r0=1.0/sqrt(1.0/detpsf_r0/detpsf_r0+1.0/expsf_r0/expsf_r0);
     double psf_z0=1.0/sqrt(1.0/detpsf_z0/detpsf_z0+1.0/expsf_z0/expsf_z0);
@@ -535,10 +536,10 @@ void FCSMeasurement::save() {
     }
 
     fclose(f);
-    printf(" done!\n");
+    std::cout<<" done!\n";
 
     sprintf(fn, "%s%scorrplot_simple.plt", basename.c_str(), object_name.c_str());
-    printf("writing '%s' ...", fn);
+    std::cout<<"writing '"<<fn<<"' ...";
     f=fopen(fn, "w");
     for (int plt=0; plt<2; plt++) {
         if (plt==0) {
@@ -555,34 +556,85 @@ void FCSMeasurement::save() {
     }
     fprintf(f, "pause -1\n");
     fclose(f);
-    printf(" done!\n");
-    
-    
+    std::cout<<" done!\n";
+
+
+    sprintf(fn, "%s%sdettest.dat", basename.c_str(), object_name.c_str());
+    std::cout<<"writing '"<<fn<<"' ...";
+    f=fopen(fn, "w");
+    long ndettests=1000;
+    for (  double n_phot=0; n_phot<=ndettest_max; n_phot=n_phot+ndettest_step) {
+        int32_t* Nm=(int32_t*)calloc(ndettests, sizeof(int32_t));
+        for (int i=0; i<ndettests; i++) {
+            Nm[i]=getDetectedPhotons(n_phot);
+        }
+
+        fprintf(f, "%15.10lf, %15.10lf, %15.10lf\n", n_phot, statisticsAverage(Nm, ndettests), statisticsVariance(Nm, ndettests));
+        free(Nm);
+    }
+    fclose(f);
+    std::cout<<" done!\n";
+    std::string dettestfn=fn;
+
+
+
+    sprintf(fn, "%s%sdettest.plt", basename.c_str(), object_name.c_str());
+    std::cout<<"writing '"<<fn<<"' ...";
+    f=fopen(fn, "w");
+    fprintf(f, "reset\n");
+    fprintf(f, "f(x,offset,a)=offset+a*x\n");
+    fprintf(f, "offset=0\n");
+    fprintf(f, "a=1\n");
+    fprintf(f, "fit f(x,offset,a) \"%s\" using 2:3 via offset, a\n", extract_file_name(dettestfn).c_str());
+    for (int plt=0; plt<2; plt++) {
+        if (plt==0) {
+            fprintf(f, "set terminal pdfcairo color solid font \"sans, 8\" linewidth 2 size 20cm,15cm\n");
+            fprintf(f, "set output \"%s\"\n", extract_file_name(basename+object_name+"dettest.pdf").c_str());
+        } else if (plt==1) {
+            fprintf(f, "set terminal wxt font \"sans, 8\"\n");
+            fprintf(f, "set output\n");
+        }
+
+        fprintf(f, "set size noratio\n");
+
+        fprintf(f, "set xlabel \"average signal I\"\n");
+        fprintf(f, "set ylabel \"signal variance sigma_I^2\"\n");
+        fprintf(f, "set title \"detector signal vs. variance: %s\"\n", description.c_str());
+        fprintf(f, "plot \"%s\" using 2:3 title 'data' with points"
+        ", f(x, offset, a) title sprintf('fit %%f + %%f * I', offset, a) with lines"
+        "\n", extract_file_name(dettestfn).c_str());
+        if (plt==1) fprintf(f, "pause -1\n");
+
+    }
+
+    fclose(f);
+    std::cout<<" done!\n";
+
     sprintf(fn, "%s%spsf.dat", basename.c_str(), object_name.c_str());
-    printf("writing '%s' ...", fn);
+    std::cout<<"writing '"<<fn<<"' ...";
     f=fopen(fn, "w");
     long npoints=1000;
     for (  long i=-npoints; i<=npoints; i++) {
         double x=psfplot_xmax*double(i)/double(npoints);
         double y=psfplot_ymax*double(i)/double(npoints);
         double z=psfplot_zmax*double(i)/double(npoints);
-        
+
         fprintf(f, "%15.10lf, %15.10lf, %15.10lf,  %15.10lf, %15.10lf, %15.10lf,  %15.10lf, %15.10lf, %15.10lf\n", x, illuminationEfficiency(x,0,0), detectionEfficiency(x,0,0), y, illuminationEfficiency(0,y,0), detectionEfficiency(0,y,0), z, illuminationEfficiency(0,0,z), detectionEfficiency(0,0,z));
     }
     fclose(f);
-    printf(" done!\n");
+    std::cout<<" done!\n";
     std::string psffn=fn;
-    
-    
+
+
     sprintf(fn, "%s%spsfxy.dat", basename.c_str(), object_name.c_str());
-    printf("writing '%s' ...", fn);
+    std::cout<<"writing '"<<fn<<"' ...";
     f=fopen(fn, "w");
     long npointsi=100;
     for (  long i=-npointsi; i<=npointsi; i++) {
         for (  long j=-npointsi; j<=npointsi; j++) {
             double x=psfplot_xmax*double(j)/double(npointsi);
             double y=psfplot_ymax*double(i)/double(npointsi);
-            
+
             fprintf(f, "%15.10lf ", illuminationEfficiency(x,y,0));
         }
         fprintf(f, "\n");
@@ -592,7 +644,7 @@ void FCSMeasurement::save() {
         for (  long j=-npointsi; j<=npointsi; j++) {
             double x=psfplot_xmax*double(j)/double(npointsi);
             double z=psfplot_zmax*double(i)/double(npointsi);
-            
+
             fprintf(f, "%15.10lf ", illuminationEfficiency(x,0,z));
         }
         fprintf(f, "\n");
@@ -602,7 +654,7 @@ void FCSMeasurement::save() {
         for (  long j=-npointsi; j<=npointsi; j++) {
             double y=psfplot_ymax*double(j)/double(npointsi);
             double z=psfplot_zmax*double(i)/double(npointsi);
-            
+
             fprintf(f, "%15.10lf ", illuminationEfficiency(0,y,z));
         }
         fprintf(f, "\n");
@@ -612,7 +664,7 @@ void FCSMeasurement::save() {
         for (  long j=-npointsi; j<=npointsi; j++) {
             double x=psfplot_xmax*double(j)/double(npointsi);
             double y=psfplot_ymax*double(i)/double(npointsi);
-            
+
             fprintf(f, "%15.10lf ", detectionEfficiency(x,y,0));
         }
         fprintf(f, "\n");
@@ -622,7 +674,7 @@ void FCSMeasurement::save() {
         for (  long j=-npointsi; j<=npointsi; j++) {
             double x=psfplot_xmax*double(j)/double(npointsi);
             double z=psfplot_zmax*double(i)/double(npointsi);
-            
+
             fprintf(f, "%15.10lf ", detectionEfficiency(x,0,z));
         }
         fprintf(f, "\n");
@@ -632,18 +684,18 @@ void FCSMeasurement::save() {
         for (  long j=-npointsi; j<=npointsi; j++) {
             double y=psfplot_ymax*double(j)/double(npointsi);
             double z=psfplot_zmax*double(i)/double(npointsi);
-            
+
             fprintf(f, "%15.10lf ", detectionEfficiency(0,y,z));
         }
         fprintf(f, "\n");
     }
     fprintf(f, "\n\n");
-    
+
     for (  long i=-npointsi; i<=npointsi; i++) {
         for (  long j=-npointsi; j<=npointsi; j++) {
             double x=psfplot_xmax*double(j)/double(npointsi);
             double y=psfplot_ymax*double(i)/double(npointsi);
-            
+
             fprintf(f, "%15.10lf ", illuminationEfficiency(x,y,0)*detectionEfficiency(x,y,0));
         }
         fprintf(f, "\n");
@@ -653,7 +705,7 @@ void FCSMeasurement::save() {
         for (  long j=-npointsi; j<=npointsi; j++) {
             double x=psfplot_xmax*double(j)/double(npointsi);
             double z=psfplot_zmax*double(i)/double(npointsi);
-            
+
             fprintf(f, "%15.10lf ", illuminationEfficiency(x,0,z)*detectionEfficiency(x,0,z));
         }
         fprintf(f, "\n");
@@ -663,19 +715,19 @@ void FCSMeasurement::save() {
         for (  long j=-npointsi; j<=npointsi; j++) {
             double y=psfplot_ymax*double(j)/double(npointsi);
             double z=psfplot_zmax*double(i)/double(npointsi);
-            
+
             fprintf(f, "%15.10lf ", illuminationEfficiency(0,y,z)*detectionEfficiency(0,y,z));
         }
         fprintf(f, "\n");
     }
     fprintf(f, "\n\n");
     fclose(f);
-    printf(" done!\n");
+    std::cout<<" done!\n";
     std::string psfxyfn=fn;
-    
-    
+
+
     sprintf(fn, "%s%spsf.plt", basename.c_str(), object_name.c_str());
-    printf("writing '%s' ...", fn);
+    std::cout<<"writing '"<<fn<<"' ...";
     f=fopen(fn, "w");
     fprintf(f, "deltax=%lf\n", psfplot_xmax/double(npoints));
     fprintf(f, "deltay=%lf\n", psfplot_ymax/double(npoints));
@@ -691,7 +743,7 @@ void FCSMeasurement::save() {
             fprintf(f, "set terminal wxt font \"sans, 5\"\n");
             fprintf(f, "set output\n");
         }
-        
+
         fprintf(f, "set size noratio\n");
         for (int mp=0; mp<2; mp++) {
             if (mp==0) fprintf(f, "set multiplot layout 1,3\n");
@@ -718,7 +770,7 @@ void FCSMeasurement::save() {
             "\"%s\" using (($7)*deltaz):9 title \"detection\" with lines, "
             "\"%s\" using (($7)*deltaz):(($8)*($9)) title \"ill * det\" with lines"
             "\n", extract_file_name(psffn).c_str(), extract_file_name(psffn).c_str(), extract_file_name(psffn).c_str());
-            if (mp==0) fprintf(f, "unset multiplot\n");        
+            if (mp==0) fprintf(f, "unset multiplot\n");
             if (plt==1) fprintf(f, "pause -1\n");
         }
         fprintf(f, "set multiplot layout 1,3\n");
@@ -734,9 +786,9 @@ void FCSMeasurement::save() {
         fprintf(f, "set title \"xy-cut: ill*det %s\"\n", description.c_str());
         fprintf(f, "plot \"%s\" using (($1)*deltaxi):(($2)*deltayi):3 matrix index 6 notitle with image"
         "\n", extract_file_name(psfxyfn).c_str());
-        fprintf(f, "unset multiplot\n");        
+        fprintf(f, "unset multiplot\n");
         if (plt==1) fprintf(f, "pause -1\n");
-        
+
         fprintf(f, "set multiplot layout 1,3\n");
         fprintf(f, "set xlabel \"position x [micron]\"\n");
         fprintf(f, "set ylabel \"position z [micron]\"\n");
@@ -750,9 +802,9 @@ void FCSMeasurement::save() {
         fprintf(f, "set title \"xz-cut: ill*det %s\"\n", description.c_str());
         fprintf(f, "plot \"%s\" using (($1)*deltaxi):(($2)*deltazi):3 matrix index 7 notitle with image"
         "\n", extract_file_name(psfxyfn).c_str());
-        fprintf(f, "unset multiplot\n");        
+        fprintf(f, "unset multiplot\n");
         if (plt==1) fprintf(f, "pause -1\n");
-        
+
         fprintf(f, "set multiplot layout 1,3\n");
         fprintf(f, "set xlabel \"position y [micron]\"\n");
         fprintf(f, "set ylabel \"position z [micron]\"\n");
@@ -766,18 +818,18 @@ void FCSMeasurement::save() {
         fprintf(f, "set title \"yz-cut: ill*det %s\"\n", description.c_str());
         fprintf(f, "plot \"%s\" using (($1)*deltayi):(($2)*deltazi):3 matrix index 8 notitle with image"
         "\n", extract_file_name(psfxyfn).c_str());
-        fprintf(f, "unset multiplot\n");        
+        fprintf(f, "unset multiplot\n");
         if (plt==1) fprintf(f, "pause -1\n");
-                
+
     }
-    
+
     fclose(f);
-    printf(" done!\n");
+    std::cout<<" done!\n";
 
     if (!online_correlation) {
         if (save_timeseries) {
             sprintf(fn, "%s%sts.dat", basename.c_str(), object_name.c_str());
-            printf("writing '%s' ...", fn);
+            std::cout<<"writing '"<<fn<<"' ...";
             f=fopen(fn, "w");
             double t=0;
             for (unsigned long long i=0; i<timesteps; i++) {
@@ -786,10 +838,10 @@ void FCSMeasurement::save() {
             }
             fclose(f);
             std::string tsfn=fn;
-            printf(" done!\n");
+            std::cout<<" done!\n";
 
             sprintf(fn, "%s%stsplot.plt", basename.c_str(), object_name.c_str());
-            printf("writing '%s' ...", fn);
+            std::cout<<"writing '"<<fn<<"' ...";
             f=fopen(fn, "w");
             for (int plt=0; plt<2; plt++) {
                 if (plt==0) {
@@ -811,7 +863,7 @@ void FCSMeasurement::save() {
                 if (plt==1) fprintf(f, "pause -1\n");
             }
             fclose(f);
-            printf(" done!\n");
+            std::cout<<" done!\n";
         }
     }
 
@@ -819,7 +871,7 @@ void FCSMeasurement::save() {
         if (online_correlation) {
             // in online-correlation-mode no complete timeseries is built up, only a binned one, so we save that
             sprintf(fn, "%s%sbts.dat", basename.c_str(), object_name.c_str());
-            printf("writing '%s' ...", fn);
+            std::cout<<"writing '"<<fn<<"' ...";
             f=fopen(fn, "w");
             double t=0;
             int b=round(save_binning_time/corr_taumin);
@@ -829,10 +881,10 @@ void FCSMeasurement::save() {
             }
             fclose(f);
             std::string tsfn=fn;
-            printf(" done!\n");
+            std::cout<<" done!\n";
 
             sprintf(fn, "%s%sbtsplot.plt", basename.c_str(), object_name.c_str());
-            printf("writing '%s' ...", fn);
+            std::cout<<"writing '"<<fn<<"' ...";
             f=fopen(fn, "w");
             for (int plt=0; plt<2; plt++) {
                 if (plt==0) {
@@ -854,12 +906,12 @@ void FCSMeasurement::save() {
                 if (plt==1) fprintf(f, "pause -1\n");
             }
             fclose(f);
-            printf(" done!\n");
+            std::cout<<" done!\n";
         } else {
             // if we are not in online-correlation mode we may simply calculate the binned timeseries from the
             // complete timeseries
             sprintf(fn, "%s%sbts.dat", basename.c_str(), object_name.c_str());
-            printf("writing '%s' ...", fn);
+            std::cout<<"writing '"<<fn<<"' ...";
             f=fopen(fn, "w");
             double t=0;
             int b=round(save_binning_time/corr_taumin);
@@ -876,10 +928,9 @@ void FCSMeasurement::save() {
             }
             fclose(f);
             std::string tsfn=fn;
-            printf(" done!\n");
-
+            std::cout<<" done!\n";
             sprintf(fn, "%s%sbtsplot.plt", basename.c_str(), object_name.c_str());
-            printf("writing '%s' ...", fn);
+            std::cout<<"writing '"<<fn<<"' ...";
             f=fopen(fn, "w");
             for (int plt=0; plt<2; plt++) {
                 if (plt==0) {
@@ -901,7 +952,7 @@ void FCSMeasurement::save() {
                 if (plt==1) fprintf(f, "pause -1\n");
             }
             fclose(f);
-            printf(" done!\n");
+            std::cout<<" done!\n";
         }
     }
 

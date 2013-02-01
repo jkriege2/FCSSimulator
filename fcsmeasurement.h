@@ -303,11 +303,11 @@ class FCSMeasurement: public FluorescenceMeasurement {
 
         /** \brief this is the maximum number of photons that may be detected/counted during one measurement timestep. Before the correlation/storing,
          *         the number of detected photons is limited to this. */
-        int64_t max_photons;
+        int32_t max_photons;
 
         /** \brief this is the minimum number of photons that may be detected/counted during one measurement timestep. Before the correlation/storing,
          *         the number of detected photons is limited to this. */
-        int64_t min_photons;
+        int32_t min_photons;
 
         /** \brief minimum wavelength of the detection filter (switched off if <0) */
         double det_wavelength_min;
@@ -321,14 +321,14 @@ class FCSMeasurement: public FluorescenceMeasurement {
         double offset_std;
         /** \brief remove this offset photon counts [photons/(detection step)] from the acquired signal before correlation */
         double offset_correction;
-        
+
         /** \brief plot PSF from 0 to psfplot_xmax in x direction in micrometers */
         double psfplot_xmax;
         /** \brief plot PSF from 0 to psfplot_ymax in y direction in micrometers */
         double psfplot_ymax;
         /** \brief plot PSF from 0 to psfplot_zmax in z direction in micrometers */
         double psfplot_zmax;
-        
+
 
 
         /*! \brief illumination intensity distribution
@@ -377,9 +377,15 @@ class FCSMeasurement: public FluorescenceMeasurement {
 
          /** \brief size of possibly used detection pixels in [microns] */
          double pixel_size;
-         
+
          double detectionEfficiency(double dx, double dy, double dz) const;
          double illuminationEfficiency(double dx, double dy, double dz) const;
+         int32_t getDetectedPhotons(double nphot_sum) const;
+
+         /** \brief maximum avg. photon counts for detector test */
+         double ndettest_max;
+         /** \brief avg. photon counts step size for detector test */
+         double ndettest_step;
 
     private:
 };

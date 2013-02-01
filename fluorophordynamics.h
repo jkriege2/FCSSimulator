@@ -22,55 +22,79 @@
 
 #define N_FLUORESCENT_STATES 32
 
+/*! \brief this is the virtual base class for any class describing fluorophor dynamics
+   \ingroup diff4_dynamic
 
-/** \brief this is the virtual base class for any class describing fluorophor dynamics
- *  \ingroup diff4_dynamic
- *
- * Basically this class provides an interface that allows to access a set of fluorescent particles which
- * are described (see FluorophorDynamics::walkerState) by a position within the simulational volume and
- * their internal (quantum-mechanical and photo-physical) properties (absorption cross section, fluorescence
- * efficiency, QM state, ...).
- *
- * If you want to implement a dynamic you will have to write a class that publicly inherits FluorophorDynamics
- * and mainly overwrites the propagate() and init() methods. If you don't wan to implement special features that
- * go beyond the things implemented here, you won't have to overwrite other methods. You can signal other classes
- * that your dnymaics implementation may be used in a multi-threaded way, by setting the protected data memeber
- * multi_threadable to \c true in your constructur. In this case you will have to provide both varieties of the
- * propagate() method, so another class may call \c propagate(w_start, w_end) with different parameters in parallel!
- *
- * If you need additional parameters from an ini file you will also have to reimplement read_config().
- *
- * \section FD_rng Random Number Generators
- * This base class already instaciates a GSL random number generator (taus2 as default) in the data member rng
- * which you may use for your implementation. By setting the rng property in the ini file you can select one of
- * these generators (for details, see the GSL documentation):
- * <center><tt>mt19937, ranlxs0, ranlxs1, ranlxs2, ranlxd1, ranlxd2, ranlux, ranlux389, cmrg, mrg, taus, taus2, gfsr4, rand, bsd, libc5, glibc2, rand48, ranf, ranmar, r250, tt800, minstd, knuthran2, knuthran2002, knuthran</tt></center>
- *
- * \section FD_init Initialisation of Simulation Environment
- * By giving the volume \f$ V \f$ of the simulational box and the fluorophor concentration \f$ c_f \f$ the method
- * change_walker_count() will initialize enough memory for \f$ \mbox{ceil}(v\cdot c_f) \f$ particles, set
- * then at random positions in the volume and init their state with the given \c init_... values.
- *
- *
- * \section FD_photophysics Photophysics Simulation
- * This class implements basic photophysics, if activated with use_photophysics.
- * The photophysics is implemented in propagate_photophysics() which you will have to call for every walker when implementing
- * the dynamics.  If you want to implement your own photophysics simulation, overwrite this method in derved classes!
- *
- * The photophysics simulation implements only a stump that supportrs at most N_FLUORESCENT_STATES fluorescent states \f$ i \f$ ,
- * with each a fluorescence efficiency \f$ \phi_i\geq0 \f$. The transition propabilities are defined in terms of a matrix
- * for the propability to go from state \f$ i \f$ to state \f$ f \f$ : \f$ p_{if}=\mathbb{P}(i\rightarrow f) \f$. The current state
- * is stored in qm_state. The function get_walker_qfluor() returns the fluorescence efficiency of the current walker in its current
- * state.
- *
- *
- * \section FD_threads threading support
- *
- * By setting \a use_two_walkerstates to \c true the class uses two arrays of walker_state's which may be interchanged by calling
- * swap_walker_states(). In this case the method propagate() writes to walker_state and all read functions use walker_stat_other
- * so it is possible to fill walker_state while the old walker_state_other is beeing read. If \a use_two_walkerstates is set to \c false
- * the two variables simply point to the same memory location.
- *
+  Basically this class provides an interface that allows to access a set of fluorescent particles which
+  are described (see FluorophorDynamics::walkerState) by a position within the simulational volume and
+  their internal (quantum-mechanical and photo-physical) properties (absorption cross section, fluorescence
+  efficiency, QM state, ...).
+
+  If you want to implement a dynamic you will have to write a class that publicly inherits FluorophorDynamics
+  and mainly overwrites the propagate() and init() methods. If you don't wan to implement special features that
+  go beyond the things implemented here, you won't have to overwrite other methods. You can signal other classes
+  that your dnymaics implementation may be used in a multi-threaded way, by setting the protected data memeber
+  multi_threadable to \c true in your constructur. In this case you will have to provide both varieties of the
+  propagate() method, so another class may call \c propagate(w_start, w_end) with different parameters in parallel!
+
+  If you need additional parameters from an ini file you will also have to reimplement read_config().
+
+  \section FD_rng Random Number Generators
+  This base class already instaciates a GSL random number generator (taus2 as default) in the data member rng
+  which you may use for your implementation. By setting the rng property in the ini file you can select one of
+  these generators (for details, see the GSL documentation):
+  <center><tt>mt19937, ranlxs0, ranlxs1, ranlxs2, ranlxd1, ranlxd2, ranlux, ranlux389, cmrg, mrg, taus, taus2, gfsr4, rand, bsd, libc5, glibc2, rand48, ranf, ranmar, r250, tt800, minstd, knuthran2, knuthran2002, knuthran</tt></center>
+
+  \section FD_init Initialisation of Simulation Environment
+  By giving the volume \f$ V \f$ of the simulational box and the fluorophor concentration \f$ c_f \f$ the method
+  change_walker_count() will initialize enough memory for \f$ \mbox{ceil}(v\cdot c_f) \f$ particles, set
+  then at random positions in the volume and init their state with the given \c init_... values.
+
+
+  \section FD_photophysics Photophysics Simulation
+  This class implements basic photophysics, if activated with use_photophysics.
+  The photophysics is implemented in propagate_photophysics() which you will have to call for every walker when implementing
+  the dynamics.  If you want to implement your own photophysics simulation, overwrite this method in derved classes!
+
+  The photophysics simulation implements only a stump that supportrs at most N_FLUORESCENT_STATES fluorescent states \f$ i \f$ ,
+  with each a fluorescence efficiency \f$ \phi_i\geq0 \f$. The transition propabilities are defined in terms of a matrix
+  for the propability to go from state \f$ i \f$ to state \f$ f \f$ : \f$ p_{if}=\mathbb{P}(i\rightarrow f) \f$. The current state
+  is stored in qm_state. The function get_walker_qfluor() returns the fluorescence efficiency of the current walker in its current
+  state.
+
+
+  \section FD_threads threading support
+
+  By setting \a use_two_walkerstates to \c true the class uses two arrays of walker_state's which may be interchanged by calling
+  swap_walker_states(). In this case the method propagate() writes to walker_state and all read functions use walker_stat_other
+  so it is possible to fill walker_state while the old walker_state_other is beeing read. If \a use_two_walkerstates is set to \c false
+  the two variables simply point to the same memory location.
+
+  \section FD_nfluorophores Additional Fluorophores per Walker
+  This feature allows each walker to have a set of  n_fluorophores fluorophores. The first fluorophore is at the center of the
+  particle. Then n_fluorophores-1 additional walkers are updated every step: Their position is the central position + a (potentially
+  random) displacement. The displacements are either fixed during the whole simulation or may be calculated by special rules in
+  each setp (e.g. an oscillator). Each of the n_fluorophores fluorophores may have it's own photophysics.
+
+  For the programmer this means that the fluorescence meausrement classes see more walkers than are actually simulated by the
+  dynamics classes. The number of walkers that have to be simulated in terms of dynamics can be read using get_walker_count().
+  The number of walkers that have to be taken into account for detection is returned by get_visible_walker_count().
+
+  The organization in walker_state is like this:
+  \verbatim
+                                        get_visible_walker_count()
+    ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+      get_walker_count()
+    **********************
+
+    +----------------------------------------------------------------------------------------------------+
+    | w1 | w2 | ... | wN || w12 | w22 | ... | wN2 | w13 | w23 | ... | wN3 |  ... | w1M | w2M | ... | wNM |
+    +----------------------------------------------------------------------------------------------------+
+      N: number of walkers
+      M: number of fluorophores per walker
+  \endverbatim
+
  */
 class FluorophorDynamics
 {
@@ -140,12 +164,19 @@ class FluorophorDynamics
             /** \brief this specifies the absorption spectrum to use for the fluorophor see get_spectral_efficiency() for details */
             int spectrum;
 
+            walkerState& operator=(walkerState& other);
+            walkerState(walkerState& other);
         };
 
         /** \brief the possible shapes of the simulational volume */
         enum VolumeShape {
             Box,
             Ball
+        };
+
+        enum AdditionalWalkerPositions {
+            SamePosition,
+            InSphere
         };
 
     protected:
@@ -158,6 +189,13 @@ class FluorophorDynamics
 
         /** \brief an array which holds the states of all walkers for potentially multiple timesteps*/
         walkerState* walker_state_other;
+
+        /** \brief x-displacement vector for additional walksers */
+        double* walker_dx;
+        /** \brief y-displacement vector for additional walksers */
+        double* walker_dy;
+        /** \brief z-displacement vector for additional walksers */
+        double* walker_dz;
 
         /** \brief if set \c true this class supports two vector of walker_states that may be interchanged! otherwise they
          *         point to the same data */
@@ -203,6 +241,9 @@ class FluorophorDynamics
 
         /** \brief if this is \c true the photophysics (bleaching, triplet, fluorescence lifetime) is also simulated */
         bool use_photophysics;
+
+        /** \brief number of fluorophores attatched to each particle (each fluorophore may have it's own photophysics and own position (fixed, relative to position of central walker) */
+        int n_fluorophores;
 
 
         /** \brief initial internal (quantum-mechanical) state of the walker: 0 (ground state), 1 (excited state), 2 (transition from 1 to 0), -1 (triplet state), -2 (bleached) */
@@ -250,7 +291,7 @@ class FluorophorDynamics
         gsl_rng * rng;
 
         /** \brief set the number of walkers and allocate the according amount of memory for walker_state */
-        void change_walker_count(unsigned long N_walker);
+        void change_walker_count(unsigned long N_walker, unsigned long N_fluorophores);
         /** \brief get the number of walkers for the current simulation settings */
         virtual unsigned long calc_walker_count();
 
@@ -292,6 +333,15 @@ class FluorophorDynamics
         bool endoftrajectory;
         /** \brief depletion propability with this propability a particle does not re-enter the simulation box */
         double depletion_propability;
+
+        /** \brief is this and use_photophysics are BOTH \c true, each additionalö walker will have it's own blinking dynamics */
+        bool additional_walker_photophysics;
+        /** \brief is this is \c true, the additional walkers are set non-existent if main-walker is non-existent */
+        bool additional_walker_off_if_main_off;
+        /** \brief how should the additional walkers be positioned */
+        AdditionalWalkerPositions additional_walker_position_mode;
+        /** \brief radius of sphere if additional_walker_position_mode==InSphere */
+        double additional_walker_sphere_radius;
     public:
         /** \brief class constructor with standard volume 30*30*30µm^3 and a concentration of 1nM */
         FluorophorDynamics(FluorophorManager* fluorophors, std::string object_name=std::string(""));
@@ -334,6 +384,9 @@ class FluorophorDynamics
         /** \brief return the number of walkers in the simulational box */
         inline unsigned long get_walker_count() { return walker_count; };
 
+        /** \brief return the number of visible walkers in the simulational box */
+        inline unsigned long get_visible_walker_count() { return walker_count*n_fluorophores; };
+
         /** \brief initialize the simulation environment (random walker positions ... */
         virtual void init();
 
@@ -352,6 +405,11 @@ class FluorophorDynamics
          *
          */
         virtual void propagate_photophysics(int walker);
+
+        /** \brief propagates the additional walkers
+         *
+         */
+        virtual void propagate_additional_walkers();
 
         /** \brief get state of i-th walker */
         inline walkerState get_walker_state(unsigned long i) { return walker_state_other[i]; };
@@ -423,9 +481,15 @@ class FluorophorDynamics
         GetMacro(bool, use_two_walkerstates);
         GetMacro(double, sim_time);
 
+        GetSetMacro(bool, additional_walker_photophysics)
+        GetSetMacro(bool, additional_walker_off_if_main_off)
+        GetSetMacroI(AdditionalWalkerPositions, additional_walker_position_mode, init_walkers())
+        GetSetMacroI(double, additional_walker_sphere_radius, init_walkers())
+
+
         void set_use_two_walkerstates(bool v) {
             use_two_walkerstates=v;
-            change_walker_count(calc_walker_count());
+            change_walker_count(calc_walker_count(), n_fluorophores);
         };
 
 
@@ -478,6 +542,8 @@ class FluorophorDynamics
 
         /** \brief initialize all walkers to the default settings */
         void init_walkers();
+        /** \brief initialize all additional walkers to the default settings */
+        void init_additional_walkers();
 };
 
 #endif // FLUOROPHORDYNAMICS_H

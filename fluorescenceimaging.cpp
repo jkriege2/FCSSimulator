@@ -114,7 +114,7 @@ void FluorescenceImaging::propagate(){
             double n0=I0*1e-6/Ephoton*sim_timestep;//*q_fluor*sigma_abs;
             for (size_t d=0; d<dyn.size(); d++) { // go through all dynamics objects that provide data for this measurement object
                 FluorophorDynamics::walkerState* dy=dyn[d]->get_walker_state();
-                unsigned long wc=dyn[d]->get_walker_count();
+                unsigned long wc=dyn[d]->get_visible_walker_count();
                 if (!dyn[d]->end_of_trajectory_reached()) for (unsigned long i=0; i<wc; i++) { // iterate through all walkers in the d-th dynamics object
                     if (dy[i].exists) {
                         double x0,y0,z0;
@@ -188,7 +188,7 @@ void FluorescenceImaging::save_current_images(){
             }
             fclose(f);
         }
-        printf(" done!\n");
+        std::cout<<" done!\n";
     }
 
     gsl_matrix_set_zero(avgImage);

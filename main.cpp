@@ -5,10 +5,12 @@
 #include "fcsmeasurement.h"
 #include "fluorophordynamics.h"
 #include "../../../LIB/trunk/datatable.h"
+#include "../../../LIB/trunk/teebuf.h"
 #include "dynamicsfromfiles2.h"
 #include "gridrandomwalkdynamics.h"
 #include "msdmeasurement.h"
 #include <gsl/gsl_matrix.h>
+
 
 #include <cstdio>
 #include <fstream>
@@ -26,6 +28,25 @@ std::map<std::string, FluorophorDynamics*> dynmap;
 std::map<std::string, FluorescenceMeasurement*> measmap;
 
 void do_sim(std::string inifilename) {
+
+    std::ofstream logfilestream;
+    ScopedDelayedStreamDoubler2 stdredirect;
+
+    try {
+        jkINIParser2 ini;
+        ini.readFile(inifilename);
+        std::string basename=ini.getSetAsString("simulation.basename", "");
+        logfilestream.open((basename+"log.txt").c_str());
+        stdredirect.redirect(std::cout, logfilestream);
+    } catch (std::exception& E) {
+        std::cout<<"Error: COULD NOT CREATE LOG-FILE \n   "<<E.what()<<std::endl;
+    }
+
+    clock_t start, endtime;
+    double cpu_time_used;
+
+    start = clock();
+
     try {
         dyn.clear();
         meas.clear();
@@ -33,12 +54,14 @@ void do_sim(std::string inifilename) {
         measmap.clear();
         jkINIParser2 ini;
         ini.readFile(inifilename);
-        ini.print();
         std::string basename=ini.getSetAsString("simulation.basename", "");
         //bool multithread=ini.getSetAsBool("simulation.multithread", false);
         double duration=ini.getSetAsDouble("simulation.duration", -1);
 
         mk_all_dir(extract_file_path(basename+"config.ini").c_str());
+        ini.print();
+
+
         cout<<"writing '"<<basename<<"config.ini' ... ";
         ini.writeFile(basename+"config.ini");
         cout<<"done!\n\n";
@@ -163,6 +186,7 @@ void do_sim(std::string inifilename) {
             while (dyn[0]->get_sim_time()<duration) {
                 for (size_t i=0; i<dyn.size(); i++) {
                     dyn[i]->propagate();
+                    dyn[i]->propagate_additional_walkers();
                 }
                 for (size_t i=0; i<meas.size(); i++) {
                     meas[i]->propagate();
@@ -181,6 +205,7 @@ void do_sim(std::string inifilename) {
                 done=true;
                 for (size_t i=0; i<dyn.size(); i++) {
                     dyn[i]->propagate();
+                    dyn[i]->propagate_additional_walkers();
                     done=done && dyn[i]->end_of_trajectory_reached();
                 }
                 for (size_t i=0; i<meas.size(); i++) {
@@ -226,7 +251,9 @@ void do_sim(std::string inifilename) {
     meas.clear();
     dynmap.clear();
     measmap.clear();
-
+    endtime = clock();
+    cpu_time_used = ((double) (endtime - start)) / CLOCKS_PER_SEC;
+    std::cout<<"\n\n=======================================================\n= simulation duration: "<<cpu_time_used<<" secs\n=======================================================\n";
 }
 
 int main(int argc, char* argv[])
@@ -243,8 +270,8 @@ int main(int argc, char* argv[])
 	    } else {
 	        files1.clear();
 		files1.push_back(fn);
-	    }  
-	    
+	    }
+
             for (size_t j=0; j<files1.size(); j++) {
                 files.push_back(files1[j]);
                 std::cout<<"   will simluate '"<<files1[j]<<"' ...\n";

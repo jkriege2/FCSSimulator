@@ -148,7 +148,7 @@ void DynamicsFromFiles2::read_config_internal(jkINIParser2& parser) {
     max_columns=parser.getSetAsInt("max_columns", max_columns);
     max_lines=parser.getSetAsInt("max_lines", max_lines);
 
-    
+
     std::string t="sequential";
     if (tmode==Parallel) t="parallel";
     if (tmode==SequentialParallel) t="sequentialparallel";
@@ -158,8 +158,8 @@ void DynamicsFromFiles2::read_config_internal(jkINIParser2& parser) {
     } else if (t=="sequentialparallel") {
         tmode=SequentialParallel;
     }
-    
-    
+
+
     if (shiftmode==HalfTime) t="halftime";
     else if (shiftmode==RandomDisplacedMean) t="mean_random";
     else if (shiftmode==EndEndDistanceCenter) t="end_end_center";
@@ -292,11 +292,11 @@ void DynamicsFromFiles2::init() {
     FluorophorDynamics::init();
 
     if (tmode==Sequential) {
-        change_walker_count(trajectory_count);
+        change_walker_count(trajectory_count, n_fluorophores);
     } else if (tmode==SequentialParallel) {
-        change_walker_count(trajectory_count);
+        change_walker_count(trajectory_count, n_fluorophores);
     } else { // tmode==Parallel
-        change_walker_count(trajectory_count);
+        change_walker_count(trajectory_count, n_fluorophores);
     }
 
     propagate();
@@ -319,7 +319,7 @@ void DynamicsFromFiles2::propagate(bool boundary_check) {
         for (int i=0; i<trajectory_count; i++) {
 	    walker_state[i].exists= (i==file_counter);
 	}
-      
+
         int lc=linecount[file_counter]; //data[file_counter].get_line_count();
         int cc=columncount[file_counter]; //data[file_counter].get_column_count();
         //std::cout<<"fc="<<file_counter<<"   lc="<<lc<<"   cc="<<cc<<"   f="<<file[file_counter]<<"   f.size()="<<file.size()<<std::endl;
@@ -379,16 +379,16 @@ void DynamicsFromFiles2::propagate(bool boundary_check) {
             };
         }
     } else if (tmode==SequentialParallel) {
-        
+
         if (file_counter<0 || file_counter+parallelTrajectories>trajectory_count) {
-	    setAllDone();	  
+	    setAllDone();
 	} else {
 	    for (int i=0; i<trajectory_count; i++) {
                 walker_state[i].exists= ((i>=file_counter) && (i<file_counter+parallelTrajectories));
 	    }
-	    
+
 	    bool anyRunning=false;
-	    
+
 	    for (int f=file_counter; f<file_counter+parallelTrajectories; f++) {
 		int lc=linecount[f]; //data[file_counter].get_line_count();
 		int cc=columncount[f]; //data[file_counter].get_column_count();
@@ -439,9 +439,9 @@ void DynamicsFromFiles2::propagate(bool boundary_check) {
                         walker_state[f].qm_state=(int)round(data[col_qmstate]);
                     }
                     //std::cout<<line_counter<<": x="<<walker_state[0].x<<" y="<<walker_state[0].y<<" z="<<walker_state[0].z<<" p_x="<<walker_state[0].p_x<<" p_y="<<walker_state[0].p_y<<" p_z="<<walker_state[0].p_z<<" q_fluor="<<walker_state[0].q_fluor<<" sigma_abs="<<walker_state[0].sigma_abs<<std::endl;
-                    
+
                     anyRunning=true;
-                } 
+                }
 	    }
 	    line_counter++;
             if (!anyRunning) {

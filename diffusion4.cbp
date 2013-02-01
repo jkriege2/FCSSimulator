@@ -78,6 +78,7 @@
 		<Unit filename="../../../LIB/trunk/shiftregister.h" />
 		<Unit filename="../../../LIB/trunk/statistics_tools.cpp" />
 		<Unit filename="../../../LIB/trunk/statistics_tools.h" />
+		<Unit filename="../../../LIB/trunk/teebuf.h" />
 		<Unit filename="../../../LIB/trunk/ticktock.h" />
 		<Unit filename="../../../LIB/trunk/tools.cpp" />
 		<Unit filename="../../../LIB/trunk/tools.h" />
