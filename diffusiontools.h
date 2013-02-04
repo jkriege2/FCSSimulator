@@ -21,7 +21,11 @@
 #include "../../../LIB/trunk/jkiniparser2.h"
 #include "../../../LIB/trunk/datatable.h"
 
-
+#ifdef __WINDOWS__
+#  define GNUPLOT_FONT "Arial"
+#else
+#  define GNUPLOT_FONT "sans"
+#endif
 
 /** \brief error handling: exceptions for FluorophorDynamics class (and descendents)
  *  \ingroup diff4_dynamic
@@ -262,6 +266,13 @@ sigma_abs=3.6e-20 \endverbatim
         }
 };
 
+class FluorophorDynamics; // forward
+class FluorescenceMeasurement; // forward
+
+extern std::vector<FluorophorDynamics*> dyn;
+extern std::vector<FluorescenceMeasurement*> meas;
+extern std::map<std::string, FluorophorDynamics*> dynmap;
+extern std::map<std::string, FluorescenceMeasurement*> measmap;
 
 
 #endif // DIFFUSIONTOOLS_H

@@ -14,7 +14,7 @@ BrownianDynamics::BrownianDynamics(FluorophorManager* fluorophors, std::string o
     diff_rot=100;
     use_rotational_diffusion=false;
     diffarea_x0[0]=0;
-    n_fluorophores=1;
+    n_fluorophores_local=1;
     for (int i=1; i<DCOUNT; i++) {
         diffarea_x0[i]=10000;
     }
@@ -33,7 +33,7 @@ BrownianDynamics::BrownianDynamics(FluorophorManager* fluorophors, double sim_x,
     diffarea_x0[0]=0;
     diff_rot=100;
     use_rotational_diffusion=false;
-    n_fluorophores=1;
+    n_fluorophores_local=1;
     init();
 }
 
@@ -47,7 +47,7 @@ BrownianDynamics::BrownianDynamics(FluorophorManager* fluorophors, double sim_ra
     msd_count=NULL;
     set_diff_coeff(10, 20);
     diffarea_x0[0]=0;
-    n_fluorophores=1;
+    n_fluorophores_local=1;
     for (int i=1; i<DCOUNT; i++) {
         diffarea_x0[i]=10000;
     }
@@ -67,11 +67,11 @@ BrownianDynamics::~BrownianDynamics()
 
 unsigned long BrownianDynamics::calc_walker_count() {
     unsigned long c=FluorophorDynamics::calc_walker_count();
-    return c*n_fluorophores;
+    return c*n_fluorophores_local;
 }
 
 void BrownianDynamics::read_config_internal(jkINIParser2& parser) {
-    n_fluorophores=parser.getSetAsInt("n_fluorophores", n_fluorophores);
+    n_fluorophores_local=parser.getSetAsInt("n_fluorophores_local", n_fluorophores_local);
     FluorophorDynamics::read_config_internal(parser);
     //diffarea_x0=parser.getAsDouble("diffarea_x0", this->sim_x/2.0);
     //set_diff_coeff(parser.getAsDouble("diff_coeff", diff_coeff[0]), parser.getAsDouble("diff_coeff1", diff_coeff[1]));
@@ -113,7 +113,7 @@ void BrownianDynamics::propagate(bool boundary_check){
     // now wepropagate every walker
     for (register unsigned long i=0; i<walker_count; i++) {
         if (walker_state[i].exists) {
-            if (i%n_fluorophores==0) {
+            if (i%n_fluorophores_local==0) {
                 walker_state[i].time++;
 
                 // translational diffusion
@@ -238,19 +238,19 @@ void BrownianDynamics::propagate(bool boundary_check){
                 //std::cout<<"prop "<<i<<std::endl;
 
             } else {
-                walker_state[i].x=walker_state[n_fluorophores*(i/n_fluorophores)].x;
-                walker_state[i].y=walker_state[n_fluorophores*(i/n_fluorophores)].y;
-                walker_state[i].z=walker_state[n_fluorophores*(i/n_fluorophores)].z;
-                walker_state[i].x0=walker_state[n_fluorophores*(i/n_fluorophores)].x0;
-                walker_state[i].y0=walker_state[n_fluorophores*(i/n_fluorophores)].y0;
-                walker_state[i].z0=walker_state[n_fluorophores*(i/n_fluorophores)].z0;
-                walker_state[i].time=walker_state[n_fluorophores*(i/n_fluorophores)].time;
-                walker_state[i].p_x=walker_state[n_fluorophores*(i/n_fluorophores)].p_x;
-                walker_state[i].p_y=walker_state[n_fluorophores*(i/n_fluorophores)].p_y;
-                walker_state[i].p_z=walker_state[n_fluorophores*(i/n_fluorophores)].p_z;
+                walker_state[i].x=walker_state[n_fluorophores_local*(i/n_fluorophores_local)].x;
+                walker_state[i].y=walker_state[n_fluorophores_local*(i/n_fluorophores_local)].y;
+                walker_state[i].z=walker_state[n_fluorophores_local*(i/n_fluorophores_local)].z;
+                walker_state[i].x0=walker_state[n_fluorophores_local*(i/n_fluorophores_local)].x0;
+                walker_state[i].y0=walker_state[n_fluorophores_local*(i/n_fluorophores_local)].y0;
+                walker_state[i].z0=walker_state[n_fluorophores_local*(i/n_fluorophores_local)].z0;
+                walker_state[i].time=walker_state[n_fluorophores_local*(i/n_fluorophores_local)].time;
+                walker_state[i].p_x=walker_state[n_fluorophores_local*(i/n_fluorophores_local)].p_x;
+                walker_state[i].p_y=walker_state[n_fluorophores_local*(i/n_fluorophores_local)].p_y;
+                walker_state[i].p_z=walker_state[n_fluorophores_local*(i/n_fluorophores_local)].p_z;
 
                 propagate_photophysics(i);
-                //std::cout<<"copy "<<i<<" from "<<n_fluorophores*(i/n_fluorophores)<<std::endl;
+                //std::cout<<"copy "<<i<<" from "<<n_fluorophores_local*(i/n_fluorophores_local)<<std::endl;
             }
         }
     }
@@ -281,10 +281,10 @@ void BrownianDynamics::propagate(bool boundary_check){
         fprintf(f, "fit msd_fit(x) \"%s\" using 1:2 via Diff\n", extract_file_name(basename+object_name+"msd.dat").c_str());
         for (int plt=0; plt<2; plt++) {
             if (plt==0) {
-                fprintf(f, "set terminal pdfcairo color solid font \"sans, 7\" linewidth 2 size 20cm,15cm\n");
+                fprintf(f, "set terminal pdfcairo color solid font \"%s, 7\" linewidth 2 size 20cm,15cm\n", GNUPLOT_FONT);
                 fprintf(f, "set output \"%s\"\n", extract_file_name(basename+object_name+"msd.pdf").c_str());
             } else if (plt==1) {
-                fprintf(f, "set terminal wxt font \"sans, 8\"\n");
+                fprintf(f, "set terminal wxt font \"%s, 8\"\n", GNUPLOT_FONT);
                 fprintf(f, "set output\n");
             }
             fprintf(f, "set title \"sigma_translation^2 against time\"\n");
@@ -319,7 +319,7 @@ void BrownianDynamics::propagate(bool boundary_check){
 
 std::string BrownianDynamics::report() {
     std::string s=FluorophorDynamics::report();
-    s+="n_fluorophores = "+inttostr(n_fluorophores)+" fluorophore(s) per particle/walker\n";
+    s+="n_fluorophores_local = "+inttostr(n_fluorophores_local)+" fluorophore(s) per particle/walker\n";
     s+="diff_coeff = "+doublevectortostr(diff_coeff, DCOUNT)+" micron^2/s\n";
     s+="diffarea_x0 = "+doublevectortostr(diffarea_x0, DCOUNT)+" micron\n";
     //s+="sigma_jump1 = MSD(sim_timestep) = "+floattostr(sigma_jump1/1e-3)+" nanometers\n";
@@ -412,10 +412,10 @@ void BrownianDynamics::test(unsigned int steps, unsigned int walkers) {
     fprintf(f, "reset\n");
     for (int plt=0; plt<2; plt++) {
         if (plt==0) {
-            fprintf(f, "set terminal pdfcairo color solid font \"sans, 7\" linewidth 2 size 20cm,15cm\n");
+            fprintf(f, "set terminal pdfcairo color solid font \"%s, 7\" linewidth 2 size 20cm,15cm\n", GNUPLOT_FONT);
             fprintf(f, "set output \"%s\"\n", extract_file_name(basename+object_name+"test_plot.pdf").c_str());
         } else if (plt==1) {
-            fprintf(f, "set terminal wxt font \"sans, 8\"\n");
+            fprintf(f, "set terminal wxt font \"%s, 8\"\n", GNUPLOT_FONT);
             fprintf(f, "set output\n");
         }
         fprintf(f, "set title \"3D Translation Trajectory\"\n");

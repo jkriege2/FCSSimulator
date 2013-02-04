@@ -96,7 +96,7 @@ class BrownianDynamics: public FluorophorDynamics
         uint64_t* msd_count;
 
         /** \brief number of fluorophores per random walker/particle */
-        unsigned int n_fluorophores;
+        unsigned int n_fluorophores_local;
 
         /** \brief used to read configuration data from ini file ... overwrite this to read data in derived classes.
          *

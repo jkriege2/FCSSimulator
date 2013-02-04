@@ -22,10 +22,6 @@ using namespace std;
 
 FluorophorManager* fluorophors;
 
-std::vector<FluorophorDynamics*> dyn;
-std::vector<FluorescenceMeasurement*> meas;
-std::map<std::string, FluorophorDynamics*> dynmap;
-std::map<std::string, FluorescenceMeasurement*> measmap;
 
 void do_sim(std::string inifilename) {
 
@@ -126,6 +122,7 @@ void do_sim(std::string inifilename) {
             std::string oname=ini.getAsString(gname+".object_name", lgname);
             std::vector<std::string> sources=tokenize_string(ini.getAsString(gname+".sources", ""), ",");
             std::string supergroup="";
+            int object_number=extract_right_int(gname);
             FluorescenceMeasurement* m=NULL;
             //std::cout<<"## i="<<i<<"/"<<groups_in_ini.size()<<"  gname="<<gname<<"  lgname="<<lgname<<"  oname="<<oname<<"  sources.size="<<sources.size()<<std::endl;
             if (sources.size()>0) {
@@ -140,6 +137,7 @@ void do_sim(std::string inifilename) {
                     m=new MSDMeasurement(fluorophors, oname);
                 }
                 if (m!=NULL) {
+                    m->set_object_number(object_number);
                     meas.push_back(m);
                     measmap[oname]=m;
                     measmap[lgname]=m;
@@ -165,6 +163,7 @@ void do_sim(std::string inifilename) {
         ofstream filestr;
         filestr.open ((basename+"config.txt").c_str(), fstream::out);
         for (size_t i=0; i<dyn.size(); i++) {
+            dyn[i]->save_results();
             filestr<<"\n\n\n---------------------------------------------------------------------------------------\n";
             filestr<<"- dynamics: "<< dyn[i]->get_object_name() <<"\n";
             filestr<<"---------------------------------------------------------------------------------------\n";
@@ -172,7 +171,7 @@ void do_sim(std::string inifilename) {
         }
 
         for (size_t i=0; i<meas.size(); i++) {
-            meas[i]->save();
+            meas[i]->save_results();
             filestr<<"\n\n\n---------------------------------------------------------------------------------------\n";
             filestr<<"- measurement: "<< meas[i]->get_object_name() <<"\n";
             filestr<<"---------------------------------------------------------------------------------------\n";
@@ -221,6 +220,7 @@ void do_sim(std::string inifilename) {
         }
         filestr.open ((basename+"config.txt").c_str(), fstream::out);
         for (size_t i=0; i<dyn.size(); i++) {
+            dyn[i]->save_results();
             filestr<<"\n\n\n---------------------------------------------------------------------------------------\n";
             filestr<<"- dynamics: "<< dyn[i]->get_object_name() <<"\n";
             filestr<<"---------------------------------------------------------------------------------------\n";
@@ -228,7 +228,7 @@ void do_sim(std::string inifilename) {
         }
 
         for (size_t i=0; i<meas.size(); i++) {
-            meas[i]->save();
+            meas[i]->save_results();
             filestr<<"\n\n\n---------------------------------------------------------------------------------------\n";
             filestr<<"- measurement: "<< meas[i]->get_object_name() <<"\n";
             filestr<<"---------------------------------------------------------------------------------------\n";

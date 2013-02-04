@@ -8,6 +8,7 @@ FluorescenceMeasurement::FluorescenceMeasurement(FluorophorManager* fluorophors,
     sim_time=0;
     sim_timestep=1e-6;
     description=objectname;
+    object_number=0;
 
      // init GSL random number generator
     gsl_rng_env_setup();
@@ -134,5 +135,10 @@ void FluorescenceMeasurement::propagate() {
 
 void FluorescenceMeasurement::finalize_sim() {
 
+}
+
+
+void FluorescenceMeasurement::save_results() {
+    save();
 }
 

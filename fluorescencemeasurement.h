@@ -78,7 +78,7 @@ class FluorescenceMeasurement: public TickTock
 
         /** \brief save the results of the measurement
          */
-        virtual void save()=0;
+        virtual void save_results();
 
         /** \brief this function is called once after the simulation has finished.
          */
@@ -88,8 +88,16 @@ class FluorescenceMeasurement: public TickTock
         GetMacro(double, sim_time);
         GetSetMacro(std::string, basename);
         GetSetMacro(std::string, object_name);
+        GetSetMacro(std::string, description);
+        GetSetMacro(int, object_number);
 
     protected:
+
+        /** \brief save the results of the measurement
+         */
+        virtual void save()=0;
+
+
         /** \brief read configuration from INI file */
         virtual void read_config_internal(jkINIParser2& parser);
 
@@ -116,6 +124,9 @@ class FluorescenceMeasurement: public TickTock
 
         /** \brief a description that can e.g. be used in plots */
         std::string description;
+
+        /** \brief number of the object */
+        int object_number;
 
         /** \brief a pointer to a vector of FluorophorDynamics::walkerState arrays.
          *

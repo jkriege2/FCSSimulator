@@ -125,11 +125,6 @@ class FCSMeasurement: public FluorescenceMeasurement {
         /** \brief report the object state */
         virtual std::string report();
 
-        /** \brief save the created data (time series and correlation function) into file
-         *         ts001.dat, ts002.dat, corr001.dat, corr002.dat ... as comma-separated values
-         */
-        virtual void save();
-
         virtual void finalize_sim();
 
         GetSetMacro(double, expsf_r0);
@@ -157,6 +152,12 @@ class FCSMeasurement: public FluorescenceMeasurement {
         GetSetMacro(double, lindet_gain);
         GetSetMacro(double, lindet_var_factor);
     protected:
+
+        /** \brief save the created data (time series and correlation function) into file
+         *         ts001.dat, ts002.dat, corr001.dat, corr002.dat ... as comma-separated values
+         */
+        virtual void save();
+
         /** \brief run the actual FCS simulation */
         void run_fcs_simulation();
 
@@ -328,6 +329,9 @@ class FCSMeasurement: public FluorescenceMeasurement {
         double psfplot_ymax;
         /** \brief plot PSF from 0 to psfplot_zmax in z direction in micrometers */
         double psfplot_zmax;
+
+        /** \brief a list of other fcs objects of which the results shall be plotted in one Gnuplot file */
+        std::vector<std::string> plot_with;
 
 
 

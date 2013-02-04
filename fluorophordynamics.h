@@ -342,6 +342,10 @@ class FluorophorDynamics
         AdditionalWalkerPositions additional_walker_position_mode;
         /** \brief radius of sphere if additional_walker_position_mode==InSphere */
         double additional_walker_sphere_radius;
+
+        /** \brief save the results of the measurement
+         */
+        virtual void save();
     public:
         /** \brief class constructor with standard volume 30*30*30µm^3 and a concentration of 1nM */
         FluorophorDynamics(FluorophorManager* fluorophors, std::string object_name=std::string(""));
@@ -431,12 +435,6 @@ class FluorophorDynamics
 
         /** \brief get pointer to array with all walker states */
         inline walkerState* get_walker_state() { return walker_state_other; };
-
-        /** \brief copy the array walker_state to the given location (this assumes that memory has already been reserved!)
-         *
-         * \return a pointer to the first memory location \b behind the copy
-         */
-        virtual walkerState* copy_walker_state(walkerState* start);
 
 
         /** \brief returns \c true if the end of the possible trajectories is reached, i.e. as long as this object may
@@ -544,6 +542,10 @@ class FluorophorDynamics
         void init_walkers();
         /** \brief initialize all additional walkers to the default settings */
         void init_additional_walkers();
+
+        /** \brief save the results of the measurement
+         */
+        virtual void save_results();
 };
 
 #endif // FLUOROPHORDYNAMICS_H

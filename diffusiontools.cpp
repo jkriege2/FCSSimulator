@@ -1,5 +1,10 @@
 #include "diffusiontools.h"
 
+std::vector<FluorophorDynamics*> dyn;
+std::vector<FluorescenceMeasurement*> meas;
+std::map<std::string, FluorophorDynamics*> dynmap;
+std::map<std::string, FluorescenceMeasurement*> measmap;
+
 FluorophorManager::FluorophorManager(std::string database_path){
     this->database_path=database_path;
     spectral_interpolation_type=gsl_interp_cspline;

@@ -214,12 +214,16 @@ FluorophorDynamics::~FluorophorDynamics()
 
 
 unsigned long FluorophorDynamics::calc_walker_count() {
+    //std::cout<<object_name<<": calc_walker_count() ...  c_fluor="<<c_fluor<<"  sim_radius="<<sim_radius<<"  sim_x="<<sim_x<<"  sim_y="<<sim_y<<"  sim_z="<<sim_z;
+    unsigned long r=0;
     if (volume_shape==Box) {
-        return (unsigned long)round(c_fluor*1e-9*6.022e23*sim_x*1e-5*sim_y*1e-5*sim_z*1e-5);
+        r= (unsigned long)round(c_fluor*1e-9*6.022e23*sim_x*1e-5*sim_y*1e-5*sim_z*1e-5);
     } else if (volume_shape==Ball) {
-        return (unsigned long)round(c_fluor*1e-9*6.022e23*4.0*M_PI/3.0*gsl_pow_3(sim_radius*1e-5));
+        r= (unsigned long)round(c_fluor*1e-9*6.022e23*4.0*M_PI/3.0*gsl_pow_3(sim_radius*1e-5));
     }
-    return 0;
+
+    //std::cout<<"  => result="<<r<<std::endl;
+    return r;
 }
 
 void FluorophorDynamics::read_config_internal(jkINIParser2& parser) {
@@ -414,6 +418,7 @@ void FluorophorDynamics::read_config(jkINIParser2& parser, std::string group, st
 }
 
 void FluorophorDynamics::change_walker_count(unsigned long N_walker, unsigned long N_fluorophores) {
+    std::cout<<object_name<<": change_walker_count ... N_walker="<<N_walker<<"   N_fluorophores="<<N_fluorophores<<"\n";
     if (walker_state!=NULL) {
         free(walker_state);
     }
@@ -440,10 +445,12 @@ void FluorophorDynamics::change_walker_count(unsigned long N_walker, unsigned lo
         }
     }
     walker_count=N_walker;
-    n_fluorophores=n_fluorophores;
+    n_fluorophores=N_fluorophores;
     init_walkers();
 }
+
 void FluorophorDynamics::init_walkers() {
+    std::cout<<object_name<<": initing all walkers ... walker_count="<<walker_count<<"   n_fluorophores="<<n_fluorophores<<"\n";
     for (unsigned long i=0; i<walker_count*n_fluorophores; i++) {
         init_walker(i);
     }
@@ -476,8 +483,8 @@ void FluorophorDynamics::init_additional_walkers() {
     if (n_fluorophores>1 && walker_count>0) {
         for (unsigned long i=0; i<walker_count; i++) {
             for (unsigned long j=1; j<n_fluorophores; j++) {
-                init_walker(i+j*n_fluorophores, walker_state[i].x, walker_state[i].y, walker_state[i].z);
-                //std::cout<<object_name<<": w["<<i+j*n_fluorophores<<"]: qeff="<<walker_state[i+j*n_fluorophores].q_fluor[walker_state[i+j*n_fluorophores].qm_state]<<"  state="<<walker_state[i+j*n_fluorophores].qm_state<<"\n";
+                init_walker(i+j*walker_count, walker_state[i].x, walker_state[i].y, walker_state[i].z);
+                //std::cout<<object_name<<": w["<<i+j*walker_count<<"]: qeff="<<walker_state[i+j*walker_count].q_fluor[walker_state[i+j*walker_count].qm_state]<<"  state="<<walker_state[i+j*walker_count].qm_state<<"\n";
             }
         }
         propagate_additional_walkers();
@@ -489,33 +496,33 @@ void FluorophorDynamics::propagate_additional_walkers() {
         if (additional_walker_position_mode==SamePosition) {
             for (long i=0; i<walker_count; i++) {
                 for (long j=1; j<n_fluorophores; j++) {
-                    walker_state[i+j*n_fluorophores].time=walker_state[i].time;
-                    walker_state[i+j*n_fluorophores].p_z=walker_state[i].p_z;
-                    walker_state[i+j*n_fluorophores].p_x=walker_state[i].p_x;
-                    walker_state[i+j*n_fluorophores].p_y=walker_state[i].p_y;
-                    walker_state[i+j*n_fluorophores].ix=walker_state[i].ix;
-                    walker_state[i+j*n_fluorophores].iy=walker_state[i].iy;
-                    walker_state[i+j*n_fluorophores].iz=walker_state[i].iz;
-                    walker_state[i+j*n_fluorophores].x=walker_state[i].x;
-                    walker_state[i+j*n_fluorophores].y=walker_state[i].y;
-                    walker_state[i+j*n_fluorophores].z=walker_state[i].z;
-                    if (additional_walker_off_if_main_off && !walker_state[i].exists) walker_state[i+j*n_fluorophores].exists=false;
+                    walker_state[i+j*walker_count].time=walker_state[i].time;
+                    walker_state[i+j*walker_count].p_z=walker_state[i].p_z;
+                    walker_state[i+j*walker_count].p_x=walker_state[i].p_x;
+                    walker_state[i+j*walker_count].p_y=walker_state[i].p_y;
+                    walker_state[i+j*walker_count].ix=walker_state[i].ix;
+                    walker_state[i+j*walker_count].iy=walker_state[i].iy;
+                    walker_state[i+j*walker_count].iz=walker_state[i].iz;
+                    walker_state[i+j*walker_count].x=walker_state[i].x;
+                    walker_state[i+j*walker_count].y=walker_state[i].y;
+                    walker_state[i+j*walker_count].z=walker_state[i].z;
+                    if (additional_walker_off_if_main_off && !walker_state[i].exists) walker_state[i+j*walker_count].exists=false;
                 }
             }
         } else if (additional_walker_position_mode==InSphere) {
             for (long i=0; i<walker_count; i++) {
                 for (long j=1; j<n_fluorophores; j++) {
-                    walker_state[i+j*n_fluorophores].time=walker_state[i].time;
-                    walker_state[i+j*n_fluorophores].p_z=walker_state[i].p_z;
-                    walker_state[i+j*n_fluorophores].p_x=walker_state[i].p_x;
-                    walker_state[i+j*n_fluorophores].p_y=walker_state[i].p_y;
-                    walker_state[i+j*n_fluorophores].ix=walker_state[i].ix;
-                    walker_state[i+j*n_fluorophores].iy=walker_state[i].iy;
-                    walker_state[i+j*n_fluorophores].iz=walker_state[i].iz;
-                    walker_state[i+j*n_fluorophores].x=walker_state[i].x+walker_dx[i+j*n_fluorophores];
-                    walker_state[i+j*n_fluorophores].y=walker_state[i].y+walker_dy[i+j*n_fluorophores];
-                    walker_state[i+j*n_fluorophores].z=walker_state[i].z+walker_dz[i+j*n_fluorophores];
-                    if (additional_walker_off_if_main_off && !walker_state[i].exists) walker_state[i+j*n_fluorophores].exists=false;
+                    walker_state[i+j*walker_count].time=walker_state[i].time;
+                    walker_state[i+j*walker_count].p_z=walker_state[i].p_z;
+                    walker_state[i+j*walker_count].p_x=walker_state[i].p_x;
+                    walker_state[i+j*walker_count].p_y=walker_state[i].p_y;
+                    walker_state[i+j*walker_count].ix=walker_state[i].ix;
+                    walker_state[i+j*walker_count].iy=walker_state[i].iy;
+                    walker_state[i+j*walker_count].iz=walker_state[i].iz;
+                    walker_state[i+j*walker_count].x=walker_state[i].x+walker_dx[i+j*walker_count];
+                    walker_state[i+j*walker_count].y=walker_state[i].y+walker_dy[i+j*walker_count];
+                    walker_state[i+j*walker_count].z=walker_state[i].z+walker_dz[i+j*walker_count];
+                    if (additional_walker_off_if_main_off && !walker_state[i].exists) walker_state[i+j*walker_count].exists=false;
                 }
             }
         }
@@ -523,17 +530,17 @@ void FluorophorDynamics::propagate_additional_walkers() {
         if (additional_walker_photophysics && use_photophysics) {
             for (long i=0; i<walker_count; i++) {
                 for (long j=1; j<n_fluorophores; j++) {
-                    propagate_photophysics(i+j*n_fluorophores);
+                    propagate_photophysics(i+j*walker_count);
                 }
             }
         }
-        for (long i=0; i<3; i++) {
+        /*for (long i=0; i<3; i++) {
             std::cout<<i<<": x="<<walker_state[i].x;
             for (long j=1; j<n_fluorophores; j++) {
-                std::cout<<"\n   dx"<<j<<"="<<walker_state[i+j*n_fluorophores].x-walker_state[i].x<<" q"<<j<<"="<<walker_state[i+j*n_fluorophores].q_fluor[walker_state[i+j*n_fluorophores].qm_state]<<" s"<<j<<"="<<walker_state[i+j*n_fluorophores].qm_state;
+                std::cout<<"\n   dx"<<j<<"="<<walker_state[i+j*walker_count].x-walker_state[i].x<<" q"<<j<<"="<<walker_state[i+j*walker_count].q_fluor[walker_state[i+j*walker_count].qm_state]<<" s"<<j<<"="<<walker_state[i+j*walker_count].qm_state;
             }
-        std::cout<<"\n";
-        }
+            std::cout<<"\n";
+        }*/
     }
 }
 
@@ -746,11 +753,6 @@ void FluorophorDynamics::store_step_protocol() {
 }*/
 
 
-FluorophorDynamics::walkerState* FluorophorDynamics::copy_walker_state(FluorophorDynamics::walkerState* start) {
-    FluorophorDynamics::walkerState* next=start+walker_count;
-    memcpy(start, walker_state, walker_count*sizeof(FluorophorDynamics::walkerState));
-    return next;
-}
 
 
 void FluorophorDynamics::load_all_used_spectra() {
@@ -870,7 +872,9 @@ void FluorophorDynamics::set_sim_box(double vx, double vy, double vz) {
 void FluorophorDynamics::set_sim_sphere(double rad) {
     volume_shape=Ball;
     sim_radius=rad;
-    change_walker_count(calc_walker_count(), n_fluorophores);
+    unsigned long wc=calc_walker_count();
+    //std::cout<<object_name<<": set_sim_sphere(rad="<<rad<<"):  walker_count="<<wc<<"  n_fluorophores="<<n_fluorophores<<std::endl;
+    change_walker_count(wc, n_fluorophores);
 };
 
 void FluorophorDynamics::finalize_sim() {
@@ -878,4 +882,164 @@ void FluorophorDynamics::finalize_sim() {
 
 double FluorophorDynamics::estimate_runtime() {
     return 0;
+}
+
+void FluorophorDynamics::save() {
+}
+
+void FluorophorDynamics::save_results() {
+    save();
+
+    FILE* f;
+    char fn[255];
+
+    if (additional_walker_position_mode==InSphere) {
+        sprintf(fn, "%s%sinspherefluorophores.dat", basename.c_str(), object_name.c_str());
+        std::cout<<"writing '"<<fn<<"' ...";
+        f=fopen(fn, "w");
+
+        int density_width=100;
+        uint64_t* countxy=(uint64_t*)calloc(density_width*density_width,sizeof(uint64_t));
+        uint64_t* countxz=(uint64_t*)calloc(density_width*density_width,sizeof(uint64_t));
+        uint64_t* countyz=(uint64_t*)calloc(density_width*density_width,sizeof(uint64_t));
+        uint64_t countN=0;
+        uint64_t countNout=0;
+
+        for (long i=0; i<walker_count; i++) {
+            for (long j=1; j<n_fluorophores; j++) {
+                int x=(walker_dx[i+j*walker_count]+additional_walker_sphere_radius)/(2.0*additional_walker_sphere_radius)*density_width;
+                int y=(walker_dy[i+j*walker_count]+additional_walker_sphere_radius)/(2.0*additional_walker_sphere_radius)*density_width;
+                int z=(walker_dz[i+j*walker_count]+additional_walker_sphere_radius)/(2.0*additional_walker_sphere_radius)*density_width;
+                if (x>=0 && y>=0 && z>=0 && x<density_width && y<density_width && z<density_width) {
+                    countxy[y*density_width+x]++;
+                    countxz[z*density_width+x]++;
+                    countyz[z*density_width+y]++;
+                    countN++;
+                } else {
+                    countNout++;
+                }
+            }
+        }
+        for (int y=0; y<density_width; y++) {
+            for (int x=0; x<density_width; x++) {
+                fprintf(f, "%s ", inttostr(countxy[y*density_width+x]).c_str());
+            }
+            fprintf(f, "\n");
+        }
+        fprintf(f, "\n\n");
+        for (int y=0; y<density_width; y++) {
+            for (int x=0; x<density_width; x++) {
+                fprintf(f, "%s ", inttostr(countxz[y*density_width+x]).c_str());
+            }
+            fprintf(f, "\n");
+        }
+        fprintf(f, "\n\n");
+        for (int y=0; y<density_width; y++) {
+            for (int x=0; x<density_width; x++) {
+                fprintf(f, "%s ", inttostr(countyz[y*density_width+x]).c_str());
+            }
+            fprintf(f, "\n");
+        }
+        fprintf(f, "\n\n");
+        int example_walker=mmin(walker_count, 5);
+        for (long i=0; i<mmin(walker_count, example_walker); i++) {
+            fprintf(f, "0 0 0\n");
+            for (long j=1; j<n_fluorophores; j++) {
+                fprintf(f, "%15.10lf %15.10lf %15.10lf\n", walker_dx[i+j*walker_count], walker_dy[i+j*walker_count], walker_dz[i+j*walker_count]);
+            }
+            fprintf(f, "\n\n");
+        }
+        fclose(f);
+        std::cout<<" done!\n";
+        std::string fnsphere=fn;
+
+        free(countxy);
+        free(countyz);
+        free(countxz);
+
+
+        sprintf(fn, "%s%sinspherefluorophores.plt", basename.c_str(), object_name.c_str());
+        std::cout<<"writing '"<<fn<<"' ...";
+        f=fopen(fn, "w");
+        fprintf(f, "sphere_radius=%lf\n", additional_walker_sphere_radius);
+        fprintf(f, "density_width=%s\n", inttostr(density_width).c_str());
+        fprintf(f, "countN=%s\n", inttostr(countN).c_str());
+        fprintf(f, "countNout=%s\n", inttostr(countNout).c_str());
+        fprintf(f, "deltax=%lf\n", 2.0*additional_walker_sphere_radius/double(density_width));
+        fprintf(f, "deltay=%lf\n", 2.0*additional_walker_sphere_radius/double(density_width));
+        fprintf(f, "deltaz=%lf\n", 2.0*additional_walker_sphere_radius/double(density_width));
+        for (int plt=0; plt<2; plt++) {
+            if (plt==0) {
+                fprintf(f, "set terminal pdfcairo color solid font \"%s, 5\" linewidth 2 size 20cm,15cm\n", GNUPLOT_FONT);
+                fprintf(f, "set output \"%s\"\n", extract_file_name(basename+object_name+"inspherefluorophores.pdf").c_str());
+            } else if (plt==1) {
+                fprintf(f, "set terminal wxt font \"%s, 5\"\n", GNUPLOT_FONT);
+                fprintf(f, "set output\n");
+            }
+
+            fprintf(f, "set size noratio\n");
+            fprintf(f, "set multiplot layout 1,3\n");
+            fprintf(f, "set xlabel \"position x [micron]\"\n");
+            fprintf(f, "set ylabel \"position y [micron]\"\n");
+            fprintf(f, "set size ratio deltay/deltax\n");
+            fprintf(f, "set title sprintf(\"fluorophore density in sphere: xy-projection: %s  (outside: %%d)\", countNout)\n", object_name.c_str());
+            fprintf(f, "plot [0:density_width*deltax] [0:density_width*deltay] \"%s\" using (($1)*deltax):(($2)*deltay):(($3)/countN) matrix index 0 notitle with image"
+            "\n", extract_file_name(fnsphere).c_str());
+            fprintf(f, "set title sprintf(\"fluorophore density in sphere: xz-projection: %s  (outside: %%d)\", countNout)\n", object_name.c_str());
+            fprintf(f, "set xlabel \"position x [micron]\"\n");
+            fprintf(f, "set ylabel \"position z [micron]\"\n");
+            fprintf(f, "set size ratio deltaz/deltax\n");
+            fprintf(f, "plot [0:density_width*deltax] [0:density_width*deltaz] \"%s\" using (($1)*deltax):(($2)*deltaz):(($3)/countN) matrix index 1 notitle with image"
+            "\n", extract_file_name(fnsphere).c_str());
+            fprintf(f, "set title sprintf(\"fluorophore density in sphere: yz-projection: %s  (outside: %%d)\", countNout)\n", object_name.c_str());
+            fprintf(f, "set xlabel \"position y [micron]\"\n");
+            fprintf(f, "set ylabel \"position z [micron]\"\n");
+            fprintf(f, "set size ratio deltaz/deltay\n");
+            fprintf(f, "plot [0:density_width*deltay] [0:density_width*deltaz] \"%s\" using (($1)*deltay):(($2)*deltaz):(($3)/countN) matrix index 2 notitle with image"
+            "\n", extract_file_name(fnsphere).c_str());
+            fprintf(f, "unset multiplot\n");
+            if (plt==1) fprintf(f, "pause -1\n");
+
+            for (int ex=0; ex<example_walker; ex++) {
+                fprintf(f, "set size noratio\n");
+                fprintf(f, "set multiplot layout 2,2\n");
+                fprintf(f, "set xlabel \"position x [micron]\"\n");
+                fprintf(f, "set ylabel \"position y [micron]\"\n");
+                fprintf(f, "set size ratio 1\n");
+                fprintf(f, "set title \"fluorophore in walker %d: xy-projection: %s\"\n", ex, object_name.c_str());
+                fprintf(f, "plot [-1.0*sphere_radius:sphere_radius] [-1.0*sphere_radius:sphere_radius] \"%s\" using 1:2 index %d notitle with points"
+                "\n", extract_file_name(fnsphere).c_str(), ex+3);
+                fprintf(f, "set xlabel \"position x [micron]\"\n");
+                fprintf(f, "set ylabel \"position z [micron]\"\n");
+                fprintf(f, "set title \"fluorophore in walker %d: xz-projection: %s\"\n", ex, object_name.c_str());
+                fprintf(f, "set size ratio 1\n");
+                fprintf(f, "plot [-1.0*sphere_radius:sphere_radius] [-1.0*sphere_radius:sphere_radius] \"%s\" using 1:3 index %d notitle with points"
+                "\n", extract_file_name(fnsphere).c_str(), ex+3);
+                fprintf(f, "set xlabel \"position y [micron]\"\n");
+                fprintf(f, "set ylabel \"position z [micron]\"\n");
+                fprintf(f, "set title \"fluorophore in walker %d: yz-projection: %s\"\n", ex, object_name.c_str());
+                fprintf(f, "set size ratio 1\n");
+                fprintf(f, "plot [-1.0*sphere_radius:sphere_radius] [-1.0*sphere_radius:sphere_radius] \"%s\" using 2:3 index %d notitle with points"
+                "\n", extract_file_name(fnsphere).c_str(), ex+3);
+                fprintf(f, "set xlabel \"position x [micron]\"\n");
+                fprintf(f, "set ylabel \"position y [micron]\"\n");
+                fprintf(f, "set zlabel \"position z [micron]\"\n");
+                fprintf(f, "set title \"fluorophore in walker %d: 3D-projection: %s\"\n", ex, object_name.c_str());
+                fprintf(f, "set size ratio 1\n");
+                fprintf(f, "splot [-1.0*sphere_radius:sphere_radius] [-1.0*sphere_radius:sphere_radius] [-1.0*sphere_radius:sphere_radius] \"%s\" using 1:2:3 index %d notitle with points"
+                "\n", extract_file_name(fnsphere).c_str(), ex+3);
+                fprintf(f, "unset multiplot\n");
+                if (plt==1) fprintf(f, "pause -1\n");
+            }
+        }
+
+
+        fclose(f);
+        std::cout<<" done!\n";
+    }
+
+
+
+
+
 }

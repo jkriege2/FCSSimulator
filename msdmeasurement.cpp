@@ -28,9 +28,9 @@ void MSDMeasurement::init() {
         ti.sum2_x=ti.sum_x=0;
         ti.sum2_y=ti.sum_y=0;
         ti.sum2_z=ti.sum_z=0;
-        ti.xmax=ti.xmax=0;
-        ti.ymax=ti.ymax=0;
-        ti.zmax=ti.zmax=0;
+        ti.xmax=ti.xmin=0;
+        ti.ymax=ti.ymin=0;
+        ti.zmax=ti.zmin=0;
         ti.cnt=0;
         trajectoryinfo.push_back(ti);
     }
@@ -162,10 +162,10 @@ void MSDMeasurement::save() {
 
     for (int plt=0; plt<2; plt++) {
         if (plt==0) {
-            fprintf(f, "set terminal pdfcairo color solid font \"sans, 7\" linewidth 2 size 20cm,15cm\n");
+            fprintf(f, "set terminal pdfcairo color solid font \"%s, 7\" linewidth 2 size 20cm,15cm\n", GNUPLOT_FONT);
             fprintf(f, "set output \"%s\"\n", extract_file_name(basename+object_name+"msdplot.pdf").c_str());
         } else if (plt==1) {
-            fprintf(f, "set terminal wxt font \"sans, 8\"\n");
+            fprintf(f, "set terminal wxt font \"%s, 8\"\n", GNUPLOT_FONT);
             fprintf(f, "set output\n");
         }
         fprintf(f, "set logscale x\n");

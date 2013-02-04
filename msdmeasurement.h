@@ -33,9 +33,9 @@ class MSDMeasurement : public FluorescenceMeasurement
         /** \brief report the object state */
         virtual std::string report();
 
-        virtual void save();
     protected:
 
+        virtual void save();
         /** \brief read configuration from INI file */
         virtual void read_config_internal(jkINIParser2& parser);
         /** \brief clear all internal data structures */
