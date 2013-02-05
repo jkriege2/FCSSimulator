@@ -2,7 +2,7 @@ all: Release
 
 LIB=../../../LIB/trunk
 CC=g++
-CFLAGS =  -Wall #--enable-auto-import
+CFLAGS =  -Wall -DNO_LIBTIFF -DJKIMAGE_USES_TINYTIFF #--enable-auto-import
 LDFLAGS = -lgsl -lgslcblas -lm
 
 Release: CFLAGS += -O2 -march=native -ffast-math
@@ -26,6 +26,9 @@ SRC_FILE= browniandynamics.cpp \
           $(LIB)/jkmathparser.cpp \
           $(LIB)/statistics_tools.cpp \
           $(LIB)/tools.cpp \
+          $(LIB)/image_tools.cpp \
+          $(LIB)/tinytiffreader.cpp \
+          $(LIB)/tinytiffwriter.cpp
 
 
 SRC_FILE_O = $(subst .cpp,.o,$(SRC_FILE))
@@ -57,7 +60,7 @@ $(SRC_FILE_O): %.o: %.cpp
 clean:
 	rm -f *.exe
 	rm -f ${EXECUTABLE}$(EXE_SUFFIX)
-
+	rm -f ${SRC_FILE_O}
 	rm -f *.o
 
 

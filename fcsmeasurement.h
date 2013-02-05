@@ -23,6 +23,8 @@
 #include "fluorescencemeasurement.h"
 #include "../../../LIB/trunk/correlator_multitau.h"
 #include "../../../LIB/trunk/statistics_tools.h"
+#include "../../../LIB/trunk/jkimage.h"
+#include "../../../LIB/trunk/tinytiffwriter.h"
 
 
 /*! \brief Fluorescence Correlation Spectroscopy (FCS) class
@@ -255,11 +257,11 @@ class FCSMeasurement: public FluorescenceMeasurement {
 
         /** \brief this array holds the generated time series */
         int32_t* timeseries;
-	uint64_t timeseries_size;
+        uint64_t timeseries_size;
 
         /** \brief this array holds the generated binned time series */
         int32_t* binned_timeseries;
-	uint64_t binned_timeseries_size;
+        uint64_t binned_timeseries_size;
 
         /** \brief the number of timesteps recorded in timeseries */
         unsigned long long timesteps;
@@ -363,6 +365,21 @@ class FCSMeasurement: public FluorescenceMeasurement {
 
          /** \brief gain of linear detector  */
          double lindet_gain;
+
+         /** \brief r-z-image to sample from for complex PSF of detection */
+         JKImage<double> psf_rz_image_detection;
+         /** \brief r-z-image to sample from for complex PSF of illumination */
+         JKImage<double> psf_rz_image_illumination;
+
+         /** \brief r-pixels in psf_rz_image_* */
+         uint32_t psf_rz_image_rwidth;
+         /** \brief z-pixels in psf_rz_image_* */
+         uint32_t psf_rz_image_zwidth;
+
+         /** \brief r-resolution (microns/pixel) in psf_rz_image_* */
+         double psf_rz_image_rresolution;
+         /** \brief z-resolution (microns/pixel) in psf_rz_image_* */
+         double psf_rz_image_zresolution;
 
 
 
