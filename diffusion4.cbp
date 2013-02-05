@@ -69,6 +69,9 @@
 		<Unit filename="../../../LIB/trunk/datatable.h" />
 		<Unit filename="../../../LIB/trunk/highrestimer.cpp" />
 		<Unit filename="../../../LIB/trunk/highrestimer.h" />
+		<Unit filename="../../../LIB/trunk/image_tools.cpp" />
+		<Unit filename="../../../LIB/trunk/image_tools.h" />
+		<Unit filename="../../../LIB/trunk/jkimage.h" />
 		<Unit filename="../../../LIB/trunk/jkiniparser2.cpp" />
 		<Unit filename="../../../LIB/trunk/jkiniparser2.h" />
 		<Unit filename="../../../LIB/trunk/jkmathparser.cpp" />
@@ -80,6 +83,10 @@
 		<Unit filename="../../../LIB/trunk/statistics_tools.h" />
 		<Unit filename="../../../LIB/trunk/teebuf.h" />
 		<Unit filename="../../../LIB/trunk/ticktock.h" />
+		<Unit filename="../../../LIB/trunk/tinytiffreader.cpp" />
+		<Unit filename="../../../LIB/trunk/tinytiffreader.h" />
+		<Unit filename="../../../LIB/trunk/tinytiffwriter.cpp" />
+		<Unit filename="../../../LIB/trunk/tinytiffwriter.h" />
 		<Unit filename="../../../LIB/trunk/tools.cpp" />
 		<Unit filename="../../../LIB/trunk/tools.h" />
 		<Unit filename="Makefile">
