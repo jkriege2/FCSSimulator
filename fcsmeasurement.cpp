@@ -357,8 +357,8 @@ double FCSMeasurement::detectionEfficiency(double dx, double dy, double dz) cons
             break;
         case 1:
             eff=exp(-2.0*gsl_pow_2(dz)/gsl_pow_2(detpsf_z0))
-                *(erf((pixel_size-2.0*dx)/(sq2*gsl_pow_2(detpsf_r0)))+erf((pixel_size+2.0*dx)/(gsl_pow_2(detpsf_r0)*sq2)))/(2.0*erf(pixel_size/(sq2*gsl_pow_2(detpsf_r0))))
-                *(erf((pixel_size-2.0*dy)/(sq2*gsl_pow_2(detpsf_r0)))+erf((pixel_size+2.0*dy)/(gsl_pow_2(detpsf_r0)*sq2)))/(2.0*erf(pixel_size/(sq2*gsl_pow_2(detpsf_r0))));
+                *(erf((pixel_size-2.0*dx)/(sq2*detpsf_r0))+erf((pixel_size+2.0*dx)/(detpsf_r0*sq2)))/(2.0*erf(pixel_size/(sq2*detpsf_r0)))
+                *(erf((pixel_size-2.0*dy)/(sq2*detpsf_r0))+erf((pixel_size+2.0*dy)/(detpsf_r0*sq2)))/(2.0*erf(pixel_size/(sq2*detpsf_r0)));
             break;
         case 2:
             eff=gsl_pow_2(detpsf_r0/gaussbeam_w(dz, detpsf_z0, detpsf_r0))*exp(-2.0*gsl_pow_2(r)/gsl_pow_2(gaussbeam_w(dz, detpsf_z0, detpsf_r0)));
