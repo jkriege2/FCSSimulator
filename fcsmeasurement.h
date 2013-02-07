@@ -12,6 +12,7 @@
 #include <gsl/gsl_randist.h>
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_math.h>
+#include <gsl/gsl_sf_trig.h>
 
 //#include <boost/thread/thread.hpp>
 
@@ -25,7 +26,6 @@
 #include "../../../LIB/trunk/statistics_tools.h"
 #include "../../../LIB/trunk/jkimage.h"
 #include "../../../LIB/trunk/tinytiffwriter.h"
-
 
 /*! \brief Fluorescence Correlation Spectroscopy (FCS) class
     \ingroup diff4_measurement
@@ -366,10 +366,17 @@ class FCSMeasurement: public FluorescenceMeasurement {
          /** \brief gain of linear detector  */
          double lindet_gain;
 
-         /** \brief r-z-image to sample from for complex PSF of detection */
+         /** \brief r-z-image to sample from for complex PSF of detection, this array represents a function \f$ f_z(r) \f$ */
          JKImage<double> psf_rz_image_detection;
+         /** \brief this contains the integral over each plane represented in psf_rz_image_detection, i.e. \f$ A_z=\int\limits_0^{2\pi}\int\limits_0^\infty f_z(r)\cdot r\;\mathrm{d}r\;\mathrm{d}\varphi \f$ */
+         std::vector<double> psf_rz_image_detection_integral;
+         double psf_rz_image_detection_integral_max;
+
          /** \brief r-z-image to sample from for complex PSF of illumination */
          JKImage<double> psf_rz_image_illumination;
+
+        /** \brief estimates the contents of psf_rz_image_detection_integral */
+         void estimate_psf_integrals();
 
          /** \brief r-pixels in psf_rz_image_* */
          uint32_t psf_rz_image_rwidth;
