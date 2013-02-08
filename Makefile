@@ -2,10 +2,10 @@ all: Release
 
 LIB=../../../LIB/trunk
 CC=g++
-CFLAGS =  -Wall -DNO_LIBTIFF -DJKIMAGE_USES_TINYTIFF #--enable-auto-import
+CFLAGS =  -Wall -DHAVE_INLINE -DNO_LIBTIFF -DJKIMAGE_USES_TINYTIFF -m64 -I../../../LIB/trunk/ #--enable-auto-import
 LDFLAGS = -lgsl -lgslcblas -lm
 
-Release: CFLAGS += -O2 -march=native -ffast-math
+Release: CFLAGS += -O3 -mtune=native -march=native -ffast-math -msse -msse2 -mfpmath=sse -malign-double
 
 Debug: CC += -DDEBUG -g
 
@@ -20,6 +20,7 @@ SRC_FILE= browniandynamics.cpp \
           main.cpp \
           gridrandomwalkdynamics.cpp \
           msdmeasurement.cpp \
+          childdynamics.cpp \
           $(LIB)/datatable.cpp \
           $(LIB)/highrestimer.cpp \
           $(LIB)/jkiniparser2.cpp \
@@ -47,9 +48,9 @@ SO_PATH=$(PREFIX)/lib
 endif
 
 
-Debug: ${EXECUTABLE}$(EXE_SUFFIX)
+Debug:  ${EXECUTABLE}$(EXE_SUFFIX)
 
-Release: ${EXECUTABLE}$(EXE_SUFFIX)
+Release:  ${EXECUTABLE}$(EXE_SUFFIX)
 
 ${EXECUTABLE}: ${SRC_FILE_O}
 	$(CC) $(CFLAGS) -o $(EXECUTABLE)$(EXE_SUFFIX) ${SRC_FILE_O} $(LDFLAGS)
@@ -62,6 +63,5 @@ clean:
 	rm -f ${EXECUTABLE}$(EXE_SUFFIX)
 	rm -f ${SRC_FILE_O}
 	rm -f *.o
-
 
 

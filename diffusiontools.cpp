@@ -160,3 +160,12 @@ double FluorophorManager::get_spectral_fluorescence(int spectrum, double wavelen
     gsl_interp_accel* acc=spectra[spectrum].accel_fl;
     return gsl_spline_eval_integ(spline, wavelength_start, wavelength_end, acc);
 }
+
+
+double gaussbeam_w(double z, double z0, double w0) {
+    return w0*sqrt(1.0+z*z/z0/z0);
+}
+
+double gaussbeam_R(double z, double z0) {
+    return z*(1.0+(z0*z0/z/z));
+}

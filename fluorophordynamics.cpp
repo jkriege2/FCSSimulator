@@ -50,6 +50,8 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, std::stri
     sim_time=0;
     sim_timestep=1e-6;
     init_fluorophor="atto488";
+    group="";
+    supergroup="";
 
     use_two_walkerstates=false;
     depletion_propability=0;
@@ -94,10 +96,13 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, std::stri
     this->sim_z=4;
     this->sim_radius=10;
     this->volume_shape=Box;
-    set_c_fluor(50);
+    set_c_fluor(0.1);
     set_sim_timestep(1e-6);
     init();
 }
+
+
+
 
 FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, double sim_x, double sim_y, double sim_z, double c_fluor, std::string object_name)
 {
@@ -109,6 +114,8 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, double si
     sim_timestep=1e-6;
     use_two_walkerstates=false;
     init_fluorophor="atto488";
+    group="";
+    supergroup="";
 
      // init GSL random number generator
     gsl_rng_env_setup();
@@ -163,6 +170,8 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, double si
     use_two_walkerstates=false;
     depletion_propability=0;
     init_fluorophor="atto488";
+    group="";
+    supergroup="";
 
      // init GSL random number generator
     gsl_rng_env_setup();
@@ -204,6 +213,7 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, double si
     trajectories.clear();
     init();
 }
+
 
 FluorophorDynamics::~FluorophorDynamics()
 {
@@ -339,6 +349,10 @@ void FluorophorDynamics::read_config_internal(jkINIParser2& parser) {
 }
 
 void FluorophorDynamics::read_config(jkINIParser2& parser, std::string group, std::string supergroup) {
+    this->group=group;
+    this->supergroup=supergroup;
+
+
     basename=parser.getSetAsString("simulation.basename", "");
     std::string rng=tolower(parser.getSetAsString("simulation.rng", "taus"));
     duration=parser.getAsDouble("simulation.duration", 1.0);
@@ -443,10 +457,20 @@ void FluorophorDynamics::change_walker_count(unsigned long N_walker, unsigned lo
         } else {
             walker_state_other=walker_state;
         }
+        if (walker_state==NULL || walker_dx==NULL ||  walker_dy==NULL ||  walker_dz==NULL ) {
+            throw FluorophorException(format("could not reserve enough memory walker_state=0x%X N_walker=%lu N_fluorophores=%lu sizeof(walkerState)=%lu", walker_state, N_walker, N_fluorophores, sizeof(walkerState)));
+        }
+
     }
     walker_count=N_walker;
     n_fluorophores=N_fluorophores;
     init_walkers();
+
+    if (notify_when_walkercount_changes.size()>0) {
+        for (size_t i=0; i<notify_when_walkercount_changes.size(); i++) {
+                notify_when_walkercount_changes[i]->handle_parent_walker_count_changed(walker_count, n_fluorophores);
+        }
+    }
 }
 
 void FluorophorDynamics::init_walkers() {
@@ -535,7 +559,7 @@ void FluorophorDynamics::propagate_additional_walkers() {
             }
         }
         /*for (long i=0; i<3; i++) {
-            std::cout<<i<<": x="<<walker_state[i].x;
+            std::cout<<i<<": x="<<walker_state[i].x<<"   "<<object_name;
             for (long j=1; j<n_fluorophores; j++) {
                 std::cout<<"\n   dx"<<j<<"="<<walker_state[i+j*walker_count].x-walker_state[i].x<<" q"<<j<<"="<<walker_state[i+j*walker_count].q_fluor[walker_state[i+j*walker_count].qm_state]<<" s"<<j<<"="<<walker_state[i+j*walker_count].qm_state;
             }
@@ -887,6 +911,10 @@ double FluorophorDynamics::estimate_runtime() {
 void FluorophorDynamics::save() {
 }
 
+bool FluorophorDynamics::depends_on(const FluorophorDynamics* other) const {
+    return false;
+}
+
 void FluorophorDynamics::save_results() {
     save();
 
@@ -1037,9 +1065,13 @@ void FluorophorDynamics::save_results() {
         fclose(f);
         std::cout<<" done!\n";
     }
+}
 
+void FluorophorDynamics::handle_parent_walker_count_changed(unsigned long N_walker, unsigned long N_fluorophores) {
+}
 
-
-
-
+void FluorophorDynamics::ensure_dynamics_is_hooked(FluorophorDynamics* other) {
+    if (count(notify_when_walkercount_changes.begin(), notify_when_walkercount_changes.end(), other)<=0) {
+        notify_when_walkercount_changes.push_back(other);
+    }
 }

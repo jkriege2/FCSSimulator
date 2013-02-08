@@ -13,7 +13,7 @@ FCSMeasurement::FCSMeasurement(FluorophorManager* fluorophors, std::string objec
     psf_rz_image_zwidth=1000;
 
     psf_rz_image_rresolution=0.01;
-    psf_rz_image_zresolution=0.01;
+    psf_rz_image_zresolution=0.02;
 
     psf_rz_image_detection.resize(psf_rz_image_rwidth, psf_rz_image_zwidth);
     psf_rz_image_detection.setAll(0);
@@ -31,6 +31,7 @@ FCSMeasurement::FCSMeasurement(FluorophorManager* fluorophors, std::string objec
     ill_distribution=0;
     det_distribution=0;
     pixel_size=0.4;
+    pixel_size_integrationdelta=0.04;
 
     detector_type=0;
     lindet_bits=14;
@@ -140,6 +141,7 @@ void FCSMeasurement::read_config_internal(jkINIParser2& parser) {
     det_distribution=str_to_det_distribution(parser.getSetAsString("det_distribution", ill_distribution_to_str(det_distribution)));
 
     pixel_size=parser.getSetAsDouble("pixel_size", pixel_size);
+    pixel_size_integrationdelta=parser.getSetAsDouble("pixel_size_integrationdelta", pixel_size_integrationdelta);
     expsf_r0=parser.getSetAsDouble("expsf_r0", expsf_r0);
     expsf_z0=parser.getSetAsDouble("expsf_z0", expsf_z0);
 
@@ -261,15 +263,34 @@ void FCSMeasurement::init(){
     psf_rz_image_illumination.resize(psf_rz_image_rwidth, psf_rz_image_zwidth);
     psf_rz_image_illumination.setAll(0);
 
+    if (det_distribution<3) {
+        for (uint32_t zz=0; zz<psf_rz_image_zwidth; zz++) {
+            const double z=(double(zz)-double(psf_rz_image_zwidth/2))*psf_rz_image_zresolution;
+            for (uint32_t rr=0; rr<psf_rz_image_rwidth; rr++) {
+                const double r=double(rr)*psf_rz_image_rresolution;
+                psf_rz_image_detection.setAt(rr,zz,detectionEfficiency(r,0,z));
+                //if (zz==psf_rz_image_zwidth/2) std::cout<<"("<<zz<<", "<<rr<<") -> ("<<z<<", "<<r<<") = "<<detectionEfficiency(r,0,z)<<", "<<illuminationEfficiency(r,0,z)<<"\n";
+            }
+        }
+    } else if (det_distribution==3) {
+        for (uint32_t zz=0; zz<psf_rz_image_zwidth; zz++) {
+            const double z=(double(zz)-double(psf_rz_image_zwidth/2))*psf_rz_image_zresolution;
+            for (uint32_t rr=0; rr<psf_rz_image_rwidth; rr++) {
+                const double r=double(rr)*psf_rz_image_rresolution;
+                const double eff=gsl_pow_2(detpsf_r0/gaussbeam_w(z, detpsf_z0, detpsf_r0))*exp(-2.0*gsl_pow_2(r)/gsl_pow_2(gaussbeam_w(z, detpsf_z0, detpsf_r0)));
+                psf_rz_image_detection.setAt(rr,zz,eff);
+            }
+        }
+    }
+
     for (uint32_t zz=0; zz<psf_rz_image_zwidth; zz++) {
         const double z=(double(zz)-double(psf_rz_image_zwidth)/2.0)*psf_rz_image_zresolution;
         for (uint32_t rr=0; rr<psf_rz_image_rwidth; rr++) {
             const double r=double(rr)*psf_rz_image_rresolution;
-            psf_rz_image_detection.setAt(rr,zz,detectionEfficiency(r,0,z));
             psf_rz_image_illumination.setAt(rr, zz, illuminationEfficiency(r,0,z));
-            //if (zz==psf_rz_image_zwidth/2) std::cout<<"("<<zz<<", "<<rr<<") -> ("<<z<<", "<<r<<") = "<<detectionEfficiency(r,0,z)<<", "<<illuminationEfficiency(r,0,z)<<"\n";
         }
     }
+
 
     estimate_psf_integrals();
 }
@@ -341,31 +362,46 @@ void FCSMeasurement::finalize_sim(){
 }
 
 void FCSMeasurement::estimate_psf_integrals() {
-    psf_rz_image_detection_integral.clear();
     double maxs=0;
+    psf_rz_image_detection_integral_max=1;
     for (uint32_t z=0; z<psf_rz_image_detection.height(); z++) {
         double sum=0;
+        double zz=(double(z)-double(psf_rz_image_detection.height()/2))*psf_rz_image_zresolution;
         for (uint32_t r=0; r<psf_rz_image_detection.width(); r++) {
-            double rr=double(r+1)*2.0*M_PI;
-            sum=sum+rr*psf_rz_image_detection(r, z);
+            double rr=M_PI*gsl_pow_2(double(r+1)*psf_rz_image_rresolution)-M_PI*gsl_pow_2(double(r)*psf_rz_image_rresolution);
+            sum=sum+rr*psf_rz_image_detection.get(r, z);
             //std::cout<<r<<", "<<psf_rz_image_detection(r, z)<<"|  ";
         }
-        psf_rz_image_detection_integral.push_back(sum);
+        //sum=square_integrate(0,0,zz,2*psf_rz_image_detection.width()*psf_rz_image_rresolution, psf_rz_image_rresolution, psf_rz_image_detection, psf_rz_image_rresolution, psf_rz_image_zresolution);
         if (sum>maxs) maxs=sum;
-        //std::cout<<"\n"<<sum<<"\n";
+        //std::cout<<zz<<"("<<z<<"): "<<sum<<"\n";
     }
     psf_rz_image_detection_integral_max=maxs;
-    for (uint32_t z=0; z<psf_rz_image_detection.height(); z++) {
-        psf_rz_image_detection_integral[z]=psf_rz_image_detection_integral[z]/psf_rz_image_detection_integral_max;
+}
+
+
+double FCSMeasurement::square_integrate(double dx, double dy, double dz, double a, double da, const JKImage<double>& image, double image_dr, double image_dz) const {
+    int apoints=ceil(a/da);
+    if (apoints<10) apoints=10;
+    double daa=a/double(apoints);
+    double sum=0;
+    double zz=double(image.height()/2)+dz/image_dz;
+    long long zzi=round(zz);
+    if (zzi<0) zzi=0;
+    if (zz>=0 && zz<=image.height()) {
+        for (int i=0; i<apoints*apoints; i++) {
+            const double x=double(i%apoints)*daa+daa/2.0-a/2.0;
+            const double y=double(i/apoints)*daa+daa/2.0-a/2.0;
+            const double r=sqrt(gsl_pow_2(x-dx)+gsl_pow_2(y-dy))/image_dr;
+            const double res=image.bilinear_interpolate<double>(r, zz);
+            sum=sum+res;
+            //if (i==5) std::cout<<r<<", "<<zz<<":  "<<res<<"\n";
+        }
+        sum=sum*daa*daa/psf_rz_image_detection_integral_max;
+    } else {
+        sum=0;
     }
-}
-
-double gaussbeam_w(double z, double z0, double w0) {
-    return w0*sqrt(1.0+z*z/z0/z0);
-}
-
-double gaussbeam_R(double z, double z0) {
-    return z*(1.0+(z0*z0/z/z));
+    return sum;
 }
 
 double FCSMeasurement::detectionEfficiency(double dx, double dy, double dz) const {
@@ -385,7 +421,7 @@ double FCSMeasurement::detectionEfficiency(double dx, double dy, double dz) cons
             eff=gsl_pow_2(detpsf_r0/gaussbeam_w(dz, detpsf_z0, detpsf_r0))*exp(-2.0*gsl_pow_2(r)/gsl_pow_2(gaussbeam_w(dz, detpsf_z0, detpsf_r0)));
             break;
         case 3:
-            //eff=square_integrate(dx, dy, dz, pixel_size, psf_rz_image_rresolution, psf_rz_image_detection, psf_rz_image_rresolution, psf_rz_image_zresolution);
+            eff=square_integrate(dx, dy, dz, pixel_size, pixel_size_integrationdelta, psf_rz_image_detection, psf_rz_image_rresolution, psf_rz_image_zresolution);
             break;
     }
     return eff;
@@ -712,6 +748,7 @@ void FCSMeasurement::save() {
         fprintf(f, "\n");
     }
     fprintf(f, "\n\n");
+    std::cout<<" .";
     for (  long i=-npointsi; i<=npointsi; i++) {
         for (  long j=-npointsi; j<=npointsi; j++) {
             double x=psfplot_xmax*double(j)/double(npointsi);
@@ -722,6 +759,7 @@ void FCSMeasurement::save() {
         fprintf(f, "\n");
     }
     fprintf(f, "\n\n");
+    std::cout<<" .";
     for (  long i=-npointsi; i<=npointsi; i++) {
         for (  long j=-npointsi; j<=npointsi; j++) {
             double y=psfplot_ymax*double(j)/double(npointsi);
@@ -732,6 +770,7 @@ void FCSMeasurement::save() {
         fprintf(f, "\n");
     }
     fprintf(f, "\n\n");
+    std::cout<<" .";
     for (  long i=-npointsi; i<=npointsi; i++) {
         for (  long j=-npointsi; j<=npointsi; j++) {
             double x=psfplot_xmax*double(j)/double(npointsi);
@@ -742,6 +781,7 @@ void FCSMeasurement::save() {
         fprintf(f, "\n");
     }
     fprintf(f, "\n\n");
+    std::cout<<" .";
     for (  long i=-npointsi; i<=npointsi; i++) {
         for (  long j=-npointsi; j<=npointsi; j++) {
             double x=psfplot_xmax*double(j)/double(npointsi);
@@ -752,6 +792,7 @@ void FCSMeasurement::save() {
         fprintf(f, "\n");
     }
     fprintf(f, "\n\n");
+    std::cout<<" .";
     for (  long i=-npointsi; i<=npointsi; i++) {
         for (  long j=-npointsi; j<=npointsi; j++) {
             double y=psfplot_ymax*double(j)/double(npointsi);
@@ -761,6 +802,7 @@ void FCSMeasurement::save() {
         }
         fprintf(f, "\n");
     }
+    std::cout<<" .";
     fprintf(f, "\n\n");
 
     for (  long i=-npointsi; i<=npointsi; i++) {
@@ -772,6 +814,7 @@ void FCSMeasurement::save() {
         }
         fprintf(f, "\n");
     }
+    std::cout<<" .";
     fprintf(f, "\n\n");
     for (  long i=-npointsi; i<=npointsi; i++) {
         for (  long j=-npointsi; j<=npointsi; j++) {
@@ -782,6 +825,7 @@ void FCSMeasurement::save() {
         }
         fprintf(f, "\n");
     }
+    std::cout<<" .";
     fprintf(f, "\n\n");
     for (  long i=-npointsi; i<=npointsi; i++) {
         for (  long j=-npointsi; j<=npointsi; j++) {
@@ -792,6 +836,7 @@ void FCSMeasurement::save() {
         }
         fprintf(f, "\n");
     }
+    std::cout<<" .";
     fprintf(f, "\n\n");
     fclose(f);
     std::cout<<" done!\n";
@@ -828,13 +873,13 @@ void FCSMeasurement::save() {
             fprintf(f, "wx=%lf\n", detpsf_r0);
             fprintf(f, "wy=%lf\n", detpsf_z0);
             fprintf(f, "wz=%lf\n", detpsf_z0);
-            fprintf(f, "fit g(x, wx) \"%s\" using 1:(($2)*($3)) via wx\n", extract_file_name(psffn).c_str());
-            fprintf(f, "fit g(x, wy) \"%s\" using 4:(($5)*($6)) via wy\n", extract_file_name(psffn).c_str());
-            fprintf(f, "fit g(x, wz) \"%s\" using 7:(($8)*($9)) via wz\n", extract_file_name(psffn).c_str());
+            fprintf(f, "fit Ax*g(x, wx) \"%s\" using 1:(($2)*($3)) via wx,Ax\n", extract_file_name(psffn).c_str());
+            fprintf(f, "fit Ay*g(x, wy) \"%s\" using 4:(($5)*($6)) via wy,Ay\n", extract_file_name(psffn).c_str());
+            fprintf(f, "fit Az*g(x, wz) \"%s\" using 7:(($8)*($9)) via wz,Az\n", extract_file_name(psffn).c_str());
             fprintf(f, "plot \"%s\" using 1:2 title \"illumination\" with lines, "
             "\"%s\" using 1:3 title \"detection\" with lines, "
             "\"%s\" using 1:(($2)*($3)) title \"ill * det\" with lines, "
-            "g(x, wx) title sprintf('gaussian fit, w=%%f micron', wx) with lines"
+            "Ax*g(x, wx) title sprintf('gaussian fit, w=%%f micron', wx) with lines"
             "\n", extract_file_name(psffn).c_str(), extract_file_name(psffn).c_str(), extract_file_name(psffn).c_str());
             if (mp==1 && plt==1) fprintf(f, "pause -1\n");
             fprintf(f, "set title \"PSF: y-direction: %s\"\n", description.c_str());
@@ -843,7 +888,7 @@ void FCSMeasurement::save() {
             fprintf(f, "plot \"%s\" using 4:5 title \"illumination\" with lines, "
             "\"%s\" using 4:6 title \"detection\" with lines, "
             "\"%s\" using 4:(($5)*($6)) title \"ill * det\" with lines, "
-            "g(x, wy) title sprintf('gaussian fit, w=%%f micron', wy) with lines"
+            "Ay*g(x, wy) title sprintf('gaussian fit, w=%%f micron', wy) with lines"
             "\n", extract_file_name(psffn).c_str(), extract_file_name(psffn).c_str(), extract_file_name(psffn).c_str());
             if (mp==1 && plt==1) fprintf(f, "pause -1\n");
             fprintf(f, "set title \"PSF: z-direction: %s\"\n", description.c_str());
@@ -852,7 +897,7 @@ void FCSMeasurement::save() {
             fprintf(f, "plot \"%s\" using 7:8 title \"illumination\" with lines, "
             "\"%s\" using 7:9 title \"detection\" with lines, "
             "\"%s\" using 7:(($8)*($9)) title \"ill * det\" with lines, "
-            "g(x, wz) title sprintf('gaussian fit, w=%%f micron', wz) with lines"
+            "Az*g(x, wz) title sprintf('gaussian fit, w=%%f micron', wz) with lines"
             "\n", extract_file_name(psffn).c_str(), extract_file_name(psffn).c_str(), extract_file_name(psffn).c_str());
             if (mp==0) fprintf(f, "unset multiplot\n");
             if (plt==1) fprintf(f, "pause -1\n");
@@ -1050,41 +1095,7 @@ void FCSMeasurement::save() {
     psf_rz_image_detection.save_tinytifffloat(fn);
     std::cout<<" done!\n";
 
-    sprintf(fn, "%s%sdetpsf_integral.dat", basename.c_str(), object_name.c_str());
-    std::cout<<"writing '"<<fn<<"' ...";
-    f=fopen(fn, "w");
-    for (  size_t i=0; i<=psf_rz_image_detection_integral.size(); i++) {
-        double z=(double(i)-double(psf_rz_image_detection_integral.size())/2.0)*psf_rz_image_zresolution;
-        fprintf(f, "%15.10lf, %15.10lf\n", z, psf_rz_image_detection_integral[i]);
-    }
-    fclose(f);
-    std::cout<<" done!\n";
-    std::string psfdetintfn=fn;
 
-    sprintf(fn, "%s%sdetpsf_integral.plt", basename.c_str(), object_name.c_str());
-    std::cout<<"writing '"<<fn<<"' ...";
-    f=fopen(fn, "w");
-    fprintf(f, "reset\n");
-    for (int plt=0; plt<2; plt++) {
-        if (plt==0) {
-            fprintf(f, "set terminal pdfcairo color solid font \"%s, 8\" linewidth 2 size 20cm,15cm\n", GNUPLOT_FONT);
-            fprintf(f, "set output \"%s\"\n", extract_file_name(basename+object_name+"detpsf_integral.pdf").c_str());
-        } else if (plt==1) {
-            fprintf(f, "set terminal wxt font \"%s, 8\"\n", GNUPLOT_FONT);
-            fprintf(f, "set output\n");
-        }
-
-        fprintf(f, "set size noratio\n");
-
-        fprintf(f, "set xlabel \"z [micrometer]\"\n");
-        fprintf(f, "set ylabel \"PSF integral\"\n");
-        fprintf(f, "set title \"PSF integral: %s\"\n", description.c_str());
-        fprintf(f, "plot \"%s\" with lines"
-        "\n", extract_file_name(psfdetintfn).c_str());
-        if (plt==1) fprintf(f, "pause -1\n");
-
-    }
-    std::cout<<" done!\n";
 
 
     sprintf(fn, "%s%sdetill.tif", basename.c_str(), object_name.c_str());
@@ -1262,6 +1273,7 @@ std::string FCSMeasurement::report(){
     s+="detpsf_r0 = "+floattostr(detpsf_r0)+" microns\n";
     s+="detpsf_z0 = "+floattostr(detpsf_z0)+" microns\n";
     s+="pixel_size = "+floattostr(pixel_size)+" microns\n";
+    s+="pixel_size_integrationdelta = "+floattostr(pixel_size_integrationdelta)+" microns\n";
     double psf_r0=1.0/sqrt(1.0/detpsf_r0/detpsf_r0+1.0/expsf_r0/expsf_r0);
     s+="confocal_psf_system = sqrt(1/expsf_r0^2 + 1/detpsf_r0^2) = "+floattostr(psf_r0)+" microns\n";
 

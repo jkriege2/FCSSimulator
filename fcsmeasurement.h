@@ -88,17 +88,9 @@
   the with is ALWAYS given as 1/e^2-width, so the gaussian takes the form
     \f[  g(x)=\exp(-2\cdot x^2/\sigma^2) \f]
 
-  These are the illumintaion modes:
-    - The gaussian illumintaion is gaussian in all three axes
-    - the SPIM illumination is gaussian only in the z-direction, whereas it is uniform in the lateral xy-plane.
-  .
+  These are the illumintaion modes are documented \link ill_distribution here.\endlink
 
-  The detection PSF modes are:
-    - The gaussian detection is gaussian in all three axes
-    - square_pixel detection is gaussian in z-direction and laterally it resembles a square function of width \c pixel_size
-      convolved with a gaussian of the given lateral width:
-        \[ \int\limits_{-a/2}^{a/2} \exp\left(-2\cdot\frac{(x-u)^2}{\sigma^2}\;\mathrm{d}u=\frac{\erf\left(\frac{a-2x}{\sqrt{2}\cdot s}\right)+\erf\left(\frac{a+2x}{\sqrt{2}\cdot s}\right)}{2\cdot\erf\left(a/(\sqrt{2}\cdot s)\right)} \]
-  .
+  The detection PSF modes are documented \link det_distribution here.\endlink
 
   It is possible to simulate different detectors with different properties:
     - <b>photon counting detectors:</b> Here the number of detected photons is simply determined by drawing a random number from a poissonian
@@ -108,6 +100,24 @@
       Then the actual detected value is drawn from a gaussian distribution with average \f$ n_{lin}(t) \f$  and variance
       \f$ n_{lin}(t)\cdot\text{lindet\_var\_factor} \f$. Then the value is cast to an integer (i.e. quantisation by an analog to digital converter).
       The range of these values is then limited to \f$ 0..2^{\text{lindet\_bits}}-1 \f$ to account for the finite resolution of the ADC.
+  .
+
+  Some detector PSFs are given as a radial symetric image \f$ \mbox{PSF}(r,z) \f$ only. The simulation is able to use such an image and
+  simulate the detection efficiency a square pixel of length \f$ a \f$ (parameter \a pixel_size ) would have in an optical system with
+  such a PSF. To do so it calculates this integral numerically:
+    \f[ I_{det}(x_o, y_o, z_o)=\left[\int\limits_{-a/2}^{a/2}\int\limits_{-a/2}^{a/2} f(\sqrt{(x-x_o)^2+(y-y_o)^2}, z_o)\;\mathrm{d}x\;\mathrm{d}y\right]/\max\limits_{z}\left[\iint\limits_{-\infty}^\infty f(\sqrt{x^2+y^2}, z)\;\mathrm{d}x\;\mathrm{d}y\right] \f]
+  Here a fluorescent point source is positioned at \f$ (x_o, y_o, z_o) \f$ in object space and the camera pixel is positioned symmetrically around
+  \f$ (0,0,0) \f$ . If the function \f$ f(r,z) \f$ is not known analytically or very complex to calculate, it may be stored as an image
+  (\a psf_rz_image_detection) with \a psf_rz_image_rwidth * \a psf_rz_image_zwidth pixels size and a resolution of \a psf_rz_image_rresolution
+  micrometers in radial and \a psf_rz_image_zresolution micrometers in z-direction. Note that the image is symmetric with respect to z, so the
+  real coordinates span the space \code -psf_rz_image_zresolution*(psf_rz_image_zwidth/2) ... psf_rz_image_zresolution*(psf_rz_image_zwidth/2)  \endcode
+  Values between pixels are estimated using bilinear interpolation.
+  The integral above is calculated analytically using a simple rectangualr grid on the pixel of size \a pixel_width (\f$ a \f$ ) micrometer. The grid-size is
+  \a pixel_size_integrationdelta micrometers, but may be reduced so the pixel is subdivided into at least 10*10 grid points (see square_integrate() ).
+  Then the approximation is:
+    \f[ N_{grid}=\max\left(10, \frac{\mbox{pixel\_width}}{\mbox{pixel\_size\_integrationdelta}}\right) \f]
+    \f[ \Delta a=\frac{\mbox{pixel\_width}}{N_{grid}} \f]
+    \f[ \tilde{I}_{det}(x_o, y_o, z_o)=\left[\sum\limits_{x=0}^{N_{grid}-1}\sum\limits_{y=0}^{N_{grid}-1} f(\sqrt{(x-N_{grid}/2-x_o)^2+(y-N_{grid}/2-y_o)^2}, z_o)\cdot \Delta a^2\right]/\max\limits_{z}\left[\sum\limits_{r=0}^{r_{max}} f(r, z)\cdot \left(\pi(r+1)^2-\pi r^2\right)\cdot\mbox{psf\_rz\_image\_zresolution}^2 \right] \f]
 
  */
 class FCSMeasurement: public FluorescenceMeasurement {
@@ -340,8 +350,10 @@ class FCSMeasurement: public FluorescenceMeasurement {
         /*! \brief illumination intensity distribution
 
             possible values:
-              - 0: gaussian
-              - 1: gaussian_SPIM (lateral: uniform, longitudinal: gaussian)
+              - 0: gaussian \f[ I(x,y,z)=\exp\left(-2\cdot\frac{x^2+y^2}{\mbox{expsf\_r0}^2}-2\cdot\frac{z^2}{\mbox{expsf\_z0}^2}\right) \f]
+              - 1: gaussian_SPIM (lateral: uniform, longitudinal: gaussian) \f[ I(x,y,z)=\exp\left(-2\cdot\frac{z^2}{\mbox{expsf\_z0}^2}\right) \f]
+              - 2: slit_SPIM (lateral: uniform, longitudinal: \f[ I(x,y,z)=\left(\frac{\sin(\pi\cdot z/\mbox{expsf\_z0})}{\pi\cdot z/\mbox{expsf\_z0}}\right)^2 \f]
+              - 3: gaussian_beam: \f[ I(x,y,z)=\left(\frac{\mbox{expsf\_r0}}{W(z, \mbox{expsf\_z0}, \mbox{expsf\_r0})}\right)^2\cdot\exp\left(-2\cdot\frac{x^2+y^2}{W(z, \mbox{expsf\_z0}, \mbox{expsf\_r0})^2}\right) \ \ \ \text{with}\ \ \  W(z, w_0, z_0)=w_0\cdot\sqrt{1+\frac{z^2}{z_0^2}} \f]
          */
          int ill_distribution;
 
@@ -366,16 +378,19 @@ class FCSMeasurement: public FluorescenceMeasurement {
          /** \brief gain of linear detector  */
          double lindet_gain;
 
-         /** \brief r-z-image to sample from for complex PSF of detection, this array represents a function \f$ f_z(r) \f$ */
+         /** \brief r-z-image to sample from for complex PSF of detection, this array represents a function \f$ f(r,z) \f$ */
          JKImage<double> psf_rz_image_detection;
-         /** \brief this contains the integral over each plane represented in psf_rz_image_detection, i.e. \f$ A_z=\int\limits_0^{2\pi}\int\limits_0^\infty f_z(r)\cdot r\;\mathrm{d}r\;\mathrm{d}\varphi \f$ */
-         std::vector<double> psf_rz_image_detection_integral;
+         /** \brief this contains the maximal integral over each plane represented in psf_rz_image_detection, i.e. \f$ A_{max}=\max\limits_z\int\limits_0^{2\pi}\int\limits_0^\infty f(r,z)\cdot r\;\mathrm{d}r\;\mathrm{d}\varphi \f$ */
          double psf_rz_image_detection_integral_max;
 
          /** \brief r-z-image to sample from for complex PSF of illumination */
          JKImage<double> psf_rz_image_illumination;
 
-        /** \brief estimates the contents of psf_rz_image_detection_integral */
+        /** \brief estimates the contents of psf_rz_image_detection_integral
+         *
+         * This function calculates \f[ \max\limits_{z}\left[\iint\limits_{-\infty}^\infty f(\sqrt{x^2+y^2}, z)\;\mathrm{d}x\;\mathrm{d}y\right]=\max\limits_{z}\left[\sum\limits_{r=0}^{r_{max}} f(r, z)\cdot \left(\pi(r+1)^2-\pi r^2\right)\cdot\mbox{psf_rz_image_rresolution}^2 \right] \f]
+         * The result is stored in psf_rz_image_detection_integral_max and the radial PSF \f$ f(r,z) \f$ is taken from psf_rz_image_detection.
+         */
          void estimate_psf_integrals();
 
          /** \brief r-pixels in psf_rz_image_* */
@@ -388,6 +403,22 @@ class FCSMeasurement: public FluorescenceMeasurement {
          /** \brief z-resolution (microns/pixel) in psf_rz_image_* */
          double psf_rz_image_zresolution;
 
+         /*! \brief integrate a radial function defined in image over a square patch (width/height a, resolved with into patches of size da*da or smaller)
+
+             The pixel is centered around (dx,dy,dz). The radial function \f$ f(r,z) \f$ is encoded by \a image (a r-z-image, with resolution \a imaghe_dr and \ image_dz).
+             The integration is performed by simply summing over the pixel's values. The radial function is linearly interpolated between two consecutive points.
+
+                \f[ N_{grid}=\max\left(10, \frac{a}{\mbox{da}}\right) \f]
+                \f[ \Delta a=\frac{a}{N_{grid}} \f]
+                \f[ \tilde{I}_{det}(\mbox{dx}, \mbox{dy}, \mbox{dz})=\left[\sum\limits_{x=0}^{N_{grid}-1}\sum\limits_{y=0}^{N_{grid}-1} f(\sqrt{\Delta a^2\cdot(x-N_{grid}/2-\mbox{dx}/\Delta a+0.5)^2+\Delta a^2\cdot(y-N_{grid}/2-\mbox{dy}/\Delta a+0.5)^2}, \mbox{dz})\cdot \Delta a^2\right]/\max\limits_{z}\left[\sum\limits_{r=0}^{r_{max}} f(r, z)\cdot \left(\pi(r+1)^2-\pi r^2\right)\cdot\mbox{image\_dr}^2 \right] \f]
+
+             The normalization constant \f$ \max\limits_{z}\left[\sum\limits_{r=0}^{r_{max}} f(r, z)\cdot \left(\pi(r+1)^2-\pi r^2\right)\cdot\mbox{image\_dr}^2 \right] \f$
+             is not evaluated in every call to this function, but only once in estimate_psf_integrals() which is called towards the end of init().
+
+             \note The integration square is divided into at least 10*10 grid points to guarantee a good integration accuracy!
+
+         */
+         double square_integrate(double dx, double dy, double dz, double a, double da, const JKImage<double>& image, double image_dr, double image_dz) const;
 
 
          std::string ill_distribution_to_str(int i) const;
@@ -396,8 +427,10 @@ class FCSMeasurement: public FluorescenceMeasurement {
          /*! \brief detection propability distribution
 
             possible values:
-              - 0: gaussian
-              - 1: square pixel (uses additional parameter pixel_size)
+              - 0: gaussian \f[ \mbox{PSF}(x,y,z)=\exp\left(-2\cdot\frac{x^2+y^2}{\mbox{detpsf\_r0}^2}-2\cdot\frac{z^2}{\mbox{detpsf\_z0}^2}\right) \f]
+              - 1: square pixel (uses additional parameter pixel_size) \f[ \mbox{PSF}(x,y,z)=\exp\left(-2\cdot\frac{z^2}{\mbox{detpsf\_z0}^2}\right)\cdot  \frac{\mbox{erf}\left[\frac{\mbox{pixel\_size}-2x}{\sqrt{2}\cdot\mbox{detpsf\_r0}}\right]+\mbox{erf}\left[\frac{\mbox{pixel\_size}+2x}{\sqrt{2}\cdot\mbox{detpsf\_r0}}\right]}{2\cdot\mbox{erf}\left[\frac{\mbox{pixel\_size}}{\sqrt{2}\cdot\mbox{detpsf\_r0}}\right]}\cdot\frac{\mbox{erf}\left[\frac{\mbox{pixel\_size}-2y}{\sqrt{2}\cdot\mbox{detpsf\_r0}}\right]+\mbox{erf}\left[\frac{\mbox{pixel\_size}+2y}{\sqrt{2}\cdot\mbox{detpsf\_r0}}\right]}{2\cdot\mbox{erf}\left[\frac{\mbox{pixel\_size}}{\sqrt{2}\cdot\mbox{detpsf\_r0}}\right]} \f]
+              - 2: gaussian beam \f[ \mbox{PSF}(x,y,z)=\left(\frac{\mbox{detpsf\_r0}}{W(z, \mbox{detpsf\_z0}, \mbox{detpsf\_r0})}\right)^2\cdot\exp\left(-2\cdot\frac{x^2+y^2}{W(z, \mbox{detpsf\_z0}, \mbox{detpsf\_r0})^2}\right) \ \ \ \text{with}\ \ \  W(z, w_0, z_0)=w_0\cdot\sqrt{1+\frac{z^2}{z_0^2}} \f]
+              - 3: gaussian beam pixel: the same as 2 ("gaussian beam") but with a square pixel (uses additional parameter pixel_size) \f[ \mbox{PSF}(x,y,z)=\frac{\iint\limits_{-\mbox{pixel_size}/2}^{+\mbox{pixel_size}/2}f(\sqrt{x^2+y^2}, z)\;\mathrm{d}x\;\mathrm{d}y}{\max\limits_z\iint\limits_{-\infty}^\infty f(\sqrt{x^2+y^2}, z)\;\mathrm{d}x\;\mathrm{d}y} \f] with \f[ f(r,z)=\left(\frac{\mbox{detpsf\_r0}}{W(z, \mbox{detpsf\_z0}, \mbox{detpsf\_r0})}\right)^2\cdot\exp\left(-2\cdot\frac{r^2}{W(z, \mbox{detpsf\_z0}, \mbox{detpsf\_r0})^2}\right) \f] Here the 2D-integral over the pixel is calculated as described in the main documentation of this class
          */
          int det_distribution;
          std::string det_distribution_to_str(int i) const;
@@ -405,6 +438,12 @@ class FCSMeasurement: public FluorescenceMeasurement {
 
          /** \brief size of possibly used detection pixels in [microns] */
          double pixel_size;
+         /*! \brief size of an integration patch on the pixel for some detection PSF models [microns]
+
+             If the program has to integrate over a pixel of width/height pixel_size, it actually calculates a sum over the
+             value of the PSF taken on a grid with width pixel_size_integrationdelta on the pixel.
+         */
+         double pixel_size_integrationdelta;
 
          double detectionEfficiency(double dx, double dy, double dz) const;
          double illuminationEfficiency(double dx, double dy, double dz) const;

@@ -275,4 +275,7 @@ extern std::map<std::string, FluorophorDynamics*> dynmap;
 extern std::map<std::string, FluorescenceMeasurement*> measmap;
 
 
+extern double gaussbeam_w(double z, double z0, double w0);
+
+extern double gaussbeam_R(double z, double z0);
 #endif // DIFFUSIONTOOLS_H

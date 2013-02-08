@@ -96,6 +96,8 @@
 		</Unit>
 		<Unit filename="browniandynamics.cpp" />
 		<Unit filename="browniandynamics.h" />
+		<Unit filename="childdynamics.cpp" />
+		<Unit filename="childdynamics.h" />
 		<Unit filename="diffusion4.dox" />
 		<Unit filename="diffusion4.ini">
 			<Option target="Debug" />

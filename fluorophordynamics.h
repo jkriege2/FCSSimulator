@@ -4,6 +4,7 @@
 #include <map>
 #include <exception>
 #include <cstring>
+#include <algorithm>
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
@@ -275,8 +276,6 @@ class FluorophorDynamics
         std::string object_name;
 
 
-
-
         /** \brief shape of the simulational volume
          *
          * - \c 0 = box  \c [0..sim_x]*[0..sim_y]*[0..sim_z]
@@ -289,6 +288,11 @@ class FluorophorDynamics
 
         /** \brief GSL helper object: random number generator */
         gsl_rng * rng;
+
+        virtual void handle_parent_walker_count_changed(unsigned long N_walker, unsigned long N_fluorophores);
+
+        /** \brief all classes in this list are notified (by calling their handle_parent_walker_count_changed() method) if the walker count in this class changed. \note The hooks are called AFTER iit_walkers() !!! */
+        std::vector<FluorophorDynamics*> notify_when_walkercount_changes;
 
         /** \brief set the number of walkers and allocate the according amount of memory for walker_state */
         void change_walker_count(unsigned long N_walker, unsigned long N_fluorophores);
@@ -311,6 +315,11 @@ class FluorophorDynamics
 
         /** \brief the basename of the current simulation */
         std::string basename;
+
+        /** \brief group name of this object */
+        std::string group;
+        /** \brief supergroup name of this object */
+        std::string supergroup;
 
         /** \brief trajectory store */
         std::vector<std::vector<walkerState> > trajectories;
@@ -349,6 +358,7 @@ class FluorophorDynamics
     public:
         /** \brief class constructor with standard volume 30*30*30µm^3 and a concentration of 1nM */
         FluorophorDynamics(FluorophorManager* fluorophors, std::string object_name=std::string(""));
+
 
         /** \brief class constructor, initialises with a box of the given dimensions */
         FluorophorDynamics(FluorophorManager* fluorophors, double sim_x, double sim_y, double sim_z, double c_fluor, std::string object_name=std::string(""));
@@ -476,6 +486,8 @@ class FluorophorDynamics
         GetSetMacro(bool, use_photophysics);
         GetSetMacro(std::string, basename);
         GetSetMacro(std::string, object_name);
+        GetMacro(std::string, group);
+        GetMacro(std::string, supergroup);
         GetMacro(bool, use_two_walkerstates);
         GetMacro(double, sim_time);
 
@@ -546,6 +558,15 @@ class FluorophorDynamics
         /** \brief save the results of the measurement
          */
         virtual void save_results();
+
+        /*! \brief returns \c true , if this object depends on the given \ other object.
+
+            This function is used to determine the order in which the propagate() method of all dynamics objects in this
+            simulation is called.
+         */
+        virtual bool depends_on(const FluorophorDynamics* other) const;
+
+        void ensure_dynamics_is_hooked(FluorophorDynamics* other);
 };
 
 #endif // FLUOROPHORDYNAMICS_H

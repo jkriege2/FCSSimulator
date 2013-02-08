@@ -1,14 +1,15 @@
 #include <iostream>
 #include "browniandynamics.h"
 #include "fluorescenceimaging.h"
-#include "../../../LIB/trunk/jkiniparser2.h"
+#include "jkiniparser2.h"
 #include "fcsmeasurement.h"
 #include "fluorophordynamics.h"
-#include "../../../LIB/trunk/datatable.h"
-#include "../../../LIB/trunk/teebuf.h"
+#include "datatable.h"
+#include "teebuf.h"
 #include "dynamicsfromfiles2.h"
 #include "gridrandomwalkdynamics.h"
 #include "msdmeasurement.h"
+#include "childdynamics.h"
 #include <gsl/gsl_matrix.h>
 
 
@@ -17,11 +18,17 @@
 #include <unistd.h>
 #include <vector>
 #include <map>
+#include <algorithm>
 
 using namespace std;
 
 FluorophorManager* fluorophors;
 
+struct DynamicsSortFunctor {
+  bool operator() (const FluorophorDynamics* i, const FluorophorDynamics* j) {
+      return j->depends_on(i);
+  }
+} myDynamicsSortFunctor;
 
 void do_sim(std::string inifilename) {
 
@@ -90,6 +97,9 @@ void do_sim(std::string inifilename) {
             } else if (lgname.find("dynfile")==0 && lgname.size()>7) {
                 supergroup="dynfile";
                 d=new DynamicsFromFiles2(fluorophors, oname);
+            } else if (lgname.find("child")==0 && lgname.size()>5) {
+                supergroup="child";
+                d=new ChildDynamics(fluorophors, oname);
             }
             if (d!=NULL) {
                 dyn.push_back(d);
@@ -102,12 +112,21 @@ void do_sim(std::string inifilename) {
                 }
                 d->read_config(ini, gname, supergroup);
                 std::cout<<"created "<<supergroup<<" dynamics object '"<<oname<<"' ("<<lgname<<")\n";
-                d->init();
-                std::cout<<"initialized "<<supergroup<<" dynamics object '"<<oname<<"' ("<<lgname<<")\n";
-                double rt=d->estimate_runtime();
-                if (rt>estimated_max_runtime) estimated_max_runtime=rt;
             }
         }
+
+        std::cout<<"sorting dynamics objects ...";
+        std::sort(dyn.begin(), dyn.end(), myDynamicsSortFunctor);
+        std::cout<<" done!\n";
+
+        std::cout<<"initializing dynamics objects:\n";
+        for (size_t i=0; i<dyn.size(); i++) {
+            dyn[i]->init();
+            double rt=dyn[i]->estimate_runtime();
+            if (rt>estimated_max_runtime) estimated_max_runtime=rt;
+            std::cout<<"    initialized "<< dyn[i]->get_supergroup() <<" dynamics object '"<<dyn[i]->get_object_name()<<"' ("<<dyn[i]->get_group()<<")     est. runtime="<<rt<<"s,   est. max. runtime="<<estimated_max_runtime<<"s\n";
+        }
+        std::cout<<"    DONE!\n";
 
         if (duration<=0 && estimated_max_runtime>0)  {
             duration=estimated_max_runtime;
