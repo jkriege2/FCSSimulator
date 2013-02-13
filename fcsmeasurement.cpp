@@ -718,6 +718,155 @@ void FCSMeasurement::save() {
     fclose(f);
     std::cout<<" done!\n";
 
+
+
+    sprintf(fn, "%s%sdetbackgroundtest.dat", basename.c_str(), object_name.c_str());
+    std::cout<<"writing '"<<fn<<"' ...";
+    f=fopen(fn, "w");
+    int32_t* Nm=(int32_t*)calloc(ndettests, sizeof(int32_t));
+    int32_t* Nm05=(int32_t*)calloc(ndettests, sizeof(int32_t));
+    int32_t* Nm1=(int32_t*)calloc(ndettests, sizeof(int32_t));
+    int32_t* Nm2=(int32_t*)calloc(ndettests, sizeof(int32_t));
+    int32_t* Nm3=(int32_t*)calloc(ndettests, sizeof(int32_t));
+    double IperParticle=q_det*dyn[0]->get_init_q_fluor(0)*I0*1e-6/Ephoton*dyn[0]->get_init_sigma_abs(0)*corr_taumin;
+
+    int backtest_sum=20;
+    for (int i=0; i<ndettests; i++) {
+        Nm[i]=getDetectedPhotons(0);
+        Nm05[i]=getDetectedPhotons(0.5*IperParticle);
+        Nm1[i]=getDetectedPhotons(1.0*IperParticle);
+        Nm2[i]=getDetectedPhotons(5.0*IperParticle);
+        Nm3[i]=getDetectedPhotons(10.0*IperParticle);
+        if (i%backtest_sum==0 && i>0) {
+            fprintf(f, "%15.10lf, %15.10lf, %15.10lf, %15.10lf, %15.10lf, %15.10lf\n",double(i)*corr_taumin , statisticsAverage(&(Nm[i-backtest_sum]), backtest_sum) , statisticsAverage(&(Nm05[i-backtest_sum]), backtest_sum), statisticsAverage(&(Nm1[i-backtest_sum]), backtest_sum), statisticsAverage(&(Nm2[i-backtest_sum]), backtest_sum), statisticsAverage(&(Nm3[i-backtest_sum]), backtest_sum));
+        }
+    }
+    fprintf(f, "\n\n");
+    for (  double N=0; N<30; N++) {
+        int32_t* Nm=(int32_t*)calloc(ndettests, sizeof(int32_t));
+        for (int i=0; i<ndettests; i++) {
+            Nm[i]=getDetectedPhotons(N*IperParticle);
+        }
+
+        fprintf(f, "%lf, %15.10lf, %15.10lf\n", N, statisticsAverage(Nm, ndettests), statisticsVariance(Nm, ndettests));
+        free(Nm);
+    }
+
+    double backMean=statisticsAverage(Nm, ndettests);
+    double backVar=statisticsVariance(Nm, ndettests);
+    double backMean05=statisticsAverage(Nm05, ndettests);
+    double backVar05=statisticsVariance(Nm05, ndettests);
+    double backMean1=statisticsAverage(Nm1, ndettests);
+    double backVar1=statisticsVariance(Nm1, ndettests);
+    double backMean2=statisticsAverage(Nm2, ndettests);
+    double backVar2=statisticsVariance(Nm2, ndettests);
+    double backMean3=statisticsAverage(Nm3, ndettests);
+    double backVar3=statisticsVariance(Nm3, ndettests);
+    free(Nm);
+    free(Nm1);
+    free(Nm2);
+    free(Nm3);
+
+    fclose(f);
+    std::cout<<" done!\n";
+    std::string detbacktestfn=fn;
+
+
+
+    sprintf(fn, "%s%sdetbackgroundtest.plt", basename.c_str(), object_name.c_str());
+    std::cout<<"writing '"<<fn<<"' ...";
+    f=fopen(fn, "w");
+    fprintf(f, "reset\n");
+    fprintf(f, "bmean=%15.10lf\n", backMean);
+    fprintf(f, "bvar=%15.10lf\n", backVar);
+    fprintf(f, "bmean05=%15.10lf\n", backMean05);
+    fprintf(f, "bvar05=%15.10lf\n", backVar05);
+    fprintf(f, "bmean1=%15.10lf\n", backMean1);
+    fprintf(f, "bvar1=%15.10lf\n", backVar1);
+    fprintf(f, "bmean2=%15.10lf\n", backMean2);
+    fprintf(f, "bvar2=%15.10lf\n", backVar2);
+    fprintf(f, "bmean3=%15.10lf\n", backMean3);
+    fprintf(f, "bvar3=%15.10lf\n", backVar3);
+    fprintf(f, "dt=%15.10lf\n", corr_taumin);
+    for (int plt=0; plt<2; plt++) {
+        if (plt==0) {
+            fprintf(f, "set terminal pdfcairo color solid font \"%s, 8\" linewidth 2 size 20cm,15cm\n", GNUPLOT_FONT);
+            fprintf(f, "set output \"%s\"\n", extract_file_name(basename+object_name+"detbackgroundtest.pdf").c_str());
+        } else if (plt==1) {
+            fprintf(f, "set terminal wxt font \"%s, 8\"\n", GNUPLOT_FONT);
+            fprintf(f, "set output\n");
+        }
+
+        fprintf(f, "set size noratio\n");
+
+        fprintf(f, "set xlabel \"time t [seconds]\"\n");
+        fprintf(f, "set ylabel \"background signal\"\n");
+        fprintf(f, "set title \"background/1-photon signal: %s\"\n", description.c_str());
+        fprintf(f, "plot \"%s\" using 1:2 index 0 title sprintf('background, (%%f +/- %%f)', bmean, sqrt(bvar)) with lines lc rgb \"red\""
+        ", \"%s\" using 1:4 index 0 title sprintf('N=1, (%%f +/- %%f)', bmean1, sqrt(bvar1)) with lines lc rgb \"blue\""
+        ", bmean notitle with lines lc rgb \"dark-red\""
+        //", bmean-sqrt(bvar) notitle with lines lc rgb \"dark-red\""
+        //", bmean+sqrt(bvar) notitle with lines lc rgb \"dark-red\""
+        ", bmean1 notitle with lines lc rgb \"dark-blue\""
+        //", bmean1-sqrt(bvar1) notitle with lines lc rgb \"dark-blue\""
+        //", bmean1+sqrt(bvar1) notitle with lines lc rgb \"dark-blue\""
+        "\n", extract_file_name(detbacktestfn).c_str(), extract_file_name(detbacktestfn).c_str());
+        if (plt==1) fprintf(f, "pause -1\n");
+
+        fprintf(f, "set title \"N-photon signal: %s\"\n", description.c_str());
+        fprintf(f, "plot \"%s\" using 1:2 index 0 title sprintf('background, (%%f +/- %%f)', bmean, sqrt(bvar)) with lines lc rgb \"red\""
+        ", \"%s\" using 1:3 index 0 title sprintf('N=0.5, (%%f +/- %%f)', bmean05, sqrt(bvar05)) with lines lc rgb \"green\""
+        ", \"%s\" using 1:4 index 0 title sprintf('N=1, (%%f +/- %%f)', bmean1, sqrt(bvar1)) with lines lc rgb \"blue\""
+        ", \"%s\" using 1:5 index 0 title sprintf('N=5, (%%f +/- %%f)', bmean2, sqrt(bvar2)) with lines lc rgb \"magenta\""
+        ", \"%s\" using 1:6 index 0 title sprintf('N=10, (%%f +/- %%f)', bmean3, sqrt(bvar3)) with lines lc rgb \"yellow\""
+        ", bmean notitle with lines lc rgb \"dark-red\""
+        //", bmean-sqrt(bvar) notitle with lines lc rgb \"dark-red\""
+        //", bmean+sqrt(bvar) notitle with lines lc rgb \"dark-red\""
+        ", bmean05 notitle with lines lc rgb \"dark-green\""
+        //", bmean05-sqrt(bvar05) notitle with lines lc rgb \"dark-green\""
+        //", bmean05+sqrt(bvar05) notitle with lines lc rgb \"dark-green\""
+        ", bmean1 notitle with lines lc rgb \"dark-blue\""
+        //", bmean1-sqrt(bvar1) notitle with lines lc rgb \"dark-red\""
+        //", bmean1+sqrt(bvar1) notitle with lines lc rgb \"dark-red\""
+        ", bmean2 notitle with lines lc rgb \"dark-magenta\""
+        //", bmean2-sqrt(bvar2) notitle with lines lc rgb \"dark-magenta\""
+        //", bmean2+sqrt(bvar2) notitle with lines lc rgb \"dark-magenta\""
+        ", bmean3 notitle with lines lc rgb \"dark-yellow\""
+        //", bmean3-sqrt(bvar3) notitle with lines lc rgb \"dark-yellow\""
+        //", bmean3+sqrt(bvar3) notitle with lines lc rgb \"dark-yellow\""
+        "\n", extract_file_name(detbacktestfn).c_str(), extract_file_name(detbacktestfn).c_str(), extract_file_name(detbacktestfn).c_str(), extract_file_name(detbacktestfn).c_str(), extract_file_name(detbacktestfn).c_str());
+        if (plt==1) fprintf(f, "pause -1\n");
+
+
+        fprintf(f, "set xlabel \"average particle number\"\n");
+        fprintf(f, "set ylabel \"signal\"\n");
+        fprintf(f, "set title \"particle number vs. signal: %s\"\n", description.c_str());
+        fprintf(f, "plot [0:10] \"%s\" using 1:2:3 index 1 notitle with lines lc rgb \"red\""
+        ", bmean notitle with lines lc rgb \"dark-red\""
+        "\n", extract_file_name(detbacktestfn).c_str());
+        if (plt==1) fprintf(f, "pause -1\n");
+
+        fprintf(f, "set xlabel \"average particle number\"\n");
+        fprintf(f, "set ylabel \"signal\"\n");
+        fprintf(f, "set title \"particle number vs. signal: %s\"\n", description.c_str());
+        fprintf(f, "plot \"%s\" using 1:2:3 index 1 notitle with lines lc rgb \"red\""
+        ", bmean notitle with lines lc rgb \"dark-red\""
+        "\n", extract_file_name(detbacktestfn).c_str());
+        if (plt==1) fprintf(f, "pause -1\n");
+
+        fprintf(f, "set xlabel \"average particle number\"\n");
+        fprintf(f, "set ylabel \"signal\"\n");
+        fprintf(f, "set title \"particle number vs. signal: %s\"\n", description.c_str());
+        fprintf(f, "plot \"%s\" using 1:2:3 index 1 notitle with yerrorbars lc rgb \"red\""
+        ", bmean notitle with lines lc rgb \"dark-red\""
+        "\n", extract_file_name(detbacktestfn).c_str());
+        if (plt==1) fprintf(f, "pause -1\n");
+
+    }
+
+    fclose(f);
+    std::cout<<" done!\n";
+
     sprintf(fn, "%s%spsf.dat", basename.c_str(), object_name.c_str());
     std::cout<<"writing '"<<fn<<"' ...";
     f=fopen(fn, "w");

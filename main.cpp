@@ -55,13 +55,20 @@ void do_sim(std::string inifilename) {
         meas.clear();
         dynmap.clear();
         measmap.clear();
+        cout<<"reading config '"<<inifilename<<"' ... ";
         jkINIParser2 ini;
         ini.readFile(inifilename);
+        cout<<"done!\n\n";
+
         std::string basename=ini.getSetAsString("simulation.basename", "");
         //bool multithread=ini.getSetAsBool("simulation.multithread", false);
         double duration=ini.getSetAsDouble("simulation.duration", -1);
 
+        cout<<"creating directory for output '"<<extract_file_path(basename+"config.ini").c_str()<<"' ... ";
         mk_all_dir(extract_file_path(basename+"config.ini").c_str());
+        cout<<"done!\n\n";
+
+
         ini.print();
 
 
