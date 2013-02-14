@@ -126,6 +126,14 @@ void FCSMeasurement::read_config_internal(jkINIParser2& parser) {
 
     plot_with=tokenize_string(parser.getSetAsString("plot_with", fromStringVector(plot_with, ",")), ",");
 
+    //plot_with_more.clear();
+    for (int i=2; i<=9; i++) {
+        if (parser.exists("plot_with"+inttostr(i))) {
+            plot_with_more[i]=tokenize_string(parser.getSetAsString("plot_with"+inttostr(i), ""), ",");
+        }
+    }
+
+
     max_photons=parser.getAsInt("max_photons", max_photons);
     min_photons=parser.getAsInt("min_photons", min_photons);
     det_wavelength_min=parser.getAsDouble("det_wavelength_min", det_wavelength_min);
@@ -293,6 +301,7 @@ void FCSMeasurement::init(){
 
 
     estimate_psf_integrals();
+    time(&start_time);
 }
 
 void FCSMeasurement::propagate(){
@@ -523,7 +532,12 @@ void FCSMeasurement::run_fcs_simulation(){
         }
         if (current_timestep%mmax(1,(timesteps/1000))==0) {
             display_temp+=N;
-            std::cout<<format("%4.1lf", ((double)current_timestep)/(timesteps)*100.0)<<"%:   "<<repeated_string("     ", object_number-1)<<display_temp<<std::endl;
+            time_t now;
+            time(&now);
+            double seconds=difftime(now, start_time);
+            double percent=((double)current_timestep)/(timesteps)*100.0;
+            double eta=seconds/percent*100.0-seconds;
+            std::cout<<format("%4.1lf", percent)<<"% (ETA: "+format("%8.2lf", eta/60.0)+"min):   "<<repeated_string("     ", object_number-1)<<display_temp<<std::endl;
             display_temp=0;
         } else {
             display_temp+=N;
@@ -1215,6 +1229,8 @@ void FCSMeasurement::save() {
             sprintf(fn, "%s%sbtsplot.plt", basename.c_str(), object_name.c_str());
             std::cout<<"writing '"<<fn<<"' ...";
             f=fopen(fn, "w");
+            fprintf(f, "dt_corr=%15.10lf\n", corr_taumin);
+            fprintf(f, "dt=%15.10lf\n", save_binning_time);
             for (int plt=0; plt<2; plt++) {
                 if (plt==0) {
                     fprintf(f, "set terminal pdfcairo color solid font \"%s, 7\" linewidth 2 size 20cm,15cm\n", GNUPLOT_FONT);
@@ -1224,13 +1240,18 @@ void FCSMeasurement::save() {
                     fprintf(f, "set output\n");
                 }
                 fprintf(f, "set xlabel \"time [seconds]\"\n");
-                fprintf(f, "set ylabel \"photon count [photons/%lfsec]\"\n", corr_taumin*b);
-                fprintf(f, "set title \"object description: %s\"\n", description.c_str());
+                fprintf(f, "set ylabel \"photon count [photons/%lfus]\"\n", corr_taumin*1e6);
+                fprintf(f, "set title \"counts per corrtaumin, object description: %s\"\n", description.c_str());
+                fprintf(f, "plot \"%s\" using 1:($2*dt_corr/dt) with steps\n", extract_file_name(tsfn).c_str());
+                if (plt==1) fprintf(f, "pause -1\n");
+                fprintf(f, "set xlabel \"time [seconds]\"\n");
+                fprintf(f, "set ylabel \"photon count [photons/%lfms]\"\n", corr_taumin*b*1e3);
+                fprintf(f, "set title \"counts per bin time, object description: %s\"\n", description.c_str());
                 fprintf(f, "plot \"%s\" with steps\n", extract_file_name(tsfn).c_str());
                 if (plt==1) fprintf(f, "pause -1\n");
                 fprintf(f, "set xlabel \"time [seconds]\"\n");
                 fprintf(f, "set ylabel \"photon count [kcps]\"\n");
-                fprintf(f, "set title \"object description: %s\"\n", description.c_str());
+                fprintf(f, "set title \"counts, object description: %s\"\n", description.c_str());
                 fprintf(f, "plot \"%s\" using 1:(($2)/%lf/1000.0) with steps\n", extract_file_name(tsfn).c_str(), corr_taumin*b);
                 if (plt==1) fprintf(f, "pause -1\n");
             }
@@ -1265,148 +1286,162 @@ void FCSMeasurement::save() {
     std::cout<<" done!\n";
 
 
+    std::vector<std::vector<std::string> > plot_withs;
     if (plot_with.size()>0) {
-
-        sprintf(fn, "%s%scorrplotwith_simple.plt", basename.c_str(), object_name.c_str());
-        std::cout<<"writing '"<<fn<<"' ...";
-        f=fopen(fn, "w");
-        for (int plt=0; plt<2; plt++) {
-            if (plt==0) {
-                fprintf(f, "set terminal pdfcairo color solid font \"%s, 7\" linewidth 2 size 20cm,15cm\n", GNUPLOT_FONT);
-                fprintf(f, "set output \"%s\"\n", extract_file_name(basename+object_name+"corrplotwith_simple.pdf").c_str());
-            } else if (plt==1) {
-                fprintf(f, "set terminal wxt font \"%s, 8\"\n", GNUPLOT_FONT);
-                fprintf(f, "set output\n");
+        plot_withs.push_back(plot_with);
+        std::map<int, std::vector<std::string> >::iterator it;
+        for (it=plot_with_more.begin(); it!=plot_with_more.end(); ++it) {
+            if (it->second.size()>0) {
+                plot_withs.push_back(it->second);
             }
+        }
+    }
 
-            fprintf(f, "set logscale x\n");
-            fprintf(f, "set title \"object description: %s\"\n", description.c_str());
-            fprintf(f, "plot \"%s\" title \"simulation data: %s (%s)\" with points", extract_file_name(corrfn).c_str(), description.c_str(), object_name.c_str());
-            for (size_t i=0; i<plot_with.size(); i++) {
+    for (int iip=0; iip<plot_withs.size(); iip++) {
+        std::vector<std::string> plot_with=plot_withs[iip];
+        if (plot_with.size()>0) {
+
+            sprintf(fn, "%s%scorrplotwith%d_simple.plt", basename.c_str(), object_name.c_str(), iip);
+            std::cout<<"writing '"<<fn<<"' ...";
+            f=fopen(fn, "w");
+            for (int plt=0; plt<2; plt++) {
+                if (plt==0) {
+                    fprintf(f, "set terminal pdfcairo color solid font \"%s, 7\" linewidth 2 size 20cm,15cm\n", GNUPLOT_FONT);
+                    fprintf(f, "set output \"%s\"\n", extract_file_name(basename+object_name+"corrplotwith"+inttostr(iip)+"_simple.pdf").c_str());
+                } else if (plt==1) {
+                    fprintf(f, "set terminal wxt font \"%s, 8\"\n", GNUPLOT_FONT);
+                    fprintf(f, "set output\n");
+                }
+
+                fprintf(f, "set logscale x\n");
+                fprintf(f, "set title \"object description: %s\"\n", description.c_str());
+                fprintf(f, "plot \"%s\" title \"simulation data: %s (%s)\" with points", extract_file_name(corrfn).c_str(), description.c_str(), object_name.c_str());
+                for (size_t i=0; i<plot_with.size(); i++) {
+                    std::string pw=strstrip(plot_with[i]);
+                    if (measmap.count(pw)>0) {
+                        FCSMeasurement* fcspw=dynamic_cast<FCSMeasurement*>(measmap[pw]);
+                        char fn2[1024];
+                        sprintf(fn2, "%s%scorr.dat", basename.c_str(), pw.c_str());
+                        if (fcspw) {
+                            fprintf(f, ", \\\n    \"%s\" title \"simulation data: %s (%s)\" with points", extract_file_name(std::string(fn2)).c_str(),fcspw->get_description().c_str(), pw.c_str());
+                        }
+                    }
+                }
+                fprintf(f, "\n");
+            }
+            fprintf(f, "pause -1\n");
+            fclose(f);
+            std::cout<<" done!\n";
+
+
+
+            sprintf(fn, "%s%spsfplotwith%d.plt", basename.c_str(), object_name.c_str(), iip);
+            std::cout<<"writing '"<<fn<<"' ...";
+            f=fopen(fn, "w");
+            fprintf(f, "npoints=%s\n", inttostr(npointsi).c_str());
+            fprintf(f, "deltax=%lf\n", psfplot_xmax/double(npoints));
+            fprintf(f, "deltay=%lf\n", psfplot_ymax/double(npoints));
+            fprintf(f, "deltaz=%lf\n", psfplot_zmax/double(npoints));
+            fprintf(f, "deltaxi=%lf\n", psfplot_xmax/double(npointsi));
+            fprintf(f, "deltayi=%lf\n", psfplot_ymax/double(npointsi));
+            fprintf(f, "deltazi=%lf\n", psfplot_zmax/double(npointsi));
+            fprintf(f, "g(x,w)=exp(-2.0*x*x/w/w)\n");
+            std::string plotx, ploty, plotz;
+            for (int i=0; i<int(plot_with.size()); i++) {
                 std::string pw=strstrip(plot_with[i]);
                 if (measmap.count(pw)>0) {
                     FCSMeasurement* fcspw=dynamic_cast<FCSMeasurement*>(measmap[pw]);
                     char fn2[1024];
-                    sprintf(fn2, "%s%scorr.dat", basename.c_str(), pw.c_str());
+                    char plt[8192];
+                    sprintf(fn2, "%s%spsf.dat", basename.c_str(), pw.c_str());
                     if (fcspw) {
-                        fprintf(f, ", \\\n    \"%s\" title \"simulation data: %s (%s)\" with points", extract_file_name(std::string(fn2)).c_str(),fcspw->get_description().c_str(), pw.c_str());
+                        fprintf(f, "fit Ax%d*g(x, wx%d) \"%s\" using 1:(($2)*($3)) via wx%d, Ax%d\n", i, i, extract_file_name(std::string(fn2)).c_str(), i, i);
+                        fprintf(f, "fit Ay%d*g(x, wy%d) \"%s\" using 4:(($5)*($6)) via wy%d, Ay%d\n", i, i, extract_file_name(std::string(fn2)).c_str(), i, i);
+                        fprintf(f, "fit Az%d*g(x, wz%d) \"%s\" using 7:(($8)*($9)) via wz%d, Az%d\n", i, i, extract_file_name(std::string(fn2)).c_str(), i, i);
+
+                        sprintf(plt, ",\\\n  \"%s\" using 1:2 title \"%s: illumination\" with lines, "
+                                     "  \"%s\" using 1:3 title \"%s: detection\" with lines, "
+                                     "  \"%s\" using 1:(($2)*($3)) title \"%s: ill * det\" with lines, "
+                                     "  Ax%d*g(x, wx%d) title sprintf('%s: gaussian fit, w=%%f micron', wx%d) with lines"
+                                     "", extract_file_name(std::string(fn2)).c_str(), fcspw->get_description().c_str(), extract_file_name(std::string(fn2)).c_str(), fcspw->get_description().c_str(), extract_file_name(std::string(fn2)).c_str(), fcspw->get_description().c_str(), i, i, fcspw->get_description().c_str(), i);
+                        plotx=plotx+std::string(plt);
+                        sprintf(plt, ",\\\n  \"%s\" using 4:5 title \"%s: illumination\" with lines, "
+                                     "  \"%s\" using 4:6 title \"%s: detection\" with lines, "
+                                     "  \"%s\" using 4:(($5)*($6)) title \"%s: ill * det\" with lines, "
+                                     "  Ay%d*g(x, wy%d) title sprintf('%s: gaussian fit, w=%%f micron', wy%d) with lines"
+                                     "", extract_file_name(std::string(fn2)).c_str(), fcspw->get_description().c_str(), extract_file_name(std::string(fn2)).c_str(), fcspw->get_description().c_str(), extract_file_name(std::string(fn2)).c_str(), fcspw->get_description().c_str(), i, i, fcspw->get_description().c_str(), i);
+                        ploty=ploty+std::string(plt);
+                        sprintf(plt, ",\\\n  \"%s\" using 7:8 title \"%s: illumination\" with lines, "
+                                     "  \"%s\" using 7:9 title \"%s: detection\" with lines, "
+                                     "  \"%s\" using 7:(($8)*($9)) title \"%s: ill * det\" with lines, "
+                                     "  Az%d*g(x, wz%d) title sprintf('%s: gaussian fit, w=%%f micron', wz%d) with lines"
+                                     "", extract_file_name(std::string(fn2)).c_str(), fcspw->get_description().c_str(), extract_file_name(std::string(fn2)).c_str(), fcspw->get_description().c_str(), extract_file_name(std::string(fn2)).c_str(), fcspw->get_description().c_str(), i, i, fcspw->get_description().c_str(), i);
+                        plotz=plotz+std::string(plt);
                     }
                 }
             }
-            fprintf(f, "\n");
-        }
-        fprintf(f, "pause -1\n");
-        fclose(f);
-        std::cout<<" done!\n";
+
+
+            for (int plt=0; plt<2; plt++) {
+                if (plt==0) {
+                    fprintf(f, "set terminal pdfcairo color solid font \"%s, 5\" linewidth 2 size 20cm,15cm\n", GNUPLOT_FONT);
+                    fprintf(f, "set output \"%s\"\n", extract_file_name(basename+object_name+"psfplotwith"+inttostr(iip)+".pdf").c_str());
+                } else if (plt==1) {
+                    fprintf(f, "set terminal wxt font \"%s, 5\"\n", GNUPLOT_FONT);
+                    fprintf(f, "set output\n");
+                }
+
+                fprintf(f, "set size noratio\n");
+                for (int mp=0; mp<2; mp++) {
+                    if (mp==0) fprintf(f, "set multiplot layout 1,3\n");
+                    fprintf(f, "set title \"PSF: x-direction: %s\"\n", description.c_str());
+                    fprintf(f, "set xlabel \"position x [micron]\"\n");
+                    fprintf(f, "set ylabel \"intensity / detection probability [0..1]\"\n");
+                    fprintf(f, "set samples 1000\n");
+                    fprintf(f, "wx=%lf\n", detpsf_r0);
+                    fprintf(f, "wy=%lf\n", detpsf_z0);
+                    fprintf(f, "wz=%lf\n", detpsf_z0);
 
 
 
-        sprintf(fn, "%s%spsfplotwith.plt", basename.c_str(), object_name.c_str());
-        std::cout<<"writing '"<<fn<<"' ...";
-        f=fopen(fn, "w");
-        fprintf(f, "npoints=%s\n", inttostr(npointsi).c_str());
-        fprintf(f, "deltax=%lf\n", psfplot_xmax/double(npoints));
-        fprintf(f, "deltay=%lf\n", psfplot_ymax/double(npoints));
-        fprintf(f, "deltaz=%lf\n", psfplot_zmax/double(npoints));
-        fprintf(f, "deltaxi=%lf\n", psfplot_xmax/double(npointsi));
-        fprintf(f, "deltayi=%lf\n", psfplot_ymax/double(npointsi));
-        fprintf(f, "deltazi=%lf\n", psfplot_zmax/double(npointsi));
-        fprintf(f, "g(x,w)=exp(-2.0*x*x/w/w)\n");
-        std::string plotx, ploty, plotz;
-        for (int i=0; i<int(plot_with.size()); i++) {
-            std::string pw=strstrip(plot_with[i]);
-            if (measmap.count(pw)>0) {
-                FCSMeasurement* fcspw=dynamic_cast<FCSMeasurement*>(measmap[pw]);
-                char fn2[1024];
-                char plt[8192];
-                sprintf(fn2, "%s%spsf.dat", basename.c_str(), pw.c_str());
-                if (fcspw) {
-                    fprintf(f, "fit Ax%d*g(x, wx%d) \"%s\" using 1:(($2)*($3)) via wx%d, Ax%d\n", i, i, extract_file_name(std::string(fn2)).c_str(), i, i);
-                    fprintf(f, "fit Ay%d*g(x, wy%d) \"%s\" using 4:(($5)*($6)) via wy%d, Ay%d\n", i, i, extract_file_name(std::string(fn2)).c_str(), i, i);
-                    fprintf(f, "fit Az%d*g(x, wz%d) \"%s\" using 7:(($8)*($9)) via wz%d, Az%d\n", i, i, extract_file_name(std::string(fn2)).c_str(), i, i);
-
-                    sprintf(plt, ",\\\n  \"%s\" using 1:2 title \"%s: illumination\" with lines, "
-                                 "  \"%s\" using 1:3 title \"%s: detection\" with lines, "
-                                 "  \"%s\" using 1:(($2)*($3)) title \"%s: ill * det\" with lines, "
-                                 "  Ax%d*g(x, wx%d) title sprintf('%s: gaussian fit, w=%%f micron', wx%d) with lines"
-                                 "", extract_file_name(std::string(fn2)).c_str(), fcspw->get_description().c_str(), extract_file_name(std::string(fn2)).c_str(), fcspw->get_description().c_str(), extract_file_name(std::string(fn2)).c_str(), fcspw->get_description().c_str(), i, i, fcspw->get_description().c_str(), i);
-                    plotx=plotx+std::string(plt);
-                    sprintf(plt, ",\\\n  \"%s\" using 4:5 title \"%s: illumination\" with lines, "
-                                 "  \"%s\" using 4:6 title \"%s: detection\" with lines, "
-                                 "  \"%s\" using 4:(($5)*($6)) title \"%s: ill * det\" with lines, "
-                                 "  Ay%d*g(x, wy%d) title sprintf('%s: gaussian fit, w=%%f micron', wy%d) with lines"
-                                 "", extract_file_name(std::string(fn2)).c_str(), fcspw->get_description().c_str(), extract_file_name(std::string(fn2)).c_str(), fcspw->get_description().c_str(), extract_file_name(std::string(fn2)).c_str(), fcspw->get_description().c_str(), i, i, fcspw->get_description().c_str(), i);
-                    ploty=ploty+std::string(plt);
-                    sprintf(plt, ",\\\n  \"%s\" using 7:8 title \"%s: illumination\" with lines, "
-                                 "  \"%s\" using 7:9 title \"%s: detection\" with lines, "
-                                 "  \"%s\" using 7:(($8)*($9)) title \"%s: ill * det\" with lines, "
-                                 "  Az%d*g(x, wz%d) title sprintf('%s: gaussian fit, w=%%f micron', wz%d) with lines"
-                                 "", extract_file_name(std::string(fn2)).c_str(), fcspw->get_description().c_str(), extract_file_name(std::string(fn2)).c_str(), fcspw->get_description().c_str(), extract_file_name(std::string(fn2)).c_str(), fcspw->get_description().c_str(), i, i, fcspw->get_description().c_str(), i);
-                    plotz=plotz+std::string(plt);
+                    fprintf(f, "fit g(x, wx) \"%s\" using 1:(($2)*($3)) via wx\n", extract_file_name(psffn).c_str());
+                    fprintf(f, "fit g(x, wy) \"%s\" using 4:(($5)*($6)) via wy\n", extract_file_name(psffn).c_str());
+                    fprintf(f, "fit g(x, wz) \"%s\" using 7:(($8)*($9)) via wz\n", extract_file_name(psffn).c_str());
+                    fprintf(f, "plot \"%s\" using 1:2 title \"illumination\" with lines, "
+                    "\"%s\" using 1:3 title \"detection\" with lines, "
+                    "\"%s\" using 1:(($2)*($3)) title \"ill * det\" with lines, "
+                    "g(x, wx) title sprintf('gaussian fit, w=%%f micron', wx) with lines"
+                    , extract_file_name(psffn).c_str(), extract_file_name(psffn).c_str(), extract_file_name(psffn).c_str());
+                    fprintf(f, "%s\n\n", plotx.c_str());
+                    if (mp==1 && plt==1) fprintf(f, "pause -1\n");
+                    fprintf(f, "set title \"PSF: y-direction: %s\"\n", description.c_str());
+                    fprintf(f, "set xlabel \"position y [micron]\"\n");
+                    fprintf(f, "set ylabel \"intensity / detection probability [0..1]\"\n");
+                    fprintf(f, "plot \"%s\" using 4:5 title \"illumination\" with lines, "
+                    "\"%s\" using 4:6 title \"detection\" with lines, "
+                    "\"%s\" using 4:(($5)*($6)) title \"ill * det\" with lines, "
+                    "g(x, wy) title sprintf('gaussian fit, w=%%f micron', wy) with lines"
+                    , extract_file_name(psffn).c_str(), extract_file_name(psffn).c_str(), extract_file_name(psffn).c_str());
+                    fprintf(f, "%s\n\n", plotx.c_str());
+                    if (mp==1 && plt==1) fprintf(f, "pause -1\n");
+                    fprintf(f, "set title \"PSF: z-direction: %s\"\n", description.c_str());
+                    fprintf(f, "set xlabel \"position z [micron]\"\n");
+                    fprintf(f, "set ylabel \"intensity / detection probability [0..1]\"\n");
+                    fprintf(f, "plot \"%s\" using 7:8 title \"illumination\" with lines, "
+                    "\"%s\" using 7:9 title \"detection\" with lines, "
+                    "\"%s\" using 7:(($8)*($9)) title \"ill * det\" with lines, "
+                    "g(x, wz) title sprintf('gaussian fit, w=%%f micron', wz) with lines"
+                    , extract_file_name(psffn).c_str(), extract_file_name(psffn).c_str(), extract_file_name(psffn).c_str());
+                    fprintf(f, "%s\n\n", plotx.c_str());
+                    if (mp==0) fprintf(f, "unset multiplot\n");
+                    if (plt==1) fprintf(f, "pause -1\n");
                 }
             }
+
+            fclose(f);
+            std::cout<<" done!\n";
+
         }
-
-
-        for (int plt=0; plt<2; plt++) {
-            if (plt==0) {
-                fprintf(f, "set terminal pdfcairo color solid font \"%s, 5\" linewidth 2 size 20cm,15cm\n", GNUPLOT_FONT);
-                fprintf(f, "set output \"%s\"\n", extract_file_name(basename+object_name+"psfplotwith.pdf").c_str());
-            } else if (plt==1) {
-                fprintf(f, "set terminal wxt font \"%s, 5\"\n", GNUPLOT_FONT);
-                fprintf(f, "set output\n");
-            }
-
-            fprintf(f, "set size noratio\n");
-            for (int mp=0; mp<2; mp++) {
-                if (mp==0) fprintf(f, "set multiplot layout 1,3\n");
-                fprintf(f, "set title \"PSF: x-direction: %s\"\n", description.c_str());
-                fprintf(f, "set xlabel \"position x [micron]\"\n");
-                fprintf(f, "set ylabel \"intensity / detection probability [0..1]\"\n");
-                fprintf(f, "set samples 1000\n");
-                fprintf(f, "wx=%lf\n", detpsf_r0);
-                fprintf(f, "wy=%lf\n", detpsf_z0);
-                fprintf(f, "wz=%lf\n", detpsf_z0);
-
-
-
-                fprintf(f, "fit g(x, wx) \"%s\" using 1:(($2)*($3)) via wx\n", extract_file_name(psffn).c_str());
-                fprintf(f, "fit g(x, wy) \"%s\" using 4:(($5)*($6)) via wy\n", extract_file_name(psffn).c_str());
-                fprintf(f, "fit g(x, wz) \"%s\" using 7:(($8)*($9)) via wz\n", extract_file_name(psffn).c_str());
-                fprintf(f, "plot \"%s\" using 1:2 title \"illumination\" with lines, "
-                "\"%s\" using 1:3 title \"detection\" with lines, "
-                "\"%s\" using 1:(($2)*($3)) title \"ill * det\" with lines, "
-                "g(x, wx) title sprintf('gaussian fit, w=%%f micron', wx) with lines"
-                , extract_file_name(psffn).c_str(), extract_file_name(psffn).c_str(), extract_file_name(psffn).c_str());
-                fprintf(f, "%s\n\n", plotx.c_str());
-                if (mp==1 && plt==1) fprintf(f, "pause -1\n");
-                fprintf(f, "set title \"PSF: y-direction: %s\"\n", description.c_str());
-                fprintf(f, "set xlabel \"position y [micron]\"\n");
-                fprintf(f, "set ylabel \"intensity / detection probability [0..1]\"\n");
-                fprintf(f, "plot \"%s\" using 4:5 title \"illumination\" with lines, "
-                "\"%s\" using 4:6 title \"detection\" with lines, "
-                "\"%s\" using 4:(($5)*($6)) title \"ill * det\" with lines, "
-                "g(x, wy) title sprintf('gaussian fit, w=%%f micron', wy) with lines"
-                , extract_file_name(psffn).c_str(), extract_file_name(psffn).c_str(), extract_file_name(psffn).c_str());
-                fprintf(f, "%s\n\n", plotx.c_str());
-                if (mp==1 && plt==1) fprintf(f, "pause -1\n");
-                fprintf(f, "set title \"PSF: z-direction: %s\"\n", description.c_str());
-                fprintf(f, "set xlabel \"position z [micron]\"\n");
-                fprintf(f, "set ylabel \"intensity / detection probability [0..1]\"\n");
-                fprintf(f, "plot \"%s\" using 7:8 title \"illumination\" with lines, "
-                "\"%s\" using 7:9 title \"detection\" with lines, "
-                "\"%s\" using 7:(($8)*($9)) title \"ill * det\" with lines, "
-                "g(x, wz) title sprintf('gaussian fit, w=%%f micron', wz) with lines"
-                , extract_file_name(psffn).c_str(), extract_file_name(psffn).c_str(), extract_file_name(psffn).c_str());
-                fprintf(f, "%s\n\n", plotx.c_str());
-                if (mp==0) fprintf(f, "unset multiplot\n");
-                if (plt==1) fprintf(f, "pause -1\n");
-            }
-        }
-
-        fclose(f);
-        std::cout<<" done!\n";
-
     }
 
 }

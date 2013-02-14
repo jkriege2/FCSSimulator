@@ -344,6 +344,7 @@ class FCSMeasurement: public FluorescenceMeasurement {
 
         /** \brief a list of other fcs objects of which the results shall be plotted in one Gnuplot file */
         std::vector<std::string> plot_with;
+        std::map<int, std::vector<std::string> > plot_with_more;
 
 
 
@@ -453,6 +454,8 @@ class FCSMeasurement: public FluorescenceMeasurement {
          double ndettest_max;
          /** \brief avg. photon counts step size for detector test */
          double ndettest_step;
+
+         time_t start_time;
 
     private:
 };
