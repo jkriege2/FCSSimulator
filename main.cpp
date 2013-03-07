@@ -284,7 +284,7 @@ void do_sim(std::string inifilename) {
 
 int main(int argc, char* argv[])
 {
-    fluorophors=new FluorophorManager;
+    fluorophors=new FluorophorManager(extract_file_path(argv[0]));
 
     if (argc>1) {
         std::vector<std::string> files;
