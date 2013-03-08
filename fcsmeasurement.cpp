@@ -552,8 +552,8 @@ int32_t FCSMeasurement::getDetectedPhotons(double nphot_sum) const {
     if (detector_type==0) {
         N=gsl_ran_poisson(rng, nphot_sum);
     } else {
-        double d=gsl_ran_gaussian_ziggurat(rng, sqrt(nphot_sum*lindet_gain*lindet_gain*lindet_var_factor))+nphot_sum*lindet_gain;
-        N=floor(d);
+        double d=gsl_ran_gaussian(rng, sqrt(nphot_sum*lindet_gain*lindet_gain*lindet_var_factor))+nphot_sum*lindet_gain;
+        N=round(d);
         if (d>max_photons) N=max_photons;
     }
     //if (detector_type==1) std::cout<<"#      nphot_sum="<<nphot_sum<<"  lindet_bits="<<lindet_bits"\n";
@@ -563,7 +563,7 @@ int32_t FCSMeasurement::getDetectedPhotons(double nphot_sum) const {
     }
     //if (detector_type==1) std::cout<<"**     "<<N<<"\n";
     if (offset_rate>0 && offset_std>0) {
-        double o=gsl_ran_gaussian_ziggurat(rng, offset_std)+offset_rate;
+        double o=gsl_ran_gaussian(rng, offset_std)+offset_rate;
         N=N+round(o);
     } else if (offset_rate>0 && offset_std<=0) {
         N=N+round(offset_rate);
@@ -762,7 +762,7 @@ void FCSMeasurement::save() {
             Nm[i]=getDetectedPhotons(N*IperParticle);
         }
 
-        fprintf(f, "%lf, %15.10lf, %15.10lf\n", N, statisticsAverage(Nm, ndettests), statisticsVariance(Nm, ndettests));
+        fprintf(f, "%lf, %15.10lf, %15.10lf,  %15.10lf\n", N, statisticsAverage(Nm, ndettests), statisticsVariance(Nm, ndettests), N*IperParticle);
         free(Nm);
     }
 
