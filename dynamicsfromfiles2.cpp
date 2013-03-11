@@ -49,6 +49,7 @@ DynamicsFromFiles2::DynamicsFromFiles2(FluorophorManager* fluorophors, std::stri
     shiftmode=HalfTime;
     tmode=Sequential;
     parallelTrajectories=10;
+    fileformat=DynamicsFromFiles2::ffCSV;
 }
 
 DynamicsFromFiles2::~DynamicsFromFiles2()
@@ -67,6 +68,7 @@ void DynamicsFromFiles2::read_config_internal(jkINIParser2& parser) {
     shift_trajectories=parser.getSetAsBool("shift_trajectories", shift_trajectories);
 
     max_files=parser.getSetAsInt("max_files", max_files);
+    fileformat=stringToFileFormat(parser.getSetAsString("file_format", fileFormatToString(fileformat)));
     col_time=parser.getSetAsInt("col_time", col_time);
     col_posx=parser.getSetAsInt("col_posx", col_posx);
     col_posy=parser.getSetAsInt("col_posy", col_posy);
@@ -183,6 +185,93 @@ void DynamicsFromFiles2::read_config_internal(jkINIParser2& parser) {
     //init();
 }
 
+std::vector<double> DynamicsFromFiles2::dataFileReadLine(FILE* f) {
+    if (fileformat==DynamicsFromFiles2::ffBinary) {
+        std::vector<double> res;
+        if (feof(f)) return res;
+        DynamicsFromFiles2::BinaryFileInfo binI=binFileInfo[f];
+        switch(binI.intSize) {
+            case 1: {
+                int8_t* buf=(int8_t*)malloc(binI.entries*sizeof(int8_t));
+                fread(buf, binI.entries*sizeof(int8_t), 1, f);
+                for (int i=0; i<binI.entries; i++) res.push_back(buf[i]);
+                free(buf);
+            } break;
+
+            
+            case 2: {
+                int16_t* buf=(int16_t*)malloc(binI.entries*sizeof(int16_t));
+                fread(buf, binI.entries*sizeof(int16_t), 1, f);
+                for (int i=0; i<binI.entries; i++) res.push_back(buf[i]);
+                free(buf);
+            } break;
+            
+            case 4: {
+                int32_t* buf=(int32_t*)malloc(binI.entries*sizeof(int32_t));
+                fread(buf, binI.entries*sizeof(int32_t), 1, f);
+                for (int i=0; i<binI.entries; i++) res.push_back(buf[i]);
+                free(buf);
+            } break;
+            
+            case 8: {
+                int64_t* buf=(int64_t*)malloc(binI.entries*sizeof(int64_t));
+                fread(buf, binI.entries*sizeof(int64_t), 1, f);
+                for (int i=0; i<binI.entries; i++) res.push_back(buf[i]);
+                free(buf);
+            } break;
+            default:
+                res.clear();
+                break;
+        }
+        return res;
+    } else {
+        return csv_readline(f, separator_char, comment_char);
+    }
+}
+
+FILE* DynamicsFromFiles2::dataFileOpen(const std::string& filename) {
+    if (fileformat==DynamicsFromFiles2::ffBinary) {
+        FILE* f= fopen(filename.c_str(), "rb");
+        DynamicsFromFiles2::BinaryFileInfo binI;
+        uint16_t t16=0;
+        uint64_t t64=0;
+        fread(&t16, 2, 1, f);
+        fread(&t64, 8, 1, f);
+        binI.intSize=t16;
+        binI.records=t64;
+        binI.entries=3;
+        binFileInfo[f]=binI; 
+        std::cout<<"  file: "<<f<<":   intsize="<<binFileInfo[f].intSize<<"   records="<<binFileInfo[f].records<<"   entries="<<binFileInfo[f].entries<<"\n";
+        return f;
+    } else {
+        return fopen(filename.c_str(), "r");
+    }
+}
+
+void DynamicsFromFiles2::dataFileClose(FILE* file) {
+    if (fileformat==DynamicsFromFiles2::ffBinary) {
+        fclose(file);
+    } else {
+        fclose(file);
+    }
+}
+
+unsigned long long DynamicsFromFiles2::dataFileCountLines(const std::string& filename) {
+    if (fileformat==DynamicsFromFiles2::ffBinary) {
+        FILE* f= fopen(filename.c_str(), "rb");
+        uint16_t t16=0;
+        uint64_t t64=0;
+        fread(&t16, 2, 1, f);
+        fread(&t64, 8, 1, f);
+        fclose(f);
+        return t64;        
+    } else {
+        return count_lines(filename, comment_char);
+    }
+}
+
+
+
 void DynamicsFromFiles2::init() {
     shift_x=(double*)calloc(trajectory_count, sizeof(double));
     shift_y=(double*)calloc(trajectory_count, sizeof(double));
@@ -201,15 +290,15 @@ void DynamicsFromFiles2::init() {
         tim1.tick();
         std::cout<<"checking file "<<i+1<<"/"<<trajectory_count<<": "<<trajectory_files[i]<<" [sc="+chartoprintablestr(separator_char)+", cc="+chartoprintablestr(comment_char)+", ";
         //data[i].load_csv(trajectory_files[i], separator_char, comment_char);
-        unsigned long long lcount=count_lines(trajectory_files[i], comment_char);
+        unsigned long long lcount=dataFileCountLines(trajectory_files[i]);//count_lines(trajectory_files[i], comment_char);
         if (max_lines>0 && lcount>max_lines) lcount=max_lines;
         if (lcount<1) throw FluorophorException(format("file '%s' does not contain data or does not exist", trajectory_files[i].c_str()));
         std::cout<<"lines="<<lcount<<"] ... "<<std::endl;
 
-        FILE* f=fopen(trajectory_files[i].c_str(), "r");
+        FILE* f=dataFileOpen(trajectory_files[i]);//fopen(trajectory_files[i].c_str(), "r");
 
         int j=0;
-        std::vector<double> r=csv_readline(f, separator_char, comment_char);
+        std::vector<double> r=dataFileReadLine(f);//csv_readline(f, separator_char, comment_char);
         int ccount=r.size();
         double lastPos[3]={0,0,0};
         //double t0;
@@ -251,7 +340,7 @@ void DynamicsFromFiles2::init() {
                 std::cout<<", "<<r[kk];
             }
             std::cout<<std::endl;*/
-            r=csv_readline(f, separator_char, comment_char);
+            r=dataFileReadLine(f);//csv_readline(f, separator_char, comment_char);
         }
         if (shift_trajectories && shiftmode==Mean) {
             shift_x[i]=shift_x[i]/double(j);
@@ -273,8 +362,8 @@ void DynamicsFromFiles2::init() {
             shift_y[i]=(shift_y[i]+lastPos[1])/2.0+gsl_ran_flat(rng, randomdisplace_y_min, randomdisplace_y_max);
             shift_z[i]=(shift_z[i]+lastPos[2])/2.0+gsl_ran_flat(rng, randomdisplace_z_min, randomdisplace_z_max);
         }
-        fclose(f);
-        f=fopen(trajectory_files[i].c_str(), "r");
+        dataFileClose(f);//fclose(f);
+        f=dataFileOpen(trajectory_files[i]);//fopen(trajectory_files[i].c_str(), "r");
         file.push_back(f);
         columncount.push_back(ccount);
         linecount.push_back(lcount);
@@ -323,7 +412,7 @@ void DynamicsFromFiles2::propagate(bool boundary_check) {
         int lc=linecount[file_counter]; //data[file_counter].get_line_count();
         int cc=columncount[file_counter]; //data[file_counter].get_column_count();
         //std::cout<<"fc="<<file_counter<<"   lc="<<lc<<"   cc="<<cc<<"   f="<<file[file_counter]<<"   f.size()="<<file.size()<<std::endl;
-        std::vector<double> data =csv_readline(file[file_counter], separator_char, comment_char);
+        std::vector<double> data =dataFileReadLine(file[file_counter]);//csv_readline(file[file_counter], separator_char, comment_char);
         walker_state[file_counter].time++;
         walker_state[file_counter].x=data[col_posx]*position_factor-shift_x[file_counter];
         walker_state[file_counter].y=data[col_posy]*position_factor-shift_y[file_counter];
@@ -394,7 +483,7 @@ void DynamicsFromFiles2::propagate(bool boundary_check) {
 		int cc=columncount[f]; //data[file_counter].get_column_count();
 		//std::cout<<"fc="<<file_counter<<"   lc="<<lc<<"   cc="<<cc<<"   f="<<file[file_counter]<<"   f.size()="<<file.size()<<std::endl;
 		if (line_counter<lc) {
-                    std::vector<double> data =csv_readline(file[f], separator_char, comment_char);
+                    std::vector<double> data =dataFileReadLine(file[f]);//csv_readline(file[f], separator_char, comment_char);
                     walker_state[f].time++;
                     walker_state[f].x=data[col_posx]*position_factor-shift_x[f];
                     walker_state[f].y=data[col_posy]*position_factor-shift_y[f];
@@ -457,8 +546,8 @@ void DynamicsFromFiles2::propagate(bool boundary_check) {
         for (file_counter=0; file_counter<trajectory_count; file_counter++) {
             int lc=linecount[file_counter]; //data[file_counter].get_line_count();
             int cc=columncount[file_counter]; //data[file_counter].get_column_count();
-            std::vector<double> data =csv_readline(file[file_counter], separator_char, comment_char);
-            if (line_counter<lc) {
+            std::vector<double> data =dataFileReadLine(file[file_counter]);//csv_readline(file[file_counter], separator_char, comment_char);
+            if (line_counter<lc && data.size()>0) {
                 walker_state[file_counter].time++;
                 walker_state[file_counter].x=data[col_posx]*position_factor-shift_x[file_counter];
                 walker_state[file_counter].y=data[col_posy]*position_factor-shift_y[file_counter];
@@ -520,8 +609,11 @@ std::string DynamicsFromFiles2::report() {
         s+=trajectory_files[i]+"  [ lines="+inttostr(linecount[i])+" columns="+inttostr(columncount[i])+"shift_x="+floattostr(shift_x[i])+" shift_y="+floattostr(shift_y[i])+" shift_z="+floattostr(shift_z[i])+" ] microns";
     }
     s+="\n";
-    s+="separator_char = "+chartoprintablestr(separator_char)+"\n";
-    s+="comment_char = "+chartoprintablestr(comment_char)+"\n";
+    s+="file_format = "+fileFormatToString(fileformat)+"\n";
+    if (fileformat==ffCSV) {
+        s+="separator_char = "+chartoprintablestr(separator_char)+"\n";
+        s+="comment_char = "+chartoprintablestr(comment_char)+"\n";
+    }
     if (shiftmode==Mean) s+="shift_mode = mean (center-of-mass)\n";
     if (shiftmode==RandomDisplacedMean) {
         s+="shift_mode = mean_random (randomly displaced center-of-mass)\n";
@@ -571,7 +663,8 @@ std::string DynamicsFromFiles2::report() {
 void DynamicsFromFiles2::clear() {
    if (file.size()>0) {
         for (size_t i=0; i<file.size(); i++) {
-            fclose(file[i]);
+            //fclose(file[i]);
+            dataFileClose(file[i]);
         }
         file.clear();
     }

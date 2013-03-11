@@ -2,6 +2,9 @@
 #define DYNAMICSFROMFILES_H
 
 #include "fluorophordynamics.h"
+#include<string>
+#include<map>
+#include "../../../LIB/trunk/tools.h"
 
 /** \brief this class loads several datafiles, containing trajectories and uses these trajectories
  *         for the dynamics simulation
@@ -29,6 +32,33 @@
  *   - col 9: absorbtion cross section in [m^2]
  *   - col 10: quantum state [integer]
  * .
+ * 
+ * 
+ * Input files may also be in a simple binary format:
+ * \verbatim
+      contents                                size [bytes]  format
+    +--------------------------------------+
+    | intsize=sizeof(int)                  |  2             unsigned integer
+    +--------------------------------------+
+    | number_of_records                    |  8             unsigned integer
+    +--------------------------------------+
+    | x[0]                                 |  intsize       signed integer
+    | y[0]                                 |  intsize       signed integer
+    | z[0]                                 |  intsize       signed integer
+    +--------------------------------------+
+    | x[1]                                 |  intsize       signed integer
+    | y[1]                                 |  intsize       signed integer
+    | z[1]                                 |  intsize       signed integer
+    +--------------------------------------+
+    | ...                                  |  
+    | ...                                  |  
+    +--------------------------------------+
+    | x[number_of_records-1]               |  intsize       signed integer
+    | y[number_of_records-1]               |  intsize       signed integer
+    | z[number_of_records-1]               |  intsize       signed integer
+    +--------------------------------------+
+    \endverbatim
+ * This method is used to read file file \c dynfile.file_format=binary is set in the configuration file!
  */
 class DynamicsFromFiles2 : public FluorophorDynamics
 {
@@ -52,12 +82,37 @@ class DynamicsFromFiles2 : public FluorophorDynamics
         virtual std::string report();
 
         virtual double estimate_runtime();
+        
+        enum FileFormats {
+            ffCSV=0,
+            ffBinary=1
+        };
+        
+        static std::string fileFormatToString(FileFormats format) {
+            if (format==ffBinary) return "binary";
+            return "csv";
+        }
+        
+        static FileFormats stringToFileFormat(std::string format) {
+            std::string f=tolower(format);
+            if (f=="b" || f=="bin" || f=="binary" || f=="1") return ffBinary;
+            return ffCSV;
+        }
     protected:
         /** \brief read configuration from INI file */
         virtual void read_config_internal(jkINIParser2& parser);
 	
 	/** \brief set all walkers to non-existent and set end of trajectory true */
 	void setAllDone();
+        
+        /** \brief read a single line or record from a trajectory file */
+        virtual std::vector<double> dataFileReadLine(FILE* f);
+        /** \brief open a trajectory file for reading */
+        virtual FILE* dataFileOpen(const std::string& filename);
+        /** \brief close an opened trajectory file */
+        virtual void dataFileClose(FILE* file);
+        /** \brief count the number of lines or records in a trajectory file */
+        virtual unsigned long long dataFileCountLines(const std::string& filename);
 
 
 
@@ -139,6 +194,8 @@ class DynamicsFromFiles2 : public FluorophorDynamics
         int num_stop;
         /** \brief filename template */
         std::string filenames;
+        /** \brief format of the input files */
+        FileFormats fileformat;
 
         /** \brief column index of time column in file (default: 0)*/
         int col_time;
@@ -178,6 +235,19 @@ class DynamicsFromFiles2 : public FluorophorDynamics
         double timing_loadall;
         /** \brief how long did it take to load 1 file (in average) */
         double timing_load1;
+        
+        struct BinaryFileInfo {
+            int intSize;
+            uint64_t records;
+            uint16_t entries;
+            
+            BinaryFileInfo() {
+                intSize=sizeof(int); 
+                records=0;
+                entries=3;
+            }
+        };
+        std::map<FILE*, BinaryFileInfo> binFileInfo;
 
 };
 
