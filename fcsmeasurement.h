@@ -98,7 +98,7 @@
     - <b>linear detectors (camera FCS):</b> The average detected ADU value is calculated as
         \f[ n_{lin}(t)=\mbox{lindet\_gain}\cdot  n_{phot}(t) \f]
       Then the actual detected value is drawn from a gaussian distribution with average \f$ n_{lin}(t) \f$  and variance
-      \f$ n_{lin}(t)\cdot\text{lindet\_var\_factor} \f$. Then the value is cast to an integer (i.e. quantisation by an analog to digital converter).
+      \f$ n_{lin}(t)\cdot\text{lindet\_var\_factor}+\text{lindet\_readnoise}^2 \f$. Then the value is cast to an integer (i.e. quantisation by an analog to digital converter).
       The range of these values is then limited to \f$ 0..2^{\text{lindet\_bits}}-1 \f$ to account for the finite resolution of the ADC.
   .
 
@@ -162,6 +162,7 @@ class FCSMeasurement: public FluorescenceMeasurement {
         GetSetMacro(unsigned int, detector_type);
         GetSetMacro(unsigned int, lindet_bits);
         GetSetMacro(double, lindet_gain);
+        GetSetMacro(double, lindet_readnoise);
         GetSetMacro(double, lindet_var_factor);
     protected:
 
@@ -378,6 +379,9 @@ class FCSMeasurement: public FluorescenceMeasurement {
 
          /** \brief gain of linear detector  */
          double lindet_gain;
+
+         /** \brief readout noise standard deviation of linear detectors */
+         double lindet_readnoise;
 
          /** \brief r-z-image to sample from for complex PSF of detection, this array represents a function \f$ f(r,z) \f$ */
          JKImage<double> psf_rz_image_detection;

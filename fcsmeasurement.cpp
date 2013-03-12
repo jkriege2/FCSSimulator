@@ -37,6 +37,7 @@ FCSMeasurement::FCSMeasurement(FluorophorManager* fluorophors, std::string objec
     lindet_bits=14;
     lindet_gain=10;
     lindet_var_factor=10;
+    lindet_readnoise=0;
 
     expsf_r0=0.5;
     expsf_z0=0.5*6;
@@ -211,6 +212,7 @@ void FCSMeasurement::read_config_internal(jkINIParser2& parser) {
     lindet_bits=parser.getSetAsInt("lindet_bits", lindet_bits);
     lindet_gain=parser.getSetAsDouble("lindet_gain", lindet_gain);
     lindet_var_factor=parser.getSetAsDouble("lindet_var_factor", lindet_var_factor);
+    lindet_readnoise=parser.getSetAsDouble("lindet_readnoise", lindet_readnoise);
     init();
 }
 
@@ -707,6 +709,9 @@ void FCSMeasurement::save() {
     fprintf(f, "f(x,offset,a)=offset+a*x\n");
     fprintf(f, "offset=0\n");
     fprintf(f, "a=1\n");
+    fprintf(f, "stats \"%s\" using 2:3 name 'DETTEST'\n", extract_file_name(dettestfn).c_str());
+    fprintf(f, "offset=DETTEST_intercept\n");
+    fprintf(f, "a=DETTEST_slope\n");
     fprintf(f, "fit f(x,offset,a) \"%s\" using 2:3 via offset, a\n", extract_file_name(dettestfn).c_str());
     for (int plt=0; plt<2; plt++) {
         if (plt==0) {
@@ -1499,7 +1504,8 @@ std::string FCSMeasurement::report(){
         s+="detector_type = linear\n";
         s+="detector_resolution = "+inttostr(lindet_bits)+"bits  =>  range = 0..."+inttostr(pow(2,lindet_bits))+"\n";
         s+="detector_gain = "+floattostr(lindet_gain)+"\n";
-        s+="detector_intensity_vs_variance = "+floattostr(lindet_var_factor)+"\n";
+        s+="lindet_readnoise = "+floattostr(lindet_readnoise)+"\n";
+        s+="detector_variance_factor = "+floattostr(lindet_var_factor)+"\n";
     } else {
         s+="detector_type = photon_counting\n";
     }
