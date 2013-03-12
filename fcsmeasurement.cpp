@@ -147,7 +147,7 @@ void FCSMeasurement::read_config_internal(jkINIParser2& parser) {
     psf_region_factor=parser.getAsDouble("psf_region_factor", psf_region_factor);
 
     ill_distribution=str_to_ill_distribution(parser.getSetAsString("ill_distribution", ill_distribution_to_str(ill_distribution)));
-    det_distribution=str_to_det_distribution(parser.getSetAsString("det_distribution", ill_distribution_to_str(det_distribution)));
+    det_distribution=str_to_det_distribution(parser.getSetAsString("det_distribution", det_distribution_to_str(det_distribution)));
 
     pixel_size=parser.getSetAsDouble("pixel_size", pixel_size);
     pixel_size_integrationdelta=parser.getSetAsDouble("pixel_size_integrationdelta", pixel_size_integrationdelta);

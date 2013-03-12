@@ -1,15 +1,15 @@
 SCRIPTS= emccd_dil_series14.ini\
+         emccd_dil_series1.ini\
          emccd_dil_series13.ini \
+         emccd_dil_series2.ini\
 		 emccd_dil_series12.ini \
+         emccd_dil_series3.ini\
 		 emccd_dil_series11.ini\
          emccd_dil_series5.ini\
-         emccd_dil_series1.ini\
          emccd_dil_series7.ini\
-         emccd_dil_series2.ini\
          emccd_dil_series9.ini\
          emccd_dil_series10.ini\
          emccd_dil_series4.ini\
-         emccd_dil_series3.ini\
          emccd_dil_series8.ini\
          emccd_dil_series6.ini
 		 
