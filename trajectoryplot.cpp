@@ -119,7 +119,7 @@ void TrajectoryPlotMeasurement::save() {
         for (size_t t=0; t<steps; t++) {
             for (size_t i=0; i<trajectories.size(); i++) {
                 TrajectoryPlotMeasurement::trajectory_info ti=trajectories[i].at(t);
-                if (i==0) d[0]=ti.t;
+                d[0]=ti.t;
                 d[1+i*3]=ti.x;
                 d[1+i*3+1]=ti.y;
                 d[1+i*3+2]=ti.z;
@@ -157,10 +157,18 @@ void TrajectoryPlotMeasurement::save() {
                 fprintf(f, "set terminal wxt font \"%s, 8\"\n", GNUPLOT_FONT);
                 fprintf(f, "set output\n");
             }
+            fprintf(f, "set title \"%s:    all trajectories\"\n", object_name.c_str());
+            for (size_t i=0; i<trajectories.size(); i++) {
+                if (i>0) fprintf(f, ", \\\n");
+                else fprintf(f, "splot ");
+                fprintf(f, " \"%s\" binary format=\"%%%dfloat\" using %d:%d:%d title\"trajectory %d\" with lines", extract_file_name(trajfn).c_str(), rowItems, 1+1+int(i)*3, 1+1+int(i)*3+1, 1+1+int(i)*3+2, int(i));            
+            }
+            fprintf(f, "\n\n");
+            if (plt==1) fprintf(f, "pause -1\n");            
 
             for (size_t i=0; i<trajectories.size(); i++) {
                 fprintf(f, "set title \"%s:    trajectory %d\"\n", object_name.c_str(), int(i));
-                fprintf(f, "splot \"%s\" binary format=\"%%%dfloat\" using %d:%d:%d:1 with lines palette #,h(x,y) title \"r=1micron sphere around (0,0,0)\" with lines ls 1, -h(x,y) notitle with lines ls 1\n", extract_file_name(trajfn).c_str(), rowItems, 1+int(i)*3, 1+int(i)*3+1, 1+int(i)*3+2);            
+                fprintf(f, "splot \"%s\" binary format=\"%%%dfloat\" using %d:%d:%d:1 with lines palette \n#,h(x,y) title \"r=1micron sphere around (0,0,0)\" with lines ls 1, -h(x,y) notitle with lines ls 1\n", extract_file_name(trajfn).c_str(), rowItems, 1+1+int(i)*3, 1+1+int(i)*3+1, 1+1+int(i)*3+2);            
                 if (plt==1) fprintf(f, "pause -1\n");            
             }
         }
