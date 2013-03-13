@@ -146,7 +146,8 @@ class DynamicsFromFiles2 : public FluorophorDynamics
             HalfTime,
             RandomDisplacedMean,
             EndEndDistanceCenter,
-            EndEndDistanceCenterRandom
+            EndEndDistanceCenterRandom,
+            NthTime
         };
         /** \brief range minimum for random mean displacement in x-direction */
         double randomdisplace_x_min;

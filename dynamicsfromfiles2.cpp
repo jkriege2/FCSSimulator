@@ -166,6 +166,7 @@ void DynamicsFromFiles2::read_config_internal(jkINIParser2& parser) {
     else if (shiftmode==RandomDisplacedMean) t="mean_random";
     else if (shiftmode==EndEndDistanceCenter) t="end_end_center";
     else if (shiftmode==EndEndDistanceCenterRandom) t="end_end_center_random";
+    else if (shiftmode==NthTime) t="nth_time";
     else t="mean";
     std::string sm=tolower(parser.getSetAsString("shift_mode", t));
     if (sm=="halftime") {
@@ -176,6 +177,8 @@ void DynamicsFromFiles2::read_config_internal(jkINIParser2& parser) {
         shiftmode=EndEndDistanceCenter;
     } else if (sm=="end_end_center_random" || sm=="endendcenterrandom" || sm=="endendrandom") {
         shiftmode=EndEndDistanceCenterRandom;
+    } else if (sm=="nth_time" || sm=="nth") {
+        shiftmode=NthTime;
     } else {
         shiftmode=Mean;
     }
@@ -314,6 +317,13 @@ void DynamicsFromFiles2::init() {
                     shift_z[i]=shift_z[i]+r[col_posz]*position_factor;
                 } else if (shiftmode==HalfTime) {
                     if (j==lcount/2) {
+                        shift_x[i]=r[col_posx]*position_factor;
+                        shift_y[i]=r[col_posy]*position_factor;
+                        shift_z[i]=r[col_posz]*position_factor;
+                        break;
+                    }
+                } else if (shiftmode==NthTime) {
+                    if (j==(i+1)*lcount/(trajectory_count+2)) {
                         shift_x[i]=r[col_posx]*position_factor;
                         shift_y[i]=r[col_posy]*position_factor;
                         shift_z[i]=r[col_posz]*position_factor;
@@ -631,6 +641,7 @@ std::string DynamicsFromFiles2::report() {
         s+="mean_shift_range_z = "+floattostr(randomdisplace_z_min)+" ... "+floattostr(randomdisplace_z_max)+" micron\n";
     }
     if (shiftmode==HalfTime) s+="shift_mode = halftime (to position at file_duration/2)\n";
+    if (shiftmode==NthTime) s+="shift_mode = nth_time (to position at (fileno+1)*file_duration/(trajectory_count+2))\n";
     s+="timing_loadall = "+floattostr(timing_loadall)+" secs\n";
     s+="timing_load1 = "+floattostr(timing_load1)+" secs\n";
     s+="max_files = "+inttostr(max_files)+"\n";

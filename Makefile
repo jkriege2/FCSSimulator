@@ -21,6 +21,7 @@ SRC_FILE= browniandynamics.cpp \
           gridrandomwalkdynamics.cpp \
           msdmeasurement.cpp \
           childdynamics.cpp \
+          trajectoryplot.cpp \
           $(LIB)/datatable.cpp \
           $(LIB)/highrestimer.cpp \
           $(LIB)/jkiniparser2.cpp \

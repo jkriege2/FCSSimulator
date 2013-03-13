@@ -10,6 +10,7 @@
 #include "gridrandomwalkdynamics.h"
 #include "msdmeasurement.h"
 #include "childdynamics.h"
+#include "trajectoryplot.h"
 #include <gsl/gsl_matrix.h>
 
 
@@ -147,6 +148,7 @@ void do_sim(std::string inifilename) {
             std::string lgname=tolower(gname);
             std::string oname=ini.getAsString(gname+".object_name", lgname);
             std::vector<std::string> sources=tokenize_string(ini.getAsString(gname+".sources", ""), ",");
+            if (sources.size()<=0) sources=tokenize_string(ini.getAsString(gname+".source", ""), ",");
             std::string supergroup="";
             int object_number=extract_right_int(gname);
             FluorescenceMeasurement* m=NULL;
@@ -161,6 +163,9 @@ void do_sim(std::string inifilename) {
                 } else if (lgname.find("msd")==0 && lgname.size()>3) {
                     supergroup="msd";
                     m=new MSDMeasurement(fluorophors, oname);
+                } else if (lgname.find("trajectoryplot")==0 && lgname.size()>14) {
+                    supergroup="trajectoryplot";
+                    m=new TrajectoryPlotMeasurement(fluorophors, oname);
                 }
                 if (m!=NULL) {
                     m->set_object_number(object_number);
