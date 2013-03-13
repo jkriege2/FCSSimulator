@@ -59,6 +59,7 @@ class TrajectoryPlotMeasurement : public FluorescenceMeasurement {
         std::vector<std::vector<trajectory_info> > trajectories;
         std::map<int, trajectory_info> currentT;
         int avgCount;
+        
     private:
 };
 
