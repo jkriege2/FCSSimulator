@@ -559,7 +559,7 @@ int32_t FCSMeasurement::getDetectedPhotons(double nphot_sum) const {
     if (detector_type==0) {
         N=gsl_ran_poisson(rng, nphot_sum);
     } else {
-        double d=gsl_ran_gaussian(rng, sqrt(nphot_sum*lindet_gain*lindet_gain*lindet_var_factor))+nphot_sum*lindet_gain;
+        double d=gsl_ran_gaussian(rng, sqrt(nphot_sum*lindet_gain*lindet_gain*lindet_var_factor+lindet_readnoise*lindet_readnoise))+nphot_sum*lindet_gain;
         N=round(d);
         if (d>max_photons) N=max_photons;
     }
