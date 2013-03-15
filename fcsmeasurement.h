@@ -461,6 +461,8 @@ class FCSMeasurement: public FluorescenceMeasurement {
 
          time_t start_time;
 
+         double gaussbeam_pixel_normalization;
+
     private:
 };
 

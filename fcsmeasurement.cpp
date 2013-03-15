@@ -9,6 +9,8 @@ FCSMeasurement::FCSMeasurement(FluorophorManager* fluorophors, std::string objec
     online_correlation=false;
     save_timeseries=false;
 
+    gaussbeam_pixel_normalization=1;
+
     psf_rz_image_rwidth=500;
     psf_rz_image_zwidth=1000;
 
@@ -272,6 +274,7 @@ void FCSMeasurement::init(){
     psf_rz_image_detection.setAll(0);
     psf_rz_image_illumination.resize(psf_rz_image_rwidth, psf_rz_image_zwidth);
     psf_rz_image_illumination.setAll(0);
+    gaussbeam_pixel_normalization=1;
 
     if (det_distribution<3) {
         for (uint32_t zz=0; zz<psf_rz_image_zwidth; zz++) {
@@ -291,6 +294,8 @@ void FCSMeasurement::init(){
                 psf_rz_image_detection.setAt(rr,zz,eff);
             }
         }
+
+        gaussbeam_pixel_normalization=square_integrate(0, 0, 0, pixel_size, pixel_size_integrationdelta, psf_rz_image_detection, psf_rz_image_rresolution, psf_rz_image_zresolution);
     }
 
     for (uint32_t zz=0; zz<psf_rz_image_zwidth; zz++) {
@@ -432,7 +437,7 @@ double FCSMeasurement::detectionEfficiency(double dx, double dy, double dz) cons
             eff=gsl_pow_2(detpsf_r0/gaussbeam_w(dz, detpsf_z0, detpsf_r0))*exp(-2.0*gsl_pow_2(r)/gsl_pow_2(gaussbeam_w(dz, detpsf_z0, detpsf_r0)));
             break;
         case 3:
-            eff=square_integrate(dx, dy, dz, pixel_size, pixel_size_integrationdelta, psf_rz_image_detection, psf_rz_image_rresolution, psf_rz_image_zresolution);
+            eff=square_integrate(dx, dy, dz, pixel_size, pixel_size_integrationdelta, psf_rz_image_detection, psf_rz_image_rresolution, psf_rz_image_zresolution)/gaussbeam_pixel_normalization;
             break;
     }
     return eff;
