@@ -1627,7 +1627,7 @@ void FCSMeasurement::save() {
                                 sprintf(fn2, "%s%sbts.dat", basename.c_str(), pw.c_str());
                                 std::string atfn2=fn2;
                                 if (fcspw) {
-                                    fprintf(f, ",\\\n \"%s\" using 1:(($2)/%lf/1000.0) title \"%s\" with steps", extract_file_name(atfn2).c_str(), fcspw->get_object_name().c_str());
+                                    fprintf(f, ",\\\n \"%s\" using 1:(($2)/%lf/1000.0) title \"%s\" with steps", extract_file_name(atfn2).c_str(), corr_taumin*b, fcspw->get_object_name().c_str());
                                 }
                             }
                         }
