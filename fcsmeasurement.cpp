@@ -1617,7 +1617,7 @@ void FCSMeasurement::save() {
                         fprintf(f, "set xlabel \"time [seconds]\"\n");
                         fprintf(f, "set ylabel \"photon count [kcps]\"\n");
                         fprintf(f, "set title \"counts, object description: %s\"\n", description.c_str(), get_object_name().c_str());
-                        fprintf(f, "plot \"%s\" using 1:(($2)/%lf/1000.0) title \"%s\" with steps", extract_file_name(tsfn).c_str(), corr_taumin*b), get_object_name().c_str();
+                        fprintf(f, "plot \"%s\" using 1:(($2)/%lf/1000.0) title \"%s\" with steps", extract_file_name(tsfn).c_str(), corr_taumin*b, get_object_name().c_str());
                                                 for (int i=0; i<int(plot_with.size()); i++) {
                             std::string pw=strstrip(plot_with[i]);
                             if (measmap.count(pw)>0) {
