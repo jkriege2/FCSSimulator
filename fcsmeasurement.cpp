@@ -75,6 +75,9 @@ FCSMeasurement::FCSMeasurement(FluorophorManager* fluorophors, std::string objec
     polarised_detection=false;
     polarised_excitation=false;
 
+    save_arrivaltimes=false;
+    arrivaltimes_onlyonce=true;
+
     plot_with.clear();
 
     corr_taumin=sim_timestep;
@@ -121,6 +124,7 @@ void FCSMeasurement::clear() {
     slots=0;
     corr=NULL;
     corr_tau=NULL;
+    arrival_times.clear();
 }
 
 void FCSMeasurement::read_config_internal(jkINIParser2& parser) {
@@ -203,6 +207,8 @@ void FCSMeasurement::read_config_internal(jkINIParser2& parser) {
 
     polarised_detection=parser.getSetAsBool("polarised_detection", polarised_detection);
     polarised_excitation=parser.getSetAsBool("polarised_excitation", polarised_excitation);
+    save_arrivaltimes=parser.getSetAsBool("save_arrivaltimes", save_arrivaltimes);
+    arrivaltimes_onlyonce=parser.getSetAsBool("arrivaltimes_onlyonce", arrivaltimes_onlyonce);
 
     save_binning=parser.getSetAsBool("save_binning", save_binning);
     save_binning_time=parser.getSetAsDouble("save_binning_time", save_binning_time);
@@ -242,6 +248,7 @@ void FCSMeasurement::init(){
     slots=0;
     corr=NULL;
     corr_tau=NULL;
+    photoncounter=0;
 
     //unsigned int correlation_slots=P+(S-1)*(P-P/m);
     //corr=(double*)calloc(correlation_slots, sizeof(double));
@@ -512,11 +519,22 @@ void FCSMeasurement::run_fcs_simulation(){
         }
     }
 
+
+
     // if the current integration step ended, we may add a new value to the correlator
     //std::cout<<"sim_time="<<sim_time<<"   endCurrentStep="<<endCurrentStep<<"\n";
     if (sim_time>=endCurrentStep) {
         endCurrentStep=sim_time+corr_taumin;
         register int32_t N=getDetectedPhotons(nphot_sum);
+
+        photoncounter=photoncounter+N;
+
+        if (save_arrivaltimes && N>0) {
+            if (arrivaltimes_onlyonce) arrival_times.push_back(sim_time);
+            else {
+                for (int i=0; i<N; i++) arrival_times.push_back(sim_time);
+            }
+        }
         //std::cout<<"nphot_sum="<<nphot_sum<<"    N="<<N<<std::endl;
         if (online_correlation) {
             if (correlator_type==0) {
@@ -1270,6 +1288,40 @@ void FCSMeasurement::save() {
         }
     }
 
+   if (save_arrivaltimes) {
+
+        // if we are not in online-correlation mode we may simply calculate the binned timeseries from the
+        // complete timeseries
+        sprintf(fn, "%s%sarrivals.dat", basename.c_str(), object_name.c_str());
+        std::cout<<"writing '"<<fn<<"' ...";
+        f=fopen(fn, "w");
+        for (size_t i=0; i<arrival_times.size(); i++) {
+            fprintf(f, "%15.10lf\n", arrival_times[i]);
+        }
+        fclose(f);
+        std::string atfn=fn;
+        std::cout<<" done!\n";
+        sprintf(fn, "%s%sarrivalsplot.plt", basename.c_str(), object_name.c_str());
+        std::cout<<"writing '"<<fn<<"' ...";
+        f=fopen(fn, "w");
+        for (int plt=0; plt<2; plt++) {
+            if (plt==0) {
+                fprintf(f, "set terminal pdfcairo color solid font \"%s, 7\" linewidth 2 size 20cm,15cm\n", GNUPLOT_FONT);
+                fprintf(f, "set output \"%s\"\n", extract_file_name(basename+object_name+"sarrivalsplot.pdf").c_str());
+            } else if (plt==1) {
+                fprintf(f, "set terminal wxt font \"%s, 8\"\n", GNUPLOT_FONT);
+                fprintf(f, "set output\n");
+            }
+            fprintf(f, "set xlabel \"time [seconds]\"\n");
+            fprintf(f, "set ylabel \"photon count [photons/%lfus]\"\n", corr_taumin*1e6);
+            fprintf(f, "set title \"photons per corrtaumin, object description: %s\"\n", description.c_str());
+            fprintf(f, "plot \"%s\" using 1:(1.0) with impulses\n", extract_file_name(atfn).c_str());
+            if (plt==1) fprintf(f, "pause -1\n");
+        }
+        fclose(f);
+        std::cout<<" done!\n";
+    }
+
     sprintf(fn, "%s%sdetpsf.tif", basename.c_str(), object_name.c_str());
     std::cout<<"writing '"<<fn<<"' ...";
     psf_rz_image_detection.save_tinytifffloat(fn);
@@ -1451,6 +1503,144 @@ void FCSMeasurement::save() {
             fclose(f);
             std::cout<<" done!\n";
 
+
+
+
+               if (save_arrivaltimes) {
+                    sprintf(fn, "%s%sarrivals.dat", basename.c_str(), object_name.c_str());
+                    std::string atfn=fn;
+                    std::cout<<" done!\n";
+                    sprintf(fn, "%s%sarrivalsplotwith%d.plt", basename.c_str(), object_name.c_str(), iip);
+                    std::cout<<"writing '"<<fn<<"' ...";
+                    f=fopen(fn, "w");
+                    for (int plt=0; plt<2; plt++) {
+                        if (plt==0) {
+                            fprintf(f, "set terminal pdfcairo color solid font \"%s, 7\" linewidth 2 size 20cm,15cm\n", GNUPLOT_FONT);
+                            fprintf(f, "set output \"%s\"\n", extract_file_name(basename+object_name+"sarrivalsplotwith"+inttostr(iip)+".pdf").c_str());
+                        } else if (plt==1) {
+                            fprintf(f, "set terminal wxt font \"%s, 8\"\n", GNUPLOT_FONT);
+                            fprintf(f, "set output\n");
+                        }
+                        fprintf(f, "set xlabel \"time [seconds]\"\n");
+                        fprintf(f, "set ylabel \"photon count [photons/%lfus]\"\n", corr_taumin*1e6);
+                        fprintf(f, "set title \"photons per corrtaumin, object description: %s\"\n", description.c_str());
+                        float impheight=1;
+                        fprintf(f, "plot \"%s\" using 1:(1.0) title \"%s\" with impulses", extract_file_name(atfn).c_str(), get_object_name().c_str());
+                        for (int i=0; i<int(plot_with.size()); i++) {
+                            std::string pw=strstrip(plot_with[i]);
+                            if (measmap.count(pw)>0) {
+                                FCSMeasurement* fcspw=dynamic_cast<FCSMeasurement*>(measmap[pw]);
+                                char fn2[1024];
+                                char plt[8192];
+                                sprintf(fn2, "%s%sarrivals.dat", basename.c_str(), pw.c_str());
+                                std::string atfn2=fn2;
+                                if (fcspw) {
+                                    impheight=-1.0*impheight;
+                                    fprintf(f, ",\\\n \"%s\" using 1:(%f) title \"%s\" with impulses", extract_file_name(atfn2).c_str(), impheight, fcspw->get_object_name().c_str());
+                                }
+                            }
+                        }
+                       fprintf(f, "\n\n");
+                       if (plt==1) fprintf(f, "pause -1\n");
+                    }
+                    fclose(f);
+                    std::cout<<" done!\n";
+                }
+
+
+
+
+
+
+
+
+                if (save_binning) {
+                    unsigned long long b=round(save_binning_time/corr_taumin);
+
+                    // if we are not in online-correlation mode we may simply calculate the binned timeseries from the
+                    // complete timeseries
+                    sprintf(fn, "%s%sbts.dat", basename.c_str(), object_name.c_str());
+                    std::cout<<"writing '"<<fn<<"' ...";
+                    std::string tsfn=fn;
+                    std::cout<<" done!\n";
+                    sprintf(fn, "%s%sbtsplotwith%d.plt", basename.c_str(), object_name.c_str(), iip);
+                    std::cout<<"writing '"<<fn<<"' ...";
+                    f=fopen(fn, "w");
+                    fprintf(f, "dt_corr=%15.10lf\n", corr_taumin);
+                    fprintf(f, "dt=%15.10lf\n", save_binning_time);
+                    for (int plt=0; plt<2; plt++) {
+                        if (plt==0) {
+                            fprintf(f, "set terminal pdfcairo color solid font \"%s, 7\" linewidth 2 size 20cm,15cm\n", GNUPLOT_FONT);
+                            fprintf(f, "set output \"%s\"\n", extract_file_name(basename+object_name+"btsplotwith"+inttostr(iip)+".pdf").c_str());
+                        } else if (plt==1) {
+                            fprintf(f, "set terminal wxt font \"%s, 8\"\n", GNUPLOT_FONT);
+                            fprintf(f, "set output\n");
+                        }
+                        fprintf(f, "set xlabel \"time [seconds]\"\n");
+                        fprintf(f, "set ylabel \"photon count [photons/%lfus]\"\n", corr_taumin*1e6);
+                        fprintf(f, "set title \"counts per corrtaumin, object description: %s\"\n", description.c_str());
+                        fprintf(f, "plot \"%s\" using 1:($2*dt_corr/dt) title \"%s\" with steps", extract_file_name(tsfn).c_str(), get_object_name().c_str());
+                        for (int i=0; i<int(plot_with.size()); i++) {
+                            std::string pw=strstrip(plot_with[i]);
+                            if (measmap.count(pw)>0) {
+                                FCSMeasurement* fcspw=dynamic_cast<FCSMeasurement*>(measmap[pw]);
+                                char fn2[1024];
+                                char plt[8192];
+                                sprintf(fn2, "%s%sbts.dat", basename.c_str(), pw.c_str());
+                                std::string atfn2=fn2;
+                                if (fcspw) {
+                                    fprintf(f, ",\\\n \"%s\" using 1:($2*dt_corr/dt) title \"%s\" with steps", extract_file_name(atfn2).c_str(), fcspw->get_object_name().c_str());
+                                }
+                            }
+                        }
+                        fprintf(f, "\n\n");
+                        if (plt==1) fprintf(f, "pause -1\n");
+                        fprintf(f, "set xlabel \"time [seconds]\"\n");
+                        fprintf(f, "set ylabel \"photon count [photons/%lfms]\"\n", corr_taumin*b*1e3);
+                        fprintf(f, "set title \"counts per bin time, object description: %s\"\n", description.c_str());
+                        fprintf(f, "plot \"%s\" title \"%s\" with steps", extract_file_name(tsfn).c_str(), get_object_name().c_str());
+                        for (int i=0; i<int(plot_with.size()); i++) {
+                            std::string pw=strstrip(plot_with[i]);
+                            if (measmap.count(pw)>0) {
+                                FCSMeasurement* fcspw=dynamic_cast<FCSMeasurement*>(measmap[pw]);
+                                char fn2[1024];
+                                char plt[8192];
+                                sprintf(fn2, "%s%sbts.dat", basename.c_str(), pw.c_str());
+                                std::string atfn2=fn2;
+                                if (fcspw) {
+                                    fprintf(f, ",\\\n \"%s\" title \"%s\" with steps", extract_file_name(atfn2).c_str(), fcspw->get_object_name().c_str());
+                                }
+                            }
+                        }
+                        fprintf(f, "\n\n");
+                        if (plt==1) fprintf(f, "pause -1\n");
+                        fprintf(f, "set xlabel \"time [seconds]\"\n");
+                        fprintf(f, "set ylabel \"photon count [kcps]\"\n");
+                        fprintf(f, "set title \"counts, object description: %s\"\n", description.c_str(), get_object_name().c_str());
+                        fprintf(f, "plot \"%s\" using 1:(($2)/%lf/1000.0) title \"%s\" with steps", extract_file_name(tsfn).c_str(), corr_taumin*b), get_object_name().c_str();
+                                                for (int i=0; i<int(plot_with.size()); i++) {
+                            std::string pw=strstrip(plot_with[i]);
+                            if (measmap.count(pw)>0) {
+                                FCSMeasurement* fcspw=dynamic_cast<FCSMeasurement*>(measmap[pw]);
+                                char fn2[1024];
+                                char plt[8192];
+                                sprintf(fn2, "%s%sbts.dat", basename.c_str(), pw.c_str());
+                                std::string atfn2=fn2;
+                                if (fcspw) {
+                                    fprintf(f, ",\\\n \"%s\" using 1:(($2)/%lf/1000.0) title \"%s\" with steps", extract_file_name(atfn2).c_str(), fcspw->get_object_name().c_str());
+                                }
+                            }
+                        }
+                        fprintf(f, "\n\n");
+
+                        if (plt==1) fprintf(f, "pause -1\n");
+                    }
+                    fclose(f);
+                    std::cout<<" done!\n";
+                }
+
+
+
         }
     }
 
@@ -1569,6 +1759,12 @@ std::string FCSMeasurement::report(){
         s+="estimated_memory_consumtion_dynamics("+dyn[i]->get_object_name()+") = "+floattostr(dyn[i]->calc_mem_consumption()/1024.0/1024.0)+" MBytes\n";
         sum=sum+dyn[i]->calc_mem_consumption();
     }
+    s+="save_arrivaltimes = "+booltostr(save_arrivaltimes)+"\n";
+    if (save_arrivaltimes) {
+        s+="arrivaltimes_onlyonce = "+booltostr(arrivaltimes_onlyonce)+"\n";
+        s+="registered_arrival_times = "+inttostr(arrival_times.size())+"\n";
+    }
+    s+="detected_photons = "+inttostr(photoncounter)+"\n";
     s+="estimated_memory_consumtion_all = "+floattostr((mem+sum)/1024.0/1024.0)+" MBytes\n";
     s+="runtime correlation = "+floattostr(correlation_runtime)+" secs\n";
 

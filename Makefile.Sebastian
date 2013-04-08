@@ -2,7 +2,7 @@ all: Release
 
 LIB=../../../LIB/trunk
 CC=g++
-CFLAGS =  -Wall -DHAVE_INLINE -DNO_LIBTIFF -DJKIMAGE_USES_TINYTIFF -m64 -I../../../LIB/trunk/ #--enable-auto-import
+CFLAGS =  -Wall -DNO_LIBTIFF -DJKIMAGE_USES_TINYTIFF -I../../../LIB/trunk/ #-DHAVE_INLINE -m64 #--enable-auto-import
 LDFLAGS = -lgsl -lgslcblas -lm
 
 Release: CFLAGS += -O3 -mtune=native -march=native -ffast-math -msse -msse2 -mfpmath=sse -malign-double

@@ -343,6 +343,16 @@ class FCSMeasurement: public FluorescenceMeasurement {
         /** \brief plot PSF from 0 to psfplot_zmax in z direction in micrometers */
         double psfplot_zmax;
 
+        /** \brief if activated this class will store a list of the arrivaltimes of all photons */
+        bool save_arrivaltimes;
+        /** \brief if set \c true, additional photons per arrival time are not stored (i.e. each arrival time appears only once in the file, if set \c false, and there are N=5 photons in one timestep, the arrivaltime of these photons is written 5 times (once for each) into the file. */
+        bool arrivaltimes_onlyonce;
+        /** \brief list of the photon arrival times */
+        std::vector<double> arrival_times;
+
+        /** \brief used to count all detected photons */
+        uint64_t photoncounter;
+
         /** \brief a list of other fcs objects of which the results shall be plotted in one Gnuplot file */
         std::vector<std::string> plot_with;
         std::map<int, std::vector<std::string> > plot_with_more;

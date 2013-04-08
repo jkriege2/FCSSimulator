@@ -11,6 +11,7 @@
 #include "msdmeasurement.h"
 #include "childdynamics.h"
 #include "trajectoryplot.h"
+#include "fretdynamics.h"
 #include <gsl/gsl_matrix.h>
 
 
@@ -108,6 +109,9 @@ void do_sim(std::string inifilename) {
             } else if (lgname.find("child")==0 && lgname.size()>5) {
                 supergroup="child";
                 d=new ChildDynamics(fluorophors, oname);
+            } else if (lgname.find("fret")==0 && lgname.size()>4) {
+                supergroup="fret";
+                d=new FRETDynamics(fluorophors, oname);
             }
             if (d!=NULL) {
                 dyn.push_back(d);

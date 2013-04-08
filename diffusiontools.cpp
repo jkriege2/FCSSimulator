@@ -50,10 +50,10 @@ void FluorophorManager::init_fluorophor_database() {
 
 void FluorophorManager::add_spectrum(std::string filename) {
     Spectrum s;
-    s.filename_abs=filename;
+    s.filename_abs=tolower(filename);
     s.loaded=false;
     spectra.push_back(s);
-    std::string specname=change_file_ext(extract_file_name(filename), "");
+    std::string specname=change_file_ext(extract_file_name(tolower(filename)), "");
     spectra_map[specname]=spectra.size()-1;
     if (fluorophor_database.find(specname)!=fluorophor_database.end()) {
         fluorophor_database[specname].spectrum=spectra.size()-1;

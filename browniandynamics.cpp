@@ -244,6 +244,12 @@ void BrownianDynamics::propagate(bool boundary_check){
                 walker_state[i].x0=walker_state[n_fluorophores_local*(i/n_fluorophores_local)].x0;
                 walker_state[i].y0=walker_state[n_fluorophores_local*(i/n_fluorophores_local)].y0;
                 walker_state[i].z0=walker_state[n_fluorophores_local*(i/n_fluorophores_local)].z0;
+                walker_state[i].ix=walker_state[n_fluorophores_local*(i/n_fluorophores_local)].ix;
+                walker_state[i].iy=walker_state[n_fluorophores_local*(i/n_fluorophores_local)].iy;
+                walker_state[i].iz=walker_state[n_fluorophores_local*(i/n_fluorophores_local)].iz;
+                walker_state[i].ix0=walker_state[n_fluorophores_local*(i/n_fluorophores_local)].ix0;
+                walker_state[i].iy0=walker_state[n_fluorophores_local*(i/n_fluorophores_local)].iy0;
+                walker_state[i].iz0=walker_state[n_fluorophores_local*(i/n_fluorophores_local)].iz0;
                 walker_state[i].time=walker_state[n_fluorophores_local*(i/n_fluorophores_local)].time;
                 walker_state[i].p_x=walker_state[n_fluorophores_local*(i/n_fluorophores_local)].p_x;
                 walker_state[i].p_y=walker_state[n_fluorophores_local*(i/n_fluorophores_local)].p_y;
