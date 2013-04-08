@@ -342,7 +342,15 @@ class FluorophorDynamics
         bool endoftrajectory;
         /** \brief depletion propability with this propability a particle does not re-enter the simulation box */
         double depletion_propability;
-
+        /** \brief reset quantum state if particle leaves simulation box, this allows to perform bleaching with a reservoir of functional fluorophores or depletion 
+         *
+         *  Usually bleaching can be implemented by a photophysics rate into a dark state that can n ot be left anymore. If this is set \c true, the 
+         *  quantum state (i.e. photophysics) of a particle is reset, when it leaves the simulation box and is therefore reinitialized at a new starting position.
+         *  If this is set \c false (default), the fluorophores stays switched off if it leaves the volume in the off state and is never switched on again (unless 
+         *  the derived dynamics class does it explicitly, of course). This last case resembles the depletion of a reservoir of fluorophores.
+         */
+        bool reset_qmstate_at_simboxborder;
+        
         /** \brief is this and use_photophysics are BOTH \c true, each additionalö walker will have it's own blinking dynamics */
         bool additional_walker_photophysics;
         /** \brief is this is \c true, the additional walkers are set non-existent if main-walker is non-existent */

@@ -71,7 +71,8 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, std::stri
     init_type=0;
     init_spectrum=-1;
     init_used_qm_states=1;
-
+    reset_qmstate_at_simboxborder=false;
+    
     for (int j=0; j<N_FLUORESCENT_STATES; j++) init_sigma_abs[j]=2.2e-20;
     for (int j=0; j<N_FLUORESCENT_STATES; j++) init_q_fluor[j]=0.1;
     for (int j=0; j<N_FLUORESCENT_STATES*N_FLUORESCENT_STATES; j++) init_photophysics_transition[j]=0;
@@ -123,7 +124,8 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, double si
     rng = gsl_rng_alloc (rng_type);
     gsl_rng_set(rng, time(0));
     depletion_propability=0;
-
+    reset_qmstate_at_simboxborder=false;
+    
     init_p_x=1;
     init_p_y=0;
     init_p_z=0;
@@ -172,7 +174,8 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, double si
     init_fluorophor="atto488";
     group="";
     supergroup="";
-
+    reset_qmstate_at_simboxborder=false;
+    
      // init GSL random number generator
     gsl_rng_env_setup();
     rng_type = gsl_rng_taus;
@@ -329,6 +332,7 @@ void FluorophorDynamics::read_config_internal(jkINIParser2& parser) {
     init_used_qm_states=parser.getSetAsInt("init_used_qm_states", init_used_qm_states);
 
     use_photophysics=parser.getSetAsBool("use_photophysics", use_photophysics);
+    reset_qmstate_at_simboxborder=parser.getSetAsBool("reset_qmstate_at_simboxborder", reset_qmstate_at_simboxborder);
     depletion_propability=parser.getSetAsDouble("depletion_propability", depletion_propability);
 
     std::string spec=init_fluorophor;
@@ -738,6 +742,7 @@ std::string FluorophorDynamics::report() {
         }
         s+="\n";
         //s+=doublearraytostr(init_photophysics_transition, N_FLUORESCENT_STATES,N_FLUORESCENT_STATES,false)+"\n";
+        s+="reset_qmstate_at_simboxborder = "+booltostr(reset_qmstate_at_simboxborder)+"\n";
     }
     s+="depletion_propability = "+floattostr(depletion_propability)+"\n";
 
@@ -807,43 +812,51 @@ void FluorophorDynamics::perform_boundary_check(unsigned long i) {
                     // first choose one face of the simulation volume and then set the walker
                     // to any position on the face ... also shift a bit inwards
                     char face=gsl_rng_uniform_int(rng, 6)+1;
+                    double x=0,y=0,z=0;
                     switch(face) {
                         case 1:
                             //x-y-plane at z=0
-                            walker_state[i].x=gsl_ran_flat(rng, 0, sim_x);
-                            walker_state[i].y=gsl_ran_flat(rng, 0, sim_y);
-                            walker_state[i].z=0;
+                            x=gsl_ran_flat(rng, 0, sim_x);
+                            y=gsl_ran_flat(rng, 0, sim_y);
+                            z=0;
                             break;
                         case 2:
                             //x-y-plane at z=sim_z
-                            walker_state[i].x=gsl_ran_flat(rng, 0, sim_x);
-                            walker_state[i].y=gsl_ran_flat(rng, 0, sim_y);
-                            walker_state[i].z=sim_z;
+                            x=gsl_ran_flat(rng, 0, sim_x);
+                            y=gsl_ran_flat(rng, 0, sim_y);
+                            z=sim_z;
                             break;
                         case 3:
                             //x-z-plane at y=0
-                            walker_state[i].x=gsl_ran_flat(rng, 0, sim_x);
-                            walker_state[i].y=0;
-                            walker_state[i].z=gsl_ran_flat(rng, 0, sim_z);
+                            x=gsl_ran_flat(rng, 0, sim_x);
+                            y=0;
+                            z=gsl_ran_flat(rng, 0, sim_z);
                             break;
                         case 4:
                             //x-z-plane at y=sim_y
-                            walker_state[i].x=gsl_ran_flat(rng, 0, sim_x);
-                            walker_state[i].y=sim_y;
-                            walker_state[i].z=gsl_ran_flat(rng, 0, sim_z);
+                            x=gsl_ran_flat(rng, 0, sim_x);
+                            y=sim_y;
+                            z=gsl_ran_flat(rng, 0, sim_z);
                             break;
                         case 5:
                             //z-y-plane at x=0
-                            walker_state[i].x=0;
-                            walker_state[i].y=gsl_ran_flat(rng, 0, sim_y);
-                            walker_state[i].z=gsl_ran_flat(rng, 0, sim_z);
+                            x=0;
+                            y=gsl_ran_flat(rng, 0, sim_y);
+                            z=gsl_ran_flat(rng, 0, sim_z);
                             break;
                         case 6:
                             //z-y-plane at x=sim_x
-                            walker_state[i].x=sim_x;
-                            walker_state[i].y=gsl_ran_flat(rng, 0, sim_y);
-                            walker_state[i].z=gsl_ran_flat(rng, 0, sim_z);
+                            x=sim_x;
+                            y=gsl_ran_flat(rng, 0, sim_y);
+                            z=gsl_ran_flat(rng, 0, sim_z);
                             break;
+                    }
+                    if (reset_qmstate_at_simboxborder)  {
+                        init_walker(i, x, y, z);
+                    }   else {
+                        walker_state[i].x=x;
+                        walker_state[i].y=y;
+                        walker_state[i].z=z;                        
                     }
                     walker_state[i].time=0;
                     walker_state[i].x0=walker_state[i].x;
@@ -859,10 +872,18 @@ void FluorophorDynamics::perform_boundary_check(unsigned long i) {
                 if (depletion_propability<=0 || gsl_ran_flat(rng,0,1)>depletion_propability) {
                     //std::cout<<"initializing new walker ... depletion_propability="<<depletion_propability<<"\n";
                     gsl_ran_dir_3d(rng, &nx, &ny, &nz);
-                    walker_state[i].x=sim_radius*nx;
-                    walker_state[i].y=sim_radius*ny;
-                    walker_state[i].z=sim_radius*nz;
+                    double x=sim_radius*nx;
+                    double y=sim_radius*ny;
+                    double z=sim_radius*nz;
                     walker_state[i].time=0;
+                    if (reset_qmstate_at_simboxborder)  {
+                        init_walker(i, x, y, z);
+                    }   else {
+                        walker_state[i].x=x;
+                        walker_state[i].y=y;
+                        walker_state[i].z=z;
+                        
+                    }
                     walker_state[i].x0=walker_state[i].x;
                     walker_state[i].y0=walker_state[i].y;
                     walker_state[i].z0=walker_state[i].z;
