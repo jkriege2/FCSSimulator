@@ -293,35 +293,67 @@ void do_sim(std::string inifilename) {
 
 int main(int argc, char* argv[])
 {
-    fluorophors=new FluorophorManager(extract_file_path(argv[0]));
-
+    bool test_spectra=false;
+    bool do_execute=true;
     if (argc>1) {
-        std::vector<std::string> files;
         for (int i=1; i<argc; i++) {
-            std::vector<std::string> files1=listfiles_wildcard(argv[i]);
-	    std::string fn=argv[i];
-	    if (fn.find('*')!=std::string::npos || fn.find('?')!=std::string::npos) {
-	        files1=listfiles_wildcard(argv[i]);
-	    } else {
-	        files1.clear();
-		files1.push_back(fn);
-	    }
-
-            for (size_t j=0; j<files1.size(); j++) {
-                files.push_back(files1[j]);
-                std::cout<<"   will simluate '"<<files1[j]<<"' ...\n";
+            std::string fn=argv[i];
+            if (tolower(fn)=="--testspectra")  {
+                std::cout<<"spectrum test mode activated!\n";
+                std::cout<<"\n";
+                test_spectra=true;
+                do_execute=false;
+            }
+            if (tolower(fn)=="--help")  {
+                std::cout<<"diffusion 4 FCS simulator\n";
+                std::cout<<"   (c)2008-2013 bz J.W.Krieger <j.krieger@dkfz.de>\n";
+                std::cout<<"\nusage:\n";
+                std::cout<<"    diffusion4 [options] file1 [file2 [file3 ...] ] ]\n";
+                std::cout<<"\noptions:\n";
+                std::cout<<"    --help: this online help message\n";
+                std::cout<<"    --testspectra: output test infor for fl. and abs. spectra in database\n";
+                std::cout<<"\nfiles:\n";
+                std::cout<<"    give a list of files to process. It is possible to use wildcards in\n";
+                std::cout<<"    filenames: * matches at least one character and ? matches exactlz one\n";
+                std::cout<<"    character.\n\n\n";
+                do_execute=false;
             }
         }
-        for (unsigned int i=0; i<files.size(); i++) {
-            std::cout<<"---------------------------------------------------------------------------------------------------------"<<std::endl<<std::endl;
-            std::cout<<"--  simulating for "<<files[i]<<"   "<<i+1<<"/"<<files.size()<<std::endl;
-            std::cout<<"---------------------------------------------------------------------------------------------------------"<<std::endl<<std::endl;
-            do_sim(files[i]);
-        }
-    } else {
-        do_sim("diffusion4.ini");
     }
+    //std::cout<<"test spectra: "<<booltostr(test_spectra)<<std::endl;
+    fluorophors=new FluorophorManager(extract_file_path(argv[0]), test_spectra);
 
+    if (do_execute) {
+        if (argc>1) {
+            std::vector<std::string> files;
+            for (int i=1; i<argc; i++) {
+                std::string fn=argv[i];
+                if (fn.size()<1 || fn[0]!='-') {
+                    std::vector<std::string> files1=listfiles_wildcard(argv[i]);
+                    std::string fn=argv[i];
+                    if (fn.find('*')!=std::string::npos || fn.find('?')!=std::string::npos) {
+                        files1=listfiles_wildcard(argv[i]);
+                    } else {
+                        files1.clear();
+                        files1.push_back(fn);
+                    }
+
+                     for (size_t j=0; j<files1.size(); j++) {
+                        files.push_back(files1[j]);
+                        std::cout<<"   will simluate '"<<files1[j]<<"' ...\n";
+                    }
+                }
+            }
+            for (unsigned int i=0; i<files.size(); i++) {
+                std::cout<<"---------------------------------------------------------------------------------------------------------"<<std::endl<<std::endl;
+                std::cout<<"--  simulating for "<<files[i]<<"   "<<i+1<<"/"<<files.size()<<std::endl;
+                std::cout<<"---------------------------------------------------------------------------------------------------------"<<std::endl<<std::endl;
+                do_sim(files[i]);
+            }
+        } else {
+            do_sim("diffusion4.ini");
+        }
+    }
 
     //dyn.save_trajectories();
     return 0;

@@ -178,13 +178,16 @@ sigma_abs=3.6e-20 \endverbatim
 
     public:
         /** \brief class constructor, initialises the database from the provided path. */
-        FluorophorManager(std::string database_path=std::string(""));
+        FluorophorManager(std::string database_path=std::string(""), bool test_spectra=false);
 
         /** \brief class destructor */
         ~FluorophorManager();
 
         /** \brief load the specified spectrum, i.e. make sure that the specral data is loaded and the splines are calculated */
         void load_spectrum(int ID);
+
+        /** \brief output testdata for the given spectrum */
+        void test_spectrum(int ID);
 
         /** \brief get the absorption efficiency [0..1] from the given spectrum at the given wavelength [nm]
          *
@@ -201,13 +204,7 @@ sigma_abs=3.6e-20 \endverbatim
          * If \a spectrum equals -1 this function simply returns 1, otherwise an interpolated value
          * from the given spectrum.
          */
-        inline double get_spectral_absorbance(int spectrum, double wavelength) {
-            if (spectrum==-1) return 1.0;
-            if (!spectra[spectrum].loaded) load_spectrum(spectrum);
-            gsl_spline* spline=spectra[spectrum].spline_abs;
-            gsl_interp_accel* acc=spectra[spectrum].accel_abs;
-            return GSL_MIN(1.0, GSL_MAX(0.0, gsl_spline_eval(spline, wavelength, acc)));
-        }
+        double get_spectral_absorbance(int spectrum, double wavelength);
 
         /** \brief get the fluorescence value [0..1] from the given spectrum at the given wavelength [nm]
          *
@@ -223,13 +220,7 @@ sigma_abs=3.6e-20 \endverbatim
          * If \a spectrum equals -1 this function simply returns 1, otherwise an interpolated value
          * from the given spectrum.
          */
-        inline double get_spectral_fluorescence(int spectrum, double wavelength) {
-            if (spectrum==-1) return 1.0;
-            if (!spectra[spectrum].loaded) load_spectrum(spectrum);
-            gsl_spline* spline=spectra[spectrum].spline_fl;
-            gsl_interp_accel* acc=spectra[spectrum].accel_fl;
-            return GSL_MIN(1.0, GSL_MAX(0.0, gsl_spline_eval(spline, wavelength, acc)));
-        }
+        double get_spectral_fluorescence(int spectrum, double wavelength);
 
         /** \brief get the fluorescence value [0..1] from the given spectrum at the given wavelength [nm]
          *

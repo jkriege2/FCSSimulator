@@ -200,6 +200,7 @@ class FCSMeasurement: public FluorescenceMeasurement {
         /** \brief intensity I_0 of excitation laser [uW/m^2] */
         double I0;
 
+
         /** \brief quantum efficiency of detection [0..1]*/
         double q_det;
 

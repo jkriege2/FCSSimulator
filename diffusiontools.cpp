@@ -5,8 +5,9 @@ std::vector<FluorescenceMeasurement*> meas;
 std::map<std::string, FluorophorDynamics*> dynmap;
 std::map<std::string, FluorescenceMeasurement*> measmap;
 
-FluorophorManager::FluorophorManager(std::string database_path){
+FluorophorManager::FluorophorManager(std::string database_path, bool test_spectra){
     this->database_path=database_path;
+    this->test_spectra=test_spectra;
     spectral_interpolation_type=gsl_interp_cspline;
     init_fluorophor_database();
     init_spectra();
@@ -96,28 +97,67 @@ void FluorophorManager::load_spectrum(int ID) {
     spectra[ID].spline_fl=gsl_spline_alloc (spectral_interpolation_type, spectra[ID].val_count);
     gsl_spline_init(spectra[ID].spline_fl, spectra[ID].lambda, spectra[ID].eff_fl, spectra[ID].val_count);
 
-    if (test_spectra) {
+
+    if (tab.get_column_count()>2) {
         double dl=spectra[ID].lambda[spectra[ID].val_count-1]-spectra[ID].lambda[0];
-        int N=500;
-        std::string fn1=change_file_ext(filename, ".intspec");
-        //std::cout<<"writing spectrum interpolation: "<<fn1<<std::endl;
-        FILE* o=fopen(fn1.c_str(), "w");
-        for (int i=0; i<N; i++) {
-            double l=spectra[ID].lambda[0]+dl/(double)N*i;
-            double e=get_spectral_absorbance(spectra.size()-1, l);
-            double f=get_spectral_fluorescence(spectra.size()-1, l);
-            fprintf(o, "%10.5lf, %10.5lf, %10.5lf\n", l, e, f);
+        double int_fl=gsl_spline_eval_integ(spectra[ID].spline_fl, spectra[ID].lambda[0], spectra[ID].lambda[0]+dl, spectra[ID].accel_fl);
+        for (size_t i=0; i<spectra[ID].val_count; i++) {
+            spectra[ID].eff_fl[i]=spectra[ID].eff_fl[i]/int_fl;
         }
-        fclose(o);
-        o=fopen((fn1+".plt").c_str(), "w");
-        fprintf(o, "plot \"%s\" using 1:2 title \"absorption, interpolation\" with lines, \"%s\" using 1:(($2)/%lf) title \"absorption,input data\" with points", extract_file_name(fn1).c_str(), extract_file_name(filename).c_str(), max_abs);
-        if (tab.get_column_count()>2) fprintf(o, ", \\\n     \"%s\" using 1:3 title \"emission, interpolation\" with lines, \"%s\" using 1:(($3)/%lf) title \"emission,input data\" with points, \"%s\" using 1:(($3)/%lf) title \"emission,input data, sum=1\" with points\n", extract_file_name(fn1).c_str(), extract_file_name(filename).c_str(), max_fl, extract_file_name(filename).c_str(), sum_fl);
-        fprintf(o, "\n\n\n");
-        fprintf(o, "pause -1\n");
-        fclose(o);
+        /*gsl_spline_free(spectra[ID.spline_abs);
+        gsl_interp_accel_free(spectra[ID].accel_abs);
+        spectra[ID].accel_fl= gsl_interp_accel_alloc ();
+        spectra[ID].spline_fl=gsl_spline_alloc (spectral_interpolation_type, spectra[ID].val_count);*/
+        gsl_spline_init(spectra[ID].spline_fl, spectra[ID].lambda, spectra[ID].eff_fl, spectra[ID].val_count);
     }
+
+
     spectra[ID].loaded=true;
     //std::cout<<"finished load_spectrum ...\n";
+}
+
+
+void FluorophorManager::test_spectrum(int ID) {
+    if (ID<0) return;
+    if (!spectra[ID].loaded) {
+        load_spectrum(ID)    ;
+    }
+    //std::cout<<"run load_spectrum ...\n";
+    datatable tab;
+    std::string filename=spectra[ID].filename_abs;
+    tab.load_csv(filename);
+    double max_abs=tab.column_max(1);
+    double sum_fl=1;
+    if (tab.get_column_count()>2) sum_fl=tab.column_sum(2);
+    double max_fl=1;
+    if (tab.get_column_count()>2) max_fl=tab.column_max(2);
+
+    double dl=spectra[ID].lambda[spectra[ID].val_count-1]-spectra[ID].lambda[0];
+    double int_fl=0;
+    gsl_spline* spline=spectra[ID].spline_fl;
+    gsl_interp_accel* acc=spectra[ID].accel_fl;
+    int_fl=gsl_spline_eval_integ(spline, spectra[ID].lambda[0], spectra[ID].lambda[0]+dl, acc);
+    int N=500;
+    std::string fn1=change_file_ext(filename, ".intspec");
+    std::cout<<"writing spectrum interpolation: "<<fn1<<std::endl;
+    FILE* o=fopen(fn1.c_str(), "w");
+    for (int i=0; i<N; i++) {
+        double l=spectra[ID].lambda[0]+dl/(double)(N-1)*i;
+        double e=get_spectral_absorbance(ID, l);
+        double f=get_spectral_fluorescence(ID, l);
+        fprintf(o, "%10.5lf %10.5lf %10.5lf\n", l, e, f);
+    }
+    fclose(o);
+    o=fopen((fn1+".plt").c_str(), "w");
+    fprintf(o, "plot \"%s\" using 1:2 title \"absorption, interpolation\" with lines, \"%s\" using 1:(($2)/%lf) title \"absorption,input data\" with points", extract_file_name(fn1).c_str(), extract_file_name(filename).c_str(), max_abs);
+    fprintf(o, "\n\n\n");
+    fprintf(o, "pause -1\n");
+    if (tab.get_column_count()>2) {
+        fprintf(o, "plot \"%s\" using 1:3 title \"emission, interpolation, integral=%lf\" with lines, \"%s\" using 1:(($3)/%lf) title \"emission,input data, sum=%lf\" with points\n", extract_file_name(fn1).c_str(), int_fl, extract_file_name(filename).c_str(), sum_fl, sum_fl);
+        fprintf(o, "\n\n\n");
+        fprintf(o, "pause -1\n");
+    }
+    fclose(o);
 }
 
 void FluorophorManager::init_spectra() {
@@ -125,7 +165,7 @@ void FluorophorManager::init_spectra() {
     struct dirent *ep;
 
 
-    test_spectra=false;
+    //test_spectra=false;
     for (size_t i=0; i<spectra.size(); i++) {
         gsl_spline_free(spectra[i].spline_abs);
         gsl_interp_accel_free(spectra[i].accel_abs);
@@ -148,6 +188,14 @@ void FluorophorManager::init_spectra() {
         }
         (void) closedir (dp);
     }
+
+    if (test_spectra) {
+        std::cout<<"creating test plotfiles for spectra:\n";
+        for (size_t i=0; i<spectra.size(); i++) {
+            std::cout<<" * loading spectrum i="<<i<<": "<<spectra[i].filename_abs<<std::endl;
+            test_spectrum(i);
+        }
+    }
     std::cout<<"loading ... finished\n";
 
 }
@@ -168,4 +216,24 @@ double gaussbeam_w(double z, double z0, double w0) {
 
 double gaussbeam_R(double z, double z0) {
     return z*(1.0+(z0*z0/z/z));
+}
+
+double FluorophorManager::get_spectral_absorbance(int spectrum, double wavelength) {
+    if (spectrum==-1) return 1.0;
+    if (!spectra[spectrum].loaded) load_spectrum(spectrum);
+    gsl_spline* spline=spectra[spectrum].spline_abs;
+    gsl_interp_accel* acc=spectra[spectrum].accel_abs;
+    if (wavelength<spectra[spectrum].lambda[0]) return 0;
+    if (wavelength>=spectra[spectrum].lambda[spectra[spectrum].val_count-1]) return 0;
+    return GSL_MIN(1.0, GSL_MAX(0.0, gsl_spline_eval(spline, wavelength, acc)));
+}
+
+double FluorophorManager::get_spectral_fluorescence(int spectrum, double wavelength) {
+    if (spectrum==-1) return 1.0;
+    if (!spectra[spectrum].loaded) load_spectrum(spectrum);
+    gsl_spline* spline=spectra[spectrum].spline_fl;
+    gsl_interp_accel* acc=spectra[spectrum].accel_fl;
+    if (wavelength<spectra[spectrum].lambda[0]) return 0;
+    if (wavelength>=spectra[spectrum].lambda[spectra[spectrum].val_count-1]) return 0;
+    return GSL_MIN(1.0, GSL_MAX(0.0, gsl_spline_eval(spline, wavelength, acc)));
 }
