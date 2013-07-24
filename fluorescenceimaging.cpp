@@ -113,7 +113,7 @@ void FluorescenceImaging::propagate(){
         } else { // add intensity to the current images
             double n0=I0*1e-6/Ephoton*sim_timestep;//*q_fluor*sigma_abs;
             for (size_t d=0; d<dyn.size(); d++) { // go through all dynamics objects that provide data for this measurement object
-                FluorophorDynamics::walkerState* dy=dyn[d]->get_walker_state();
+                FluorophorDynamics::walkerState* dy=dyn[d]->get_visible_walker_state();
                 unsigned long wc=dyn[d]->get_visible_walker_count();
                 if (!dyn[d]->end_of_trajectory_reached()) for (unsigned long i=0; i<wc; i++) { // iterate through all walkers in the d-th dynamics object
                     if (dy[i].exists) {
@@ -138,7 +138,7 @@ void FluorescenceImaging::propagate(){
                                     double nphot=n0;
                                     double dxs=gsl_pow_2(x0-x);
                                     double dys=gsl_pow_2(y0-y);
-                                    nphot=nphot*dyn[d]->get_walker_sigma_times_qfl(i);
+                                    nphot=nphot*dyn[d]->get_visible_walker_sigma_times_qfl(i);
                                     nphot=nphot*exp(-2.0*(dxs+dys)/gsl_pow_2(psf_r0)-2.0*gsl_pow_2(z0-img_z0)/gsl_pow_2(psf_z0));
                                     if (nphot>0) {
                                         gsl_matrix_set(avgImage, ix, iy, gsl_matrix_get(avgImage, ix, iy)+nphot);

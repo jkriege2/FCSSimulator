@@ -31,6 +31,26 @@ class ChildDynamics : public FluorophorDynamics
         /** \brief report the state of the object, as human-readable text */
         virtual std::string report();
 
+
+
+        /*! \brief return the number of visible walkers in the simulational box
+
+            \note Use this function to access the visible walkers, visible to a fluorescence detection. These may be less
+                  than actually present. Use these methods together: get_visible_walker_count(), get_visible_walker_sigma_times_qfl(),
+                  get_visible_walker_state(). And use them only in detection mode. In dynamics mode: use get_walker_count(),
+                  get_walker_sigma_times_qfl(), get_walker_state()
+         */
+        virtual unsigned long get_visible_walker_count() ;
+        virtual double get_visible_walker_sigma_times_qfl(unsigned long i);
+        /*! \brief get pointer to array with all walker states
+
+            \note Use this function to access the visible walkers, visible to a fluorescence detection. These may be less
+                  than actually present. Use these methods together: get_visible_walker_count(), get_visible_walker_sigma_times_qfl(),
+                  get_visible_walker_state(). And use them only in detection mode. In dynamics mode: use get_walker_count(),
+                  get_walker_sigma_times_qfl(), get_walker_state()
+        */
+        virtual walkerState* get_visible_walker_state();
+
     protected:
         /** \brief read configuration from INI file */
         virtual void read_config_internal(jkINIParser2& parser);
@@ -40,6 +60,9 @@ class ChildDynamics : public FluorophorDynamics
         std::string parent;
         /** \brief returns the parent class to read from */
         FluorophorDynamics* get_parent() const;
+
+        /** \brief if set \c true, also the initial walker is visible */
+        bool initial_walker_visible;
 
         /*! \brief returns \c true , if this object depends on the given \ other object.
 

@@ -7,6 +7,7 @@ ChildDynamics::ChildDynamics(FluorophorManager* fluorophors, std::string object_
     FluorophorDynamics(fluorophors, object_name)
 {
     parent="";
+    initial_walker_visible=true;
 }
 
 ChildDynamics::~ChildDynamics()
@@ -17,6 +18,7 @@ void ChildDynamics::read_config_internal(jkINIParser2& parser) {
     FluorophorDynamics::read_config_internal(parser);
 
     parent=tolower(strstrip(parser.getAsString("parent", parent)));
+    initial_walker_visible=parser.getAsBool("initial_walker_visible", initial_walker_visible);
 }
 
 void ChildDynamics::init() {
@@ -68,6 +70,7 @@ void ChildDynamics::propagate(bool boundary_check) {
 std::string ChildDynamics::report() {
     std::string s=FluorophorDynamics::report();
     s+="parent = "+parent+"\n";
+    s+="initial_walker_visible = "+booltostr(initial_walker_visible)+"\n";
     return s;
 }
 
@@ -79,4 +82,22 @@ FluorophorDynamics* ChildDynamics::get_parent() const {
 
 bool ChildDynamics::depends_on(const FluorophorDynamics* other) const {
     return other==get_parent();
+}
+
+unsigned long ChildDynamics::get_visible_walker_count()  {
+    if (!initial_walker_visible) return (walker_count)*(n_fluorophores-1);
+    return walker_count*n_fluorophores;
+}
+
+double ChildDynamics::get_visible_walker_sigma_times_qfl(unsigned long i) {
+    if (!initial_walker_visible) return FluorophorDynamics::get_walker_sigma_times_qfl(i+walker_count);
+    return FluorophorDynamics::get_walker_sigma_times_qfl(i);
+
+}
+
+FluorophorDynamics::walkerState* ChildDynamics::get_visible_walker_state() {
+    if (!initial_walker_visible) {
+        return &(walker_state[walker_count]);
+    }
+    return walker_state;
 }

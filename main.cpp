@@ -32,6 +32,13 @@ struct DynamicsSortFunctor {
   }
 } myDynamicsSortFunctor;
 
+struct MeasurementSortFunctor {
+  bool operator() (const FluorescenceMeasurement* i, const FluorescenceMeasurement* j) {
+      return j->depends_on(i);
+  }
+} myMeasurementSortFunctor;
+
+
 void do_sim(std::string inifilename) {
 
     std::ofstream logfilestream;
@@ -187,10 +194,17 @@ void do_sim(std::string inifilename) {
                         std::cout<<dynmap[tolower(strstrip(sources[s]))]->get_object_name();
                     }
                     m->init();
+                    std::cout<<"created "<<supergroup<<" measurement object '"<<oname<<"' connected to: ";
                     std::cout<<std::endl;
                 }
             }
         }
+
+        std::cout<<"sorting measurement objects ...";
+        std::sort(meas.begin(), meas.end(), myMeasurementSortFunctor);
+        std::cout<<" done!\n";
+
+
 
         if (dyn.size()<=0)  throw std::runtime_error("you need at least one dynamics object!");
         if (meas.size()<=0)  throw std::runtime_error("you need at least one measurement object!");

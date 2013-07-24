@@ -91,6 +91,8 @@ class FluorescenceMeasurement: public TickTock
         GetSetMacro(std::string, description);
         GetSetMacro(int, object_number);
 
+        virtual bool depends_on(const FluorescenceMeasurement* other) const;
+
     protected:
 
         /** \brief save the results of the measurement

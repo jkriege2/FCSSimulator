@@ -72,7 +72,7 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, std::stri
     init_spectrum=-1;
     init_used_qm_states=1;
     reset_qmstate_at_simboxborder=false;
-    
+
     for (int j=0; j<N_FLUORESCENT_STATES; j++) init_sigma_abs[j]=2.2e-20;
     for (int j=0; j<N_FLUORESCENT_STATES; j++) init_q_fluor[j]=0.1;
     for (int j=0; j<N_FLUORESCENT_STATES*N_FLUORESCENT_STATES; j++) init_photophysics_transition[j]=0;
@@ -125,7 +125,7 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, double si
     gsl_rng_set(rng, time(0));
     depletion_propability=0;
     reset_qmstate_at_simboxborder=false;
-    
+
     init_p_x=1;
     init_p_y=0;
     init_p_z=0;
@@ -175,7 +175,7 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, double si
     group="";
     supergroup="";
     reset_qmstate_at_simboxborder=false;
-    
+
      // init GSL random number generator
     gsl_rng_env_setup();
     rng_type = gsl_rng_taus;
@@ -713,6 +713,7 @@ std::string FluorophorDynamics::report() {
         s+="           = sphere, r="+floattostr(sim_radius)+" microns\n";
     }
     s+="walker_count = "+inttostr(walker_count)+"\n";
+    s+="visible_walker_count = "+inttostr(get_visible_walker_count())+"\n";
     s+="c_fluor = "+floattostr(c_fluor)+" nMolar\n";
     s+="n_fluorophores = "+inttostr(n_fluorophores)+"\n";
     s+="additional_walker_photophysics = "+booltostr(additional_walker_photophysics)+"\n";
@@ -856,7 +857,7 @@ void FluorophorDynamics::perform_boundary_check(unsigned long i) {
                     }   else {
                         walker_state[i].x=x;
                         walker_state[i].y=y;
-                        walker_state[i].z=z;                        
+                        walker_state[i].z=z;
                     }
                     walker_state[i].time=0;
                     walker_state[i].x0=walker_state[i].x;
@@ -882,7 +883,7 @@ void FluorophorDynamics::perform_boundary_check(unsigned long i) {
                         walker_state[i].x=x;
                         walker_state[i].y=y;
                         walker_state[i].z=z;
-                        
+
                     }
                     walker_state[i].x0=walker_state[i].x;
                     walker_state[i].y0=walker_state[i].y;
@@ -1095,4 +1096,30 @@ void FluorophorDynamics::ensure_dynamics_is_hooked(FluorophorDynamics* other) {
     if (count(notify_when_walkercount_changes.begin(), notify_when_walkercount_changes.end(), other)<=0) {
         notify_when_walkercount_changes.push_back(other);
     }
+}
+
+unsigned long FluorophorDynamics::get_walker_count() {
+     return walker_count;
+}
+
+unsigned long FluorophorDynamics::get_visible_walker_count() {
+    return walker_count*n_fluorophores;
+}
+
+
+double FluorophorDynamics::get_walker_sigma_times_qfl(unsigned long i) {
+    register double s=0;
+    register int state=walker_state[i].qm_state;
+    if ((state>=0)&&(state<N_FLUORESCENT_STATES)) {
+        s=walker_state[i].sigma_abs[state]*walker_state[i].q_fluor[state];
+    }
+    return s;
+}
+
+double FluorophorDynamics::get_visible_walker_sigma_times_qfl(unsigned long i) {
+    return get_walker_sigma_times_qfl(i);
+}
+
+FluorophorDynamics::walkerState* FluorophorDynamics::get_visible_walker_state() {
+    return get_walker_state();
 }

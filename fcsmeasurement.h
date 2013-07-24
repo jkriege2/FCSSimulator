@@ -27,6 +27,7 @@
 #include "../../../LIB/trunk/jkimage.h"
 #include "../../../LIB/trunk/tinytiffwriter.h"
 
+
 /*! \brief Fluorescence Correlation Spectroscopy (FCS) class
     \ingroup diff4_measurement
 
@@ -141,10 +142,14 @@ class FCSMeasurement: public FluorescenceMeasurement {
 
         GetSetMacro(double, expsf_r0);
         GetSetMacro(double, expsf_z0);
+        GetSetMacro(double, expsf_r02);
+        GetSetMacro(double, expsf_z02);
         GetSetMacro(double, detpsf_r0);
         GetSetMacro(double, detpsf_z0);
         GetSetMacro(double, lambda_ex);
         GetSetMacro(double, I0);
+        GetSetMacro(double, lambda_ex2);
+        GetSetMacro(double, I02);
         GetSetMacro(double, q_det);
         GetSetMacro(double, img_z0);
         GetSetMacro(double, img_x0);
@@ -152,6 +157,9 @@ class FCSMeasurement: public FluorescenceMeasurement {
         GetSetMacro(double, ex_z0);
         GetSetMacro(double, ex_x0);
         GetSetMacro(double, ex_y0);
+        GetSetMacro(double, ex_z02);
+        GetSetMacro(double, ex_x02);
+        GetSetMacro(double, ex_y02);
         GetSetMacro(double, duration);
         GetSetMacro(double, corr_taumin);
         GetSetMacro(unsigned int, S);
@@ -164,6 +172,13 @@ class FCSMeasurement: public FluorescenceMeasurement {
         GetSetMacro(double, lindet_gain);
         GetSetMacro(double, lindet_readnoise);
         GetSetMacro(double, lindet_var_factor);
+        GetSetMacro(std::string, fccs_partner);
+
+        bool getTimeSeries(int32_t** timeseries, int64_t& timeseries_size);
+        bool getLastNPhotons(int64_t& N);
+
+        virtual bool depends_on(const FluorescenceMeasurement* other) const;
+        FCSMeasurement* get_fccs_partner_object() const;
     protected:
 
         /** \brief save the created data (time series and correlation function) into file
@@ -181,12 +196,19 @@ class FCSMeasurement: public FluorescenceMeasurement {
 
         /** \brief photon energy [Joule] (calculated)*/
         double Ephoton;
+        double Ephoton2;
 
         /** \brief radius (1/e^2 width) of the gaussian excitation PSF in x-y-plane in [micrometers] */
         double expsf_r0;
 
         /** \brief size (1/e^2 width) of the gaussian excitation PSF in z-direction in [micrometers] */
         double expsf_z0;
+
+        /** \brief radius (1/e^2 width) of the gaussian excitation PSF 2 in x-y-plane in [micrometers] */
+        double expsf_r02;
+
+        /** \brief size (1/e^2 width) of the gaussian excitation PSF 2 in z-direction in [micrometers] */
+        double expsf_z02;
 
         /** \brief radius (1/e^2 width) of the gaussian detection PSF in x-y-plane in [micrometers] */
         double detpsf_r0;
@@ -197,26 +219,39 @@ class FCSMeasurement: public FluorescenceMeasurement {
         /** \brief wavelength of excitation light [nanometers] */
         double lambda_ex;
 
+        /** \brief wavelength of excitation light [nanometers] */
+        double lambda_ex2;
+
         /** \brief intensity I_0 of excitation laser [uW/m^2] */
         double I0;
+        /** \brief intensity I_0 of excitation laser [uW/m^2] */
+        double I02;
 
 
         /** \brief quantum efficiency of detection [0..1]*/
         double q_det;
 
-        /** \brief z-position of the laser focus [microns] */
+        /** \brief z-position of the detection volume [microns] */
         double img_z0;
-        /** \brief x-position of the laser focus [microns] */
+        /** \brief x-position of the detection volume [microns] */
         double img_x0;
-        /** \brief y-position of the laser focus [microns] */
+        /** \brief y-position of the detection volume [microns] */
         double img_y0;
 
-        /** \brief z-position of the detection volume [microns] */
+        /** \brief z-position of the laser focus [microns] */
         double ex_z0;
-        /** \brief x-position of the detection volume [microns] */
+        /** \brief x-position of the laser focus [microns] */
         double ex_x0;
-        /** \brief y-position of the detection volume [microns] */
+        /** \brief y-position of the laser focus [microns] */
         double ex_y0;
+
+
+        /** \brief z-position of the laser focus 2 [microns] */
+        double ex_z02;
+        /** \brief x-position of the laser focus 2 [microns] */
+        double ex_x02;
+        /** \brief y-position of the laser focus 2 [microns] */
+        double ex_y02;
 
         /** \brief x-component of detector polarisation */
         double d_x;
@@ -224,6 +259,8 @@ class FCSMeasurement: public FluorescenceMeasurement {
         double d_y;
         /** \brief z-component of detector polarisation */
         double d_z;
+
+
 
         /** \brief indicates whether to use polarised detection */
         bool polarised_detection;
@@ -270,6 +307,9 @@ class FCSMeasurement: public FluorescenceMeasurement {
         /** \brief this array holds the generated time series */
         int32_t* timeseries;
         uint64_t timeseries_size;
+        bool timeseries_ended;
+
+        uint64_t lastNPhotons;
 
         /** \brief this array holds the generated binned time series */
         int32_t* binned_timeseries;
@@ -280,6 +320,7 @@ class FCSMeasurement: public FluorescenceMeasurement {
 
         /** \brief this array holds the calculated correlation function */
         double* corr;
+        double* corr_fccs;
 
         /** \brief the times for the corr array */
         double* corr_tau;
@@ -292,9 +333,11 @@ class FCSMeasurement: public FluorescenceMeasurement {
 
         /** \brief Multiple-Tau correlator class */
         MultiTauCorrelator<double, double>* correlator;
+        MultiTauCorrelator<double, double>* correlator_fccs;
 
         /** \brief JanB's correlator */
         correlatorjb<double, double>* corrjanb;
+        correlatorjb<double, double>* corrjanb_fccs;
 
         /** \brief end of current integration period */
         double endCurrentStep;
@@ -462,7 +505,7 @@ class FCSMeasurement: public FluorescenceMeasurement {
          double pixel_size_integrationdelta;
 
          double detectionEfficiency(double dx, double dy, double dz) const;
-         double illuminationEfficiency(double dx, double dy, double dz) const;
+         double illuminationEfficiency(double dx, double dy, double dz, double expsf_r0, double expsf_z0) const;
          int32_t getDetectedPhotons(double nphot_sum) const;
 
          /** \brief maximum avg. photon counts for detector test */
@@ -473,6 +516,8 @@ class FCSMeasurement: public FluorescenceMeasurement {
          time_t start_time;
 
          double gaussbeam_pixel_normalization;
+
+         std::string fccs_partner;
 
     private:
 };

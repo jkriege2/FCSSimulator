@@ -96,6 +96,16 @@
       M: number of fluorophores per walker
   \endverbatim
 
+
+  There are two sets of function to access the walkers:
+     - use get_visible_walker_count(), get_visible_walker_sigma_times_qfl(), get_visible_walker_state() to access the visible walkers in detection
+     - use use get_walker_count(), get_walker_sigma_times_qfl(), get_walker_state() to acees the walkers when simulating dynamics!
+  .
+  Distinguishing this allows e.g. to have the above mentioned additional walker, but the original walkers invisble, if
+  get_visible_walker_state() returns a pointer to w12 instead of w1 (see diagram above) and get_visible_walker_count()
+  returns N*(M-1) instead of N*M. Note: By default this is NOT implemented and both sets of functions return the SAME VALUES!
+  See ChildDynamics for an example of how this could work!
+
  */
 class FluorophorDynamics
 {
@@ -342,15 +352,15 @@ class FluorophorDynamics
         bool endoftrajectory;
         /** \brief depletion propability with this propability a particle does not re-enter the simulation box */
         double depletion_propability;
-        /** \brief reset quantum state if particle leaves simulation box, this allows to perform bleaching with a reservoir of functional fluorophores or depletion 
+        /** \brief reset quantum state if particle leaves simulation box, this allows to perform bleaching with a reservoir of functional fluorophores or depletion
          *
-         *  Usually bleaching can be implemented by a photophysics rate into a dark state that can n ot be left anymore. If this is set \c true, the 
+         *  Usually bleaching can be implemented by a photophysics rate into a dark state that can n ot be left anymore. If this is set \c true, the
          *  quantum state (i.e. photophysics) of a particle is reset, when it leaves the simulation box and is therefore reinitialized at a new starting position.
-         *  If this is set \c false (default), the fluorophores stays switched off if it leaves the volume in the off state and is never switched on again (unless 
+         *  If this is set \c false (default), the fluorophores stays switched off if it leaves the volume in the off state and is never switched on again (unless
          *  the derived dynamics class does it explicitly, of course). This last case resembles the depletion of a reservoir of fluorophores.
          */
         bool reset_qmstate_at_simboxborder;
-        
+
         /** \brief is this and use_photophysics are BOTH \c true, each additionalö walker will have it's own blinking dynamics */
         bool additional_walker_photophysics;
         /** \brief is this is \c true, the additional walkers are set non-existent if main-walker is non-existent */
@@ -403,12 +413,6 @@ class FluorophorDynamics
         /** \brief initialize the state of the i-th walker and put it to the given position. The walker step counter is reset to 0 */
         virtual void init_walker(unsigned long i, double x=0, double y=0, double z=0);
 
-        /** \brief return the number of walkers in the simulational box */
-        inline unsigned long get_walker_count() { return walker_count; };
-
-        /** \brief return the number of visible walkers in the simulational box */
-        inline unsigned long get_visible_walker_count() { return walker_count*n_fluorophores; };
-
         /** \brief initialize the simulation environment (random walker positions ... */
         virtual void init();
 
@@ -433,26 +437,42 @@ class FluorophorDynamics
          */
         virtual void propagate_additional_walkers();
 
-        /** \brief get state of i-th walker */
-        inline walkerState get_walker_state(unsigned long i) { return walker_state_other[i]; };
 
         /** \brief estimates teh runtime of the simulation, or return 0 if the simulation requires a given runtime */
         virtual double estimate_runtime();
 
-        inline double get_walker_sigma_times_qfl(unsigned long i) {
-            register double s=0;
-            register int state=walker_state[i].qm_state;
-            if ((state>=0)&&(state<N_FLUORESCENT_STATES)) {
-                s=walker_state[i].sigma_abs[state]*walker_state[i].q_fluor[state];
-            }
-            return s;
-        }
+        double get_walker_sigma_times_qfl(unsigned long i);
+
+
+        /** \brief return the number of walkers in the simulational box */
+        unsigned long get_walker_count() ;
+
+        /** \brief get pointer to array with all walker states */
+        inline walkerState* get_walker_state() { return walker_state_other; };
+
+
+        /*! \brief return the number of visible walkers in the simulational box
+
+            \note Use this function to access the visible walkers, visible to a fluorescence detection. These may be less
+                  than actually present. Use these methods together: get_visible_walker_count(), get_visible_walker_sigma_times_qfl(),
+                  get_visible_walker_state(). And use them only in detection mode. In dynamics mode: use get_walker_count(),
+                  get_walker_sigma_times_qfl(), get_walker_state()
+         */
+        virtual unsigned long get_visible_walker_count() ;
+        virtual double get_visible_walker_sigma_times_qfl(unsigned long i);
+        /*! \brief get pointer to array with all walker states
+
+            \note Use this function to access the visible walkers, visible to a fluorescence detection. These may be less
+                  than actually present. Use these methods together: get_visible_walker_count(), get_visible_walker_sigma_times_qfl(),
+                  get_visible_walker_state(). And use them only in detection mode. In dynamics mode: use get_walker_count(),
+                  get_walker_sigma_times_qfl(), get_walker_state()
+        */
+        virtual walkerState* get_visible_walker_state();
+
 
         /** \brief perform a boundary check for the i-th walker and reset it to a random border position, if it left the sim box */
         virtual void perform_boundary_check(unsigned long i);
 
-        /** \brief get pointer to array with all walker states */
-        inline walkerState* get_walker_state() { return walker_state_other; };
 
 
         /** \brief returns \c true if the end of the possible trajectories is reached, i.e. as long as this object may

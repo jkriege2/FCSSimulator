@@ -142,3 +142,7 @@ void FluorescenceMeasurement::save_results() {
     save();
 }
 
+
+bool FluorescenceMeasurement::depends_on(const FluorescenceMeasurement* other) const {
+    return false;
+}

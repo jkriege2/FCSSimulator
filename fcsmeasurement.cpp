@@ -8,6 +8,9 @@ FCSMeasurement::FCSMeasurement(FluorophorManager* fluorophors, std::string objec
     save_binning=false;
     online_correlation=false;
     save_timeseries=false;
+    timeseries_ended=false;
+    lastNPhotons=0;
+    fccs_partner="";
 
     gaussbeam_pixel_normalization=1;
 
@@ -43,9 +46,19 @@ FCSMeasurement::FCSMeasurement(FluorophorManager* fluorophors, std::string objec
 
     expsf_r0=0.5;
     expsf_z0=0.5*6;
+    expsf_r02=0.6;
+    expsf_z02=0.6*6;
     detpsf_r0=0.53;
     detpsf_z0=0.53*6;
     I0=200/0.25e-12;
+    I02=200/0.25e-12;
+
+    ex_x0=0;
+    ex_y0=0;
+    ex_z0=0;
+    ex_x02=0;
+    ex_y02=0;
+    ex_z02=0;
 
     psfplot_xmax=2;
     psfplot_ymax=2;
@@ -55,7 +68,8 @@ FCSMeasurement::FCSMeasurement(FluorophorManager* fluorophors, std::string objec
     min_photons=0;
 
     // Rho 6G
-    lambda_ex=527;
+    lambda_ex=488;
+    lambda_ex2=0;
 
     q_det=0.1;
 
@@ -94,6 +108,11 @@ FCSMeasurement::FCSMeasurement(FluorophorManager* fluorophors, std::string objec
     correlator=NULL;
     corrjanb=NULL;
     corr=NULL;
+
+    correlator_fccs=NULL;
+    corrjanb_fccs=NULL;
+    corr_fccs=NULL;
+
     corr_tau=NULL;
     timeseries=NULL;
     timeseries_size=0;
@@ -112,6 +131,8 @@ FCSMeasurement::~FCSMeasurement()
 {
     if (correlator!=NULL) delete correlator; correlator=NULL;
     if (corrjanb!=NULL) delete corrjanb; corrjanb=NULL;
+    if (correlator_fccs!=NULL) delete correlator_fccs; correlator_fccs=NULL;
+    if (corrjanb_fccs!=NULL) delete corrjanb_fccs; corrjanb_fccs=NULL;
     if (timeseries!=NULL) free(timeseries); timeseries=NULL;; timeseries_size=0;
     if (binned_timeseries!=NULL) free(binned_timeseries); binned_timeseries=NULL; binned_timeseries_size=0;
 }
@@ -119,10 +140,13 @@ FCSMeasurement::~FCSMeasurement()
 void FCSMeasurement::clear() {
     if (correlator!=NULL) delete correlator; correlator=NULL;
     if (corrjanb!=NULL) delete corrjanb; corrjanb=NULL;
+    if (correlator_fccs!=NULL) delete correlator_fccs; correlator_fccs=NULL;
+    if (corrjanb_fccs!=NULL) delete corrjanb_fccs; corrjanb_fccs=NULL;
     if (timeseries!=NULL) free(timeseries); timeseries=NULL; timeseries_size=0;
     if (binned_timeseries!=NULL) free(binned_timeseries); binned_timeseries=NULL; binned_timeseries_size=0;
     slots=0;
     corr=NULL;
+    corr_fccs=NULL;
     corr_tau=NULL;
     arrival_times.clear();
 }
@@ -159,6 +183,8 @@ void FCSMeasurement::read_config_internal(jkINIParser2& parser) {
     pixel_size_integrationdelta=parser.getSetAsDouble("pixel_size_integrationdelta", pixel_size_integrationdelta);
     expsf_r0=parser.getSetAsDouble("expsf_r0", expsf_r0);
     expsf_z0=parser.getSetAsDouble("expsf_z0", expsf_z0);
+    expsf_r02=parser.getSetAsDouble("expsf_r02", expsf_r02);
+    expsf_z02=parser.getSetAsDouble("expsf_z02", expsf_z02);
 
     detpsf_r0=parser.getSetAsDouble("detpsf_r0", detpsf_r0);
     detpsf_z0=parser.getSetAsDouble("detpsf_z0", detpsf_z0);
@@ -175,7 +201,13 @@ void FCSMeasurement::read_config_internal(jkINIParser2& parser) {
     } else {
         I0=parser.getSetAsDouble("P0", I0*(M_PI*gsl_pow_2(2.0*1e-6*expsf_r0)))/(M_PI*gsl_pow_2(2.0*1e-6*expsf_r0));
     }
+    if (parser.exists("I02")) {
+        I02=parser.getSetAsDouble("I02", I0);
+    } else {
+        I02=parser.getSetAsDouble("P02", I02*(M_PI*gsl_pow_2(2.0*1e-6*expsf_r02)))/(M_PI*gsl_pow_2(2.0*1e-6*expsf_r02));
+    }
     lambda_ex=parser.getSetAsDouble("lambda_ex", lambda_ex);
+    lambda_ex2=parser.getSetAsDouble("lambda_ex2", lambda_ex2);
     q_det=parser.getSetAsDouble("q_det", q_det);
 
     img_z0=parser.getSetAsDouble("img_z0", img_z0);
@@ -185,6 +217,10 @@ void FCSMeasurement::read_config_internal(jkINIParser2& parser) {
     ex_z0=parser.getSetAsDouble("ex_z0", img_z0);
     ex_x0=parser.getSetAsDouble("ex_x0", img_x0);
     ex_y0=parser.getSetAsDouble("ex_y0", img_y0);
+
+    ex_z02=parser.getSetAsDouble("ex_z02", ex_z0);
+    ex_x02=parser.getSetAsDouble("ex_x02", ex_x0);
+    ex_y02=parser.getSetAsDouble("ex_y02", ex_y0);
 
     e_x=parser.getSetAsDouble("e_x", e_x);
     e_y=parser.getSetAsDouble("e_y", e_y);
@@ -221,6 +257,7 @@ void FCSMeasurement::read_config_internal(jkINIParser2& parser) {
     lindet_gain=parser.getSetAsDouble("lindet_gain", lindet_gain);
     lindet_var_factor=parser.getSetAsDouble("lindet_var_factor", lindet_var_factor);
     lindet_readnoise=parser.getSetAsDouble("lindet_readnoise", lindet_readnoise);
+    fccs_partner=parser.getSetAsString("fccs_partner", fccs_partner);
     init();
 }
 
@@ -247,6 +284,7 @@ void FCSMeasurement::init(){
     }
     slots=0;
     corr=NULL;
+    corr_fccs=NULL;
     corr_tau=NULL;
     photoncounter=0;
 
@@ -255,7 +293,10 @@ void FCSMeasurement::init(){
     //corr_tau=(double*)calloc(correlation_slots, sizeof(double));
     correlator=new MultiTauCorrelator<double, double>(S, m, P, corr_taumin);
     corrjanb=new correlatorjb<double, double>(S, P, double(0.0));
+    correlator_fccs=new MultiTauCorrelator<double, double>(S, m, P, corr_taumin);
+    corrjanb_fccs=new correlatorjb<double, double>(S, P, double(0.0));
     Ephoton=6.626e-34*2.99e8/(lambda_ex*1e-9);
+    if (lambda_ex2>0) Ephoton2=6.626e-34*2.99e8/(lambda_ex2*1e-9); else Ephoton2=0;
 
     if (corr_taumin<0.99*sim_timestep) {
         throw MeasurementException("corr_taumin may not be smaller than simulation timestep\ncorr_taumin="+floattostr(corr_taumin)+"   sim_timestep="+floattostr(sim_timestep));
@@ -309,7 +350,7 @@ void FCSMeasurement::init(){
         const double z=(double(zz)-double(psf_rz_image_zwidth)/2.0)*psf_rz_image_zresolution;
         for (uint32_t rr=0; rr<psf_rz_image_rwidth; rr++) {
             const double r=double(rr)*psf_rz_image_rresolution;
-            psf_rz_image_illumination.setAt(rr, zz, illuminationEfficiency(r,0,z));
+            psf_rz_image_illumination.setAt(rr, zz, illuminationEfficiency(r,0,z,expsf_r0,expsf_z0));
         }
     }
 
@@ -334,6 +375,7 @@ void FCSMeasurement::finalize_sim(){
     PublicTickTock tim;
     tim.tick();
     long* taus=(long*)malloc(S*P*sizeof(long));
+    FCSMeasurement* partner=get_fccs_partner_object();
     if (!online_correlation) {
         if (correlator_type==0) {
             for (unsigned long long i=0; i<timesteps; i++) {
@@ -352,11 +394,37 @@ void FCSMeasurement::finalize_sim(){
             corr=(double*)malloc(S*P*sizeof(double));
             statisticsAutocorrelateMultiTauAvgSymmetric<int32_t,int64_t,int64_t>(corr, timeseries, timesteps, S, m, P, 1);
         }
+
+        if (partner) {
+            if (timesteps==partner->timesteps && corr_taumin==partner->corr_taumin) {
+                if (correlator_type==0) {
+                    for (unsigned long long i=0; i<timesteps; i++) {
+                        correlator_fccs->crosscorrelate_step(timeseries[i], partner->timeseries[i]);
+                    }
+                } else if (correlator_type==1) {
+                    for (unsigned long long i=0; i<timesteps; i++) {
+                        corrjanb_fccs->run(timeseries[i], partner->timeseries[i]);
+                    }
+                } else if (correlator_type==2) {
+                    corr_fccs=(double*)malloc(S*P*sizeof(double));
+                    statisticsCrosscorrelateMultiTauSymmetric<int32_t,int64_t>(corr_fccs, timeseries, partner->timeseries, timesteps, taus, S*P);
+                } else if (correlator_type==3) {
+                    corr_fccs=(double*)malloc(S*P*sizeof(double));
+                    statisticsCrosscorrelateMultiTauAvgSymmetric<int32_t,int64_t,int64_t>(corr_fccs, timeseries, partner->timeseries, timesteps, S, m, P, 1);
+                }
+            } else {
+                throw MeasurementException("The FCCS partner object recorded with different settings! Crosscorreation not possible!");
+            }
+        }
     }
     if (correlator_type==0) {
         correlator->normalize();
         corr=correlator->getCor();
         corr_tau=correlator->getCorTau();
+        if (partner) {
+            correlator_fccs->crossnormalize();
+            corr_fccs=correlator_fccs->getCor();
+        }
         slots=correlator->getSlots();
     } else if (correlator_type==1) {
         slots=S*P;
@@ -366,6 +434,13 @@ void FCSMeasurement::finalize_sim(){
         for (unsigned int i=0; i<slots; i++) {
             corr_tau[i]=corr1[0][i]*corr_taumin;
             corr[i]=corr1[1][i];
+        }
+        if (partner) {
+            corr1=corrjanb_fccs->get_array_G();
+            corr_fccs=(double*)malloc(slots*sizeof(double));
+            for (unsigned int i=0; i<slots; i++) {
+                corr_fccs[i]=corr1[1][i];
+            }
         }
     } else if (correlator_type==2 || correlator_type==3) {
         slots=S*P;
@@ -450,7 +525,7 @@ double FCSMeasurement::detectionEfficiency(double dx, double dy, double dz) cons
     return eff;
 }
 
-double FCSMeasurement::illuminationEfficiency(double dx, double dy, double dz) const {
+double FCSMeasurement::illuminationEfficiency(double dx, double dy, double dz, double expsf_r0, double expsf_z0) const {
     double eff=0;
     double zz=0;
     switch (ill_distribution) {
@@ -471,11 +546,12 @@ double FCSMeasurement::illuminationEfficiency(double dx, double dy, double dz) c
 void FCSMeasurement::run_fcs_simulation(){
     // number of fluorescence photons per molecule and sim_timestep, but you have to multiply by sigma_abs and q_fluor (walker dependent!)
     double n00=I0*1e-6/Ephoton*sim_timestep;
+    double n02=I02*1e-6/Ephoton2*sim_timestep;
     int bin_r=round(save_binning_time/corr_taumin); // binning ration
 
     // first we go through alle the fluorophors and integrate their contribution
     for (size_t d=0; d<dyn.size(); d++) { // go through all dynamics objects that provide data for this measurement object
-        FluorophorDynamics::walkerState* dynn=dyn[d]->get_walker_state();
+        FluorophorDynamics::walkerState* dynn=dyn[d]->get_visible_walker_state();
         unsigned long wc=dyn[d]->get_visible_walker_count();
         if (!dyn[d]->end_of_trajectory_reached()) for (unsigned long i=0; i<wc; i++) { // iterate through all walkers in the d-th dynamics object
             if (dynn[i].exists) {
@@ -487,34 +563,59 @@ void FCSMeasurement::run_fcs_simulation(){
                 double dx=x0-img_x0;
                 double dz=z0-img_z0;
                 double dy=y0-img_y0;
+                double n0sum=0;
+                double dxs=dx*dx;
+                double dys=dy*dy;
+
+
+
+                // first excitation focus
                 double edx=x0-ex_x0;
                 double edz=z0-ex_z0;
                 double edy=y0-ex_y0;
-                double edxs=edx*edx;
-                double edys=edy*edy;
-                if ((fabs(edz)<(psf_region_factor*detpsf_z0)) && ((edxs+edys)<gsl_pow_2(psf_region_factor*detpsf_r0))) {
-                    //double dxs=dx*dx;
-                    //double dys=dy*dy;
-                    double n0=n00*dyn[d]->get_walker_sigma_times_qfl(i);
-                    n0=n0*fluorophors->get_spectral_absorbance(dynn[i].spectrum, lambda_ex);
-                    double dpx, dpy, dpz;
-                    dpx=dynn[i].p_x;
-                    dpy=dynn[i].p_y;
-                    dpz=dynn[i].p_z;
-                    if (polarised_excitation) {
-                        n0=n0*(1.0-e_pol_fraction+e_pol_fraction*gsl_pow_2(dpx*e_x+dpy*e_y+dpz*e_z));
-                    }
-                    n0=n0*illuminationEfficiency(edx, edy, edz);
-                    if (polarised_detection) {
-                        n0=n0*gsl_pow_2(dpx*d_x+dpy*d_y+dpz*d_z);
-                    }
-                    if (det_wavelength_min>0 && det_wavelength_max>0) {
-                        n0=n0*fluorophors->get_spectral_fluorescence(dynn[i].spectrum, det_wavelength_min, det_wavelength_max);
-                    }
-                    nphot_sum=nphot_sum+n0*q_det*detectionEfficiency(dx, dy, dz);
+                if ((fabs(dz)<(psf_region_factor*detpsf_z0)) && ((dxs+dys)<gsl_pow_2(psf_region_factor*detpsf_r0))) {
+                    double n0=dyn[d]->get_visible_walker_sigma_times_qfl(i);
+                    n0=n0*n00*fluorophors->get_spectral_absorbance(dynn[i].spectrum, lambda_ex);
+                    n0=n0*illuminationEfficiency(edx, edy, edz, expsf_r0, expsf_z0);
 
+                    n0sum=n0sum+n0;
                     //std::cout<<"nphot_sum="<<nphot_sum<<"\n";
+
+
+                    // second excitation focus
+                    if (lambda_ex2>0) {
+                        edx=x0-ex_x02;
+                        edz=z0-ex_z02;
+                        edy=y0-ex_y02;
+                        double n0=dyn[d]->get_visible_walker_sigma_times_qfl(i);
+                        n0=n0*n02*fluorophors->get_spectral_absorbance(dynn[i].spectrum, lambda_ex2);
+                        n0=n0*illuminationEfficiency(edx, edy, edz, expsf_r02, expsf_z02);
+
+                        n0sum=n0sum+n0;
+                        //std::cout<<"nphot_sum="<<nphot_sum<<"\n";
+                    }
+
+
                 }
+
+                // excitation polarisation
+                double dpx, dpy, dpz;
+                dpx=dynn[i].p_x;
+                dpy=dynn[i].p_y;
+                dpz=dynn[i].p_z;
+                if (polarised_excitation) {
+                    n0sum=n0sum*(1.0-e_pol_fraction+e_pol_fraction*gsl_pow_2(dpx*e_x+dpy*e_y+dpz*e_z));
+                }
+
+                // and the detection!
+                if (polarised_detection) {
+                    n0sum=n0sum*gsl_pow_2(dpx*d_x+dpy*d_y+dpz*d_z);
+                }
+                if (det_wavelength_min>0 && det_wavelength_max>0) {
+                    n0sum=n0sum*fluorophors->get_spectral_fluorescence(dynn[i].spectrum, det_wavelength_min, det_wavelength_max);
+                }
+                nphot_sum=nphot_sum+n0sum*q_det*detectionEfficiency(dx, dy, dz);
+
             }
         }
     }
@@ -542,8 +643,28 @@ void FCSMeasurement::run_fcs_simulation(){
             } else if (correlator_type==1) {
                 corrjanb->run(N,N);
             }
+            lastNPhotons=N;
+            timeseries_ended=false;
+
+            FCSMeasurement* partner=get_fccs_partner_object();
+            if (partner) {
+                if (timesteps==partner->timesteps && corr_taumin==partner->corr_taumin) {
+                    if (correlator_type==0) {
+                        correlator_fccs->crosscorrelate_step(N, partner->lastNPhotons);
+                    } else if (correlator_type==1) {
+                        corrjanb_fccs->run(N,partner->lastNPhotons);
+                    }
+                } else {
+                    throw MeasurementException("The FCCS partner object recorded with different settings! Crosscorreation not possible!");
+                }
+            }
         } else {
-            if (current_timestep<timeseries_size) timeseries[current_timestep]=N;
+            if (current_timestep<timeseries_size) {
+                timeseries[current_timestep]=N;
+                timeseries_ended=false;
+            } else {
+                timeseries_ended=true;
+            }
         }
         if (save_binning && online_correlation) {
             bin_sum=bin_sum+N;
@@ -611,7 +732,7 @@ int32_t FCSMeasurement::getDetectedPhotons(double nphot_sum) const {
 
 void FCSMeasurement::save() {
     FILE* f;
-    char fn[255];
+    char fn[255], fno[255];
 
 
     sprintf(fn, "%s%scorr.dat", basename.c_str(), object_name.c_str());
@@ -703,6 +824,58 @@ void FCSMeasurement::save() {
     fprintf(f, "pause -1\n");
     fclose(f);
     std::cout<<" done!\n";
+
+
+
+    FCSMeasurement* partner=get_fccs_partner_object();
+    if (partner) {
+        if (timesteps==partner->timesteps && corr_taumin==partner->corr_taumin) {
+            char fn2[255], fn1[255];
+            sprintf(fn, "%s%scrosscorr.dat", basename.c_str(), object_name.c_str());
+            sprintf(fn1, "%s%scorr.dat", basename.c_str(), object_name.c_str());
+            sprintf(fn2, "%s%scorr.dat", basename.c_str(), partner->get_object_name().c_str());
+            std::cout<<"writing '"<<fn<<"' ...";
+            f=fopen(fn, "w");
+            unsigned long long istart=1;
+            if (correlator_type==1) istart=0;
+            if (correlator_type==2) istart=0;
+            if (correlator_type==3) istart=0;
+
+            for (unsigned long long i=istart; i<slots; i++) {
+                if (correlator_type==1) fprintf(f, "%15.10lf, %15.10lf\n", corr_tau[i], corr_fccs[i]);
+                else fprintf(f, "%15.10lf, %15.10lf\n", corr_tau[i], corr_fccs[i]);
+            }
+            fclose(f);
+            std::cout<<" done!\n";
+            std::string ccffn=fn;
+            std::string acf1fn=fn1;
+            std::string acf2fn=fn2;
+
+            sprintf(fn, "%s%scrosscorrplot_simple.plt", basename.c_str(), object_name.c_str());
+            std::cout<<"writing '"<<fn<<"' ...";
+            f=fopen(fn, "w");
+            for (int plt=0; plt<2; plt++) {
+                if (plt==0) {
+                    fprintf(f, "set terminal pdfcairo color solid font \"%s, 7\" linewidth 2 size 20cm,15cm\n", GNUPLOT_FONT);
+                    fprintf(f, "set output \"%s\"\n", extract_file_name(basename+object_name+"crosscorrplot_simple.pdf").c_str());
+                } else if (plt==1) {
+                    fprintf(f, "set terminal wxt font \"%s, 8\"\n", GNUPLOT_FONT);
+                    fprintf(f, "set output\n");
+                }
+
+                fprintf(f, "set logscale x\n");
+                fprintf(f, "set title \"object description: %s\"\n", description.c_str());
+                fprintf(f, "plot \"%s\" title \"ACF1\" with lines lc rgb \"dark-green\",  \"%s\" title \"ACF2\" with lines lc rgb \"dark-red\",  \"%s\" title \"CCF\" with lines lc rgb \"dark-blue\"\n", extract_file_name(acf1fn).c_str(), extract_file_name(acf2fn).c_str(), extract_file_name(ccffn).c_str());
+            }
+            fprintf(f, "pause -1\n");
+            fclose(f);
+            std::cout<<" done!\n";
+
+
+        } else {
+            throw MeasurementException("The FCCS partner object recorded with different settings! Crosscorreation not possible!");
+        }
+    }
 
 
 
@@ -918,7 +1091,7 @@ void FCSMeasurement::save() {
         double y=psfplot_ymax*double(i)/double(npoints);
         double z=psfplot_zmax*double(i)/double(npoints);
 
-        fprintf(f, "%15.10lf, %15.10lf, %15.10lf,  %15.10lf, %15.10lf, %15.10lf,  %15.10lf, %15.10lf, %15.10lf\n", x, illuminationEfficiency(x,0,0), detectionEfficiency(x,0,0), y, illuminationEfficiency(0,y,0), detectionEfficiency(0,y,0), z, illuminationEfficiency(0,0,z), detectionEfficiency(0,0,z));
+        fprintf(f, "%15.10lf, %15.10lf, %15.10lf,  %15.10lf, %15.10lf, %15.10lf,  %15.10lf, %15.10lf, %15.10lf\n", x, illuminationEfficiency(x,0,0,expsf_r0,expsf_z0), detectionEfficiency(x,0,0), y, illuminationEfficiency(0,y,0,expsf_r0,expsf_z0), detectionEfficiency(0,y,0), z, illuminationEfficiency(0,0,z,expsf_r0,expsf_z0), detectionEfficiency(0,0,z));
     }
     fclose(f);
     std::cout<<" done!\n";
@@ -934,7 +1107,7 @@ void FCSMeasurement::save() {
             double x=psfplot_xmax*double(j)/double(npointsi);
             double y=psfplot_ymax*double(i)/double(npointsi);
 
-            fprintf(f, "%15.10lf ", illuminationEfficiency(x,y,0));
+            fprintf(f, "%15.10lf ", illuminationEfficiency(x,y,0,expsf_r0,expsf_z0));
         }
         fprintf(f, "\n");
     }
@@ -945,7 +1118,7 @@ void FCSMeasurement::save() {
             double x=psfplot_xmax*double(j)/double(npointsi);
             double z=psfplot_zmax*double(i)/double(npointsi);
 
-            fprintf(f, "%15.10lf ", illuminationEfficiency(x,0,z));
+            fprintf(f, "%15.10lf ", illuminationEfficiency(x,0,z,expsf_r0,expsf_z0));
         }
         fprintf(f, "\n");
     }
@@ -956,7 +1129,7 @@ void FCSMeasurement::save() {
             double y=psfplot_ymax*double(j)/double(npointsi);
             double z=psfplot_zmax*double(i)/double(npointsi);
 
-            fprintf(f, "%15.10lf ", illuminationEfficiency(0,y,z));
+            fprintf(f, "%15.10lf ", illuminationEfficiency(0,y,z,expsf_r0,expsf_z0));
         }
         fprintf(f, "\n");
     }
@@ -1001,7 +1174,7 @@ void FCSMeasurement::save() {
             double x=psfplot_xmax*double(j)/double(npointsi);
             double y=psfplot_ymax*double(i)/double(npointsi);
 
-            fprintf(f, "%15.10lf ", illuminationEfficiency(x,y,0)*detectionEfficiency(x,y,0));
+            fprintf(f, "%15.10lf ", illuminationEfficiency(x,y,0,expsf_r0,expsf_z0)*detectionEfficiency(x,y,0));
         }
         fprintf(f, "\n");
     }
@@ -1012,7 +1185,7 @@ void FCSMeasurement::save() {
             double x=psfplot_xmax*double(j)/double(npointsi);
             double z=psfplot_zmax*double(i)/double(npointsi);
 
-            fprintf(f, "%15.10lf ", illuminationEfficiency(x,0,z)*detectionEfficiency(x,0,z));
+            fprintf(f, "%15.10lf ", illuminationEfficiency(x,0,z,expsf_r0,expsf_z0)*detectionEfficiency(x,0,z));
         }
         fprintf(f, "\n");
     }
@@ -1023,7 +1196,7 @@ void FCSMeasurement::save() {
             double y=psfplot_ymax*double(j)/double(npointsi);
             double z=psfplot_zmax*double(i)/double(npointsi);
 
-            fprintf(f, "%15.10lf ", illuminationEfficiency(0,y,z)*detectionEfficiency(0,y,z));
+            fprintf(f, "%15.10lf ", illuminationEfficiency(0,y,z,expsf_r0,expsf_z0)*detectionEfficiency(0,y,z));
         }
         fprintf(f, "\n");
     }
@@ -1649,20 +1822,36 @@ void FCSMeasurement::save() {
 std::string FCSMeasurement::report(){
     std::string s=FluorescenceMeasurement::report();
     s+="pos_laser     = ["+floattostr(ex_x0)+", "+floattostr(ex_y0)+", "+floattostr(ex_z0)+"] um\n";
-    s+="pos_detection = ["+floattostr(img_x0)+", "+floattostr(img_y0)+", "+floattostr(img_z0)+"] um\n";
     s+="distance_laser_detector = ["+floattostr(img_x0-ex_x0)+", "+floattostr(img_y0-ex_y0)+", "+floattostr(img_z0-ex_z0)+"] um\n";
     s+="                        = "+floattostr(sqrt(gsl_pow_2(img_x0-ex_x0)+gsl_pow_2(img_y0-ex_y0)+gsl_pow_2(img_z0-ex_z0)))+" um\n";
     s+="expsf_r0 = "+floattostr(expsf_r0)+" microns\n";
     s+="expsf_z0 = "+floattostr(expsf_z0)+" microns\n";
+    if (lambda_ex2>0) {
+        s+="pos_laser2    = ["+floattostr(ex_x02)+", "+floattostr(ex_y02)+", "+floattostr(ex_z02)+"] um\n";
+        s+="distance_laser2_detector = ["+floattostr(img_x0-ex_x02)+", "+floattostr(img_y0-ex_y02)+", "+floattostr(img_z0-ex_z02)+"] um\n";
+        s+="                        = "+floattostr(sqrt(gsl_pow_2(img_x0-ex_x02)+gsl_pow_2(img_y0-ex_y02)+gsl_pow_2(img_z0-ex_z02)))+" um\n";
+        s+="expsf_r02 = "+floattostr(expsf_r02)+" microns\n";
+        s+="expsf_z02 = "+floattostr(expsf_z02)+" microns\n";
+    }
+
+    s+="pos_detection = ["+floattostr(img_x0)+", "+floattostr(img_y0)+", "+floattostr(img_z0)+"] um\n";
     s+="detpsf_r0 = "+floattostr(detpsf_r0)+" microns\n";
     s+="detpsf_z0 = "+floattostr(detpsf_z0)+" microns\n";
     s+="pixel_size = "+floattostr(pixel_size)+" microns\n";
     s+="pixel_size_integrationdelta = "+floattostr(pixel_size_integrationdelta)+" microns\n";
     double psf_r0=1.0/sqrt(1.0/detpsf_r0/detpsf_r0+1.0/expsf_r0/expsf_r0);
     s+="confocal_psf_system = sqrt(1/expsf_r0^2 + 1/detpsf_r0^2) = "+floattostr(psf_r0)+" microns\n";
-
     double Veff=pow(M_PI, 1.5)*(psf_r0*psf_r0*psf_r0*detpsf_z0/detpsf_r0);
     s+="confocal_focus_volume (Veff) = pi^(3/2) * psf_system^3 * detpsf_z0/detpsf_r0 = "+floattostr(Veff)+" femto litre\n";
+
+    double psf_r02=0;
+    double Veff2=0;
+    if (lambda_ex2>0) {
+        psf_r02=1.0/sqrt(1.0/detpsf_r0/detpsf_r0+1.0/expsf_r02/expsf_r02);
+        s+="confocal_psf_system2 = sqrt(1/expsf_r02^2 + 1/detpsf_r0^2) = "+floattostr(psf_r02)+" microns\n";
+        Veff2=pow(M_PI, 1.5)*(psf_r02*psf_r02*psf_r02*detpsf_z0/detpsf_r0);
+        s+="confocal_focus_volume2 (Veff) = pi^(3/2) * psf_system^3 * detpsf_z0/detpsf_r0 = "+floattostr(Veff)+" femto litre\n";
+    }
 
     s+="illumination_distribution = "+ill_distribution_to_str(ill_distribution)+"\n";
     s+="detection_distribution = "+det_distribution_to_str(det_distribution)+"\n";
@@ -1679,6 +1868,13 @@ std::string FCSMeasurement::report(){
             sum=sum+Veff*dyn[i]->get_c_fluor()*6.022e23*1e-9/1e15;
         }
         s+="  SUM <particles in Veff> = "+floattostr(sum)+"\n";
+    }
+    if (lambda_ex2>0 && dyn.size()>0) {
+        for (size_t i=0; i<dyn.size(); i++) {
+            s+="<"+dyn[i]->get_object_name()+" particles in Veff2> = "+floattostr(Veff2*dyn[i]->get_c_fluor()*6.022e23*1e-9/1e15)+"\n";
+            sum=sum+Veff2*dyn[i]->get_c_fluor()*6.022e23*1e-9/1e15;
+        }
+        s+="  SUM <particles in Veff2> = "+floattostr(sum)+"\n";
     }
     s+="psf_region_factor = "+floattostr(psf_region_factor)+"\n";
     if (polarised_excitation) {
@@ -1707,6 +1903,7 @@ std::string FCSMeasurement::report(){
     s+="detection_efficiency = "+floattostr(q_det*100.0)+"%\n";
 
     s+="lambda_ex = "+floattostr(lambda_ex)+" nm\n";
+    if (lambda_ex2>0) s+="lambda_ex2 = "+floattostr(lambda_ex2)+" nm\n";
     if (det_wavelength_min>0 && det_wavelength_max>0) {
         s+="det_wavelength_min = "+floattostr(det_wavelength_min)+" nm\n";
         s+="det_wavelength_max = "+floattostr(det_wavelength_max)+" nm\n";
@@ -1722,17 +1919,31 @@ std::string FCSMeasurement::report(){
     if (offset_correction!=0) s+="offset_correction = "+floattostr(offset_correction)+" photons/detectionstep\n";
     else s+="no offset correction\n";
     s+="EPhoton_ex = "+floattostr(Ephoton/1.602176487e-19/1e-3)+" meV\n";
+    s+="EPhoton_ex2 = "+floattostr(Ephoton2/1.602176487e-19/1e-3)+" meV\n";
     s+="I0 = "+floattostr(I0)+" uW/m^2  =  "+floattostr(I0/1e12)+" uW/micron^2  =  "+floattostr(I0/1e6)+" uW/mm^2\n";
     s+="P0 [on focus, i.e. on A=pi*(2*expsf_r0)^2] = "+floattostr(I0*(M_PI*gsl_pow_2(2.0*expsf_r0*1e-6)))+" uW\n";
+    if (lambda_ex2>0) {
+        s+="I02 = "+floattostr(I02)+" uW/m^2  =  "+floattostr(I02/1e12)+" uW/micron^2  =  "+floattostr(I02/1e6)+" uW/mm^2\n";
+        s+="P02 [on focus, i.e. on A=pi*(2*expsf_r02)^2] = "+floattostr(I02*(M_PI*gsl_pow_2(2.0*expsf_r02*1e-6)))+" uW\n";
+    }
     for (size_t i=0; i<dyn.size(); i++) {
         s+="  using "+dyn[i]->get_object_name()+" data:\n";
         s+="    init_spectrum = "+floattostr(dyn[i]->get_init_spectrum())+"\n";
         s+="    sigma_abs = "+format("%g", dyn[i]->get_init_sigma_abs(0),-1, false, 1e-30)+" m^2\n";
         s+="    q_fluor = "+floattostr(dyn[i]->get_init_q_fluor(0)*100)+" %\n";
-        s+="    abs_photons/(molecule*s)  = "+floattostr(I0*1e-6/Ephoton*dyn[i]->get_init_sigma_abs(0))+"\n";
-        s+="    fluor_photons/(molecule*s) = "+floattostr(dyn[i]->get_init_q_fluor(0)*I0*1e-6/Ephoton*dyn[i]->get_init_sigma_abs(0))+"\n";
-        s+="    det_photons/(molecule*s) = "+floattostr(q_det*dyn[i]->get_init_q_fluor(0)*I0*1e-6/Ephoton*dyn[i]->get_init_sigma_abs(0))+"\n";
+        s+="    abs_photons/(molecule*s) @ lambda_ex  = "+floattostr(I0*1e-6/Ephoton*dyn[i]->get_init_sigma_abs(0))+"\n";
+        s+="    fluor_photons/(molecule*s) @ lambda_ex = "+floattostr(dyn[i]->get_init_q_fluor(0)*I0*1e-6/Ephoton*dyn[i]->get_init_sigma_abs(0))+"\n";
+        s+="    det_photons/(molecule*s) @ lambda_ex = "+floattostr(q_det*dyn[i]->get_init_q_fluor(0)*I0*1e-6/Ephoton*dyn[i]->get_init_sigma_abs(0))+"\n";
         s+="    absorbtion @ lambda_ex = "+floattostr(fluorophors->get_spectral_absorbance(dyn[i]->get_init_spectrum(), lambda_ex)*100.0)+" %\n";
+        if (lambda_ex2>0) {
+            s+="    abs_photons/(molecule*s) @ lambda_ex2  = "+floattostr(I02*1e-6/Ephoton2*dyn[i]->get_init_sigma_abs(0))+"\n";
+            s+="    fluor_photons/(molecule*s) @ lambda_ex2 = "+floattostr(dyn[i]->get_init_q_fluor(0)*I02*1e-6/Ephoton2*dyn[i]->get_init_sigma_abs(0))+"\n";
+            s+="    det_photons/(molecule*s) @ lambda_ex2 = "+floattostr(q_det*dyn[i]->get_init_q_fluor(0)*I02*1e-6/Ephoton2*dyn[i]->get_init_sigma_abs(0))+"\n";
+            s+="    absorbtion @ lambda_ex2 = "+floattostr(fluorophors->get_spectral_absorbance(dyn[i]->get_init_spectrum(), lambda_ex2)*100.0)+" %\n";
+        }
+        if (det_wavelength_min>0 && det_wavelength_max>0) {
+            s+="    deteted fraction of emission spectrum = "+floattostr(fluorophors->get_spectral_fluorescence(dyn[i]->get_init_spectrum(),det_wavelength_min, det_wavelength_max)*100.0)+" %\n";
+        }
     }
     s+="duration = "+floattostr(duration*1e3)+" msecs\n";
     s+="=> timesteps = "+inttostr(timesteps)+"     à  timestep-duration = "+floattostr(sim_timestep*1e9)+" nsecs\n";
@@ -1759,6 +1970,7 @@ std::string FCSMeasurement::report(){
         s+="estimated_memory_consumtion_dynamics("+dyn[i]->get_object_name()+") = "+floattostr(dyn[i]->calc_mem_consumption()/1024.0/1024.0)+" MBytes\n";
         sum=sum+dyn[i]->calc_mem_consumption();
     }
+    s+="fccs_partner = "+fccs_partner+"\n";
     s+="save_arrivaltimes = "+booltostr(save_arrivaltimes)+"\n";
     if (save_arrivaltimes) {
         s+="arrivaltimes_onlyonce = "+booltostr(arrivaltimes_onlyonce)+"\n";
@@ -1803,3 +2015,32 @@ int FCSMeasurement::str_to_det_distribution(std::string i) const {
     if (s=="gaussian_beam_pixel") return 3;
     return strtol(s.c_str(), NULL, 10);
  }
+
+bool FCSMeasurement::getTimeSeries(int32_t** timeseries, int64_t& timeseries_size) {
+    if (online_correlation) return false;
+    *timeseries=this->timeseries;
+    timeseries_size=this->timeseries_size;
+    return timeseries_ended;
+}
+
+bool FCSMeasurement::getLastNPhotons(int64_t& N) {
+    if (online_correlation) {
+            N=lastNPhotons;
+        return true;
+    }
+    return false;
+}
+
+
+bool FCSMeasurement::depends_on(const FluorescenceMeasurement* other) const {
+    return get_fccs_partner_object()==other;
+}
+
+FCSMeasurement* FCSMeasurement::get_fccs_partner_object() const {
+    if (measmap.count(fccs_partner)>0) {
+        return dynamic_cast<FCSMeasurement*>(measmap[fccs_partner]);
+    } else if (fccs_partner.size()>0) {
+        throw MeasurementException("Did not find FCCS partner: "+fccs_partner);
+    }
+    return NULL;
+}

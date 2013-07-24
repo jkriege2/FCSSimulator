@@ -5,7 +5,7 @@ CC=g++
 CFLAGS =  -Wall -DHAVE_INLINE -DNO_LIBTIFF -DJKIMAGE_USES_TINYTIFF -m64 -I../../../LIB/trunk/ #--enable-auto-import
 LDFLAGS = -lgsl -lgslcblas -lm
 
-Release: CFLAGS += -O3 -mtune=native -march=native -ffast-math -msse -msse2 -mfpmath=sse -malign-double
+Release: CFLAGS += -O3 -mtune=native -march=native -ffast-math -msse -msse2 -mfpmath=both -malign-double -mmmx -m3dnow  -ftree-vectorize -ftree-vectorizer-verbose=1
 
 Debug: CC += -DDEBUG -g
 
@@ -43,10 +43,17 @@ EXE_SUFFIX=.exe
 SO_SUFFIX=.dll
 SO_PATH=$(PREFIX)/bin
 else
+ifeq ($(findstring Windows,$(OS)),Windows)
+PREFIX=/mingw
+EXE_SUFFIX=.exe
+SO_SUFFIX=.dll
+SO_PATH=$(PREFIX)/bin
+else
 PREFIX=/usr/local
 EXE_SUFFIX=
 SO_SUFFIX=.so
 SO_PATH=$(PREFIX)/lib
+endif
 endif
 
 
@@ -54,13 +61,14 @@ Debug:  ${EXECUTABLE}$(EXE_SUFFIX)
 
 Release:  ${EXECUTABLE}$(EXE_SUFFIX)
 
-${EXECUTABLE}: ${SRC_FILE_O}
+${EXECUTABLE}$(EXE_SUFFIX): ${SRC_FILE_O}
 	$(CC) $(CFLAGS) -o $(EXECUTABLE)$(EXE_SUFFIX) ${SRC_FILE_O} $(LDFLAGS)
 
 $(SRC_FILE_O): %.o: %.cpp
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
+	echo $(OS)
 	rm -f *.exe
 	rm -f ${EXECUTABLE}$(EXE_SUFFIX)
 	rm -f ${SRC_FILE_O}
