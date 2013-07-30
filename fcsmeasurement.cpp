@@ -683,7 +683,11 @@ void FCSMeasurement::run_fcs_simulation(){
             double seconds=difftime(now, start_time);
             double percent=((double)current_timestep)/(timesteps)*100.0;
             double eta=seconds/percent*100.0-seconds;
-            std::cout<<format("%4.1lf", percent)<<"% (ETA: "+format("%8.2lf", eta/60.0)+"min):   "<<repeated_string("     ", object_number-1)<<display_temp<<std::endl;
+            int hrs=floor(eta/3600.0);
+            int mins=floor((eta-double(hrs*3600))/60.0);
+            double secs=floor(eta-double(hrs*3600)-double(mins*60));
+            //std::cout<<format("%4.1lf", percent)<<"% (ETA: "+format("%8.2lf", eta/60.0)+"min):   "<<repeated_string("     ", object_number-1)<<display_temp<<std::endl;
+            std::cout<<format("%4.1lf", percent)<<"% (ETA: "+inttostr(hrs)+":"+inttostr(mins)+":"+inttostr(secs)+"):   "<<repeated_string("     ", object_number-1)<<display_temp<<std::endl;
             display_temp=0;
         } else {
             display_temp+=N;
@@ -745,7 +749,7 @@ void FCSMeasurement::save() {
 
     for (unsigned long long i=istart; i<slots; i++) {
         if (correlator_type==1) fprintf(f, "%15.10lf, %15.10lf\n", corr_tau[i], corr[i]);
-        else fprintf(f, "%15.10lf, %15.10lf\n", corr_tau[i], corr[i]);
+        else                    fprintf(f, "%15.10lf, %15.10lf\n", corr_tau[i], corr[i]);
     }
     fclose(f);
     std::cout<<" done!\n";
@@ -1091,7 +1095,11 @@ void FCSMeasurement::save() {
         double y=psfplot_ymax*double(i)/double(npoints);
         double z=psfplot_zmax*double(i)/double(npoints);
 
-        fprintf(f, "%15.10lf, %15.10lf, %15.10lf,  %15.10lf, %15.10lf, %15.10lf,  %15.10lf, %15.10lf, %15.10lf\n", x, illuminationEfficiency(x,0,0,expsf_r0,expsf_z0), detectionEfficiency(x,0,0), y, illuminationEfficiency(0,y,0,expsf_r0,expsf_z0), detectionEfficiency(0,y,0), z, illuminationEfficiency(0,0,z,expsf_r0,expsf_z0), detectionEfficiency(0,0,z));
+        if (partner) {
+            fprintf(f, "%15.10lf, %15.10lf, %15.10lf,  %15.10lf, %15.10lf, %15.10lf,  %15.10lf, %15.10lf, %15.10lf\n", x, illuminationEfficiency(x,0,0,expsf_r0,expsf_z0), detectionEfficiency(x,0,0), y, illuminationEfficiency(0,y,0,expsf_r0,expsf_z0), detectionEfficiency(0,y,0), z, illuminationEfficiency(0,0,z,expsf_r0,expsf_z0), detectionEfficiency(0,0,z),       illuminationEfficiency(x,0,0,expsf_r02,expsf_z02), illuminationEfficiency(0,y,0,expsf_r02,expsf_z02), illuminationEfficiency(0,0,z,expsf_r02,expsf_z02));
+        } else {
+            fprintf(f, "%15.10lf, %15.10lf, %15.10lf,  %15.10lf, %15.10lf, %15.10lf,  %15.10lf, %15.10lf, %15.10lf\n", x, illuminationEfficiency(x,0,0,expsf_r0,expsf_z0), detectionEfficiency(x,0,0), y, illuminationEfficiency(0,y,0,expsf_r0,expsf_z0), detectionEfficiency(0,y,0), z, illuminationEfficiency(0,0,z,expsf_r0,expsf_z0), detectionEfficiency(0,0,z));
+        }
     }
     fclose(f);
     std::cout<<" done!\n";
@@ -1365,6 +1373,14 @@ void FCSMeasurement::save() {
         }
     }
 
+    double* bts_time=NULL;
+    bool free_btstime=false;
+    double* bts_1=NULL;
+    bool free_bts1=false;
+    double* bts_2=NULL;
+    bool free_bts2=false;
+    int bts_N=0;
+
     if (save_binning) {
         if (online_correlation) {
             // in online-correlation-mode no complete timeseries is built up, only a binned one, so we save that
@@ -1373,12 +1389,32 @@ void FCSMeasurement::save() {
             f=fopen(fn, "w");
             double t=0;
             int b=round(save_binning_time/corr_taumin);
+            bts_N=timesteps/b-1;
+            bts_time=(double*)calloc(bts_N+20, sizeof(double));
+            free_btstime=true;
+            bts_1=(double*)calloc(bts_N+20, sizeof(double));
+            free_bts1=true;
             for (unsigned long long i=0; i<timesteps/b-1; i++) {
                 fprintf(f, "%15.10lf, %d\n", t, binned_timeseries[i]);
+                if (bts_time) bts_time[i]=t;
+                if (bts_1) bts_1[i]=binned_timeseries[i];
                 t=t+save_binning_time;
             }
             fclose(f);
             std::string tsfn=fn;
+            std::string tsotherfn="";
+            if (partner) {
+                char fn1[255];
+                sprintf(fn1,"%s%sbts.dat", basename.c_str(), partner->get_object_name().c_str());
+                tsotherfn=fn1;
+                if (bts_N>0 && partner->save_binning && partner->online_correlation && save_binning_time== partner->save_binning_time && corr_taumin==partner->corr_taumin && timesteps==partner->timesteps) {
+                    bts_2=(double*)calloc(bts_N+20, sizeof(double));
+                    free_bts2=true;
+                    if (bts_2) for (unsigned long long i=0; i<timesteps/b-1; i++) {
+                        bts_2[i]=partner->binned_timeseries[i];
+                    }
+                }
+            }
             std::cout<<" done!\n";
 
             sprintf(fn, "%s%sbtsplot.plt", basename.c_str(), object_name.c_str());
@@ -1395,13 +1431,26 @@ void FCSMeasurement::save() {
                 fprintf(f, "set xlabel \"time [seconds]\"\n");
                 fprintf(f, "set ylabel \"photon count [photons/%lfsec]\"\n", corr_taumin*b);
                 fprintf(f, "set title \"object description: %s\"\n", description.c_str());
-                fprintf(f, "plot \"%s\" with steps\n", extract_file_name(tsfn).c_str());
+                if (partner) {
+                    fprintf(f, "plot \"%s\" title \"CR1: %s\" with steps lc rgb \"dark-green\", "
+                                    "\"%s\" title \"CR2: %s\" with steps lc rgb \"dark-red\"\n", extract_file_name(tsfn).c_str(), object_name.c_str(), extract_file_name(tsotherfn).c_str(), partner->get_object_name().c_str());
+                } else {
+                    fprintf(f, "plot \"%s\" with steps\n", extract_file_name(tsfn).c_str());
+                }
                 if (plt==1) fprintf(f, "pause -1\n");
                 fprintf(f, "set xlabel \"time [seconds]\"\n");
                 fprintf(f, "set ylabel \"photon count [kcps]\"\n");
                 fprintf(f, "set title \"object description: %s\"\n", description.c_str());
-                fprintf(f, "plot \"%s\" using 1:(($2)/%lf/1000.0) with steps\n", extract_file_name(tsfn).c_str(), corr_taumin*b);
+                if (partner) {
+                    fprintf(f, "plot \"%s\" using 1:(($2)/%lf/1000.0) title \"CR1: %s\" with steps lc rgb \"dark-green\", "
+                                    "\"%s\" using 1:(($2)/%lf/1000.0) title \"CR2: %s\" with steps lc rgb \"dark-red\"\n", extract_file_name(tsfn).c_str(), corr_taumin*double(b), object_name.c_str(), extract_file_name(tsotherfn).c_str(), corr_taumin*double(b), partner->get_object_name().c_str());
+                } else {
+                    fprintf(f, "plot \"%s\" using 1:(($2)/%lf/1000.0) with steps\n", extract_file_name(tsfn).c_str(), corr_taumin*b);
+                }
                 if (plt==1) fprintf(f, "pause -1\n");
+
+
+
             }
             fclose(f);
             std::cout<<" done!\n";
@@ -1414,18 +1463,49 @@ void FCSMeasurement::save() {
             double t=0;
             unsigned long long b=round(save_binning_time/corr_taumin);
             if (timesteps>b) {
+                bts_N=timesteps/b-1;
+                if (bts_N>0) {
+                    bts_time=(double*)calloc(bts_N+20, sizeof(double));
+                    free_btstime=true;
+                    bts_1=(double*)calloc(bts_N+20, sizeof(double));
+                    free_bts1=true;
+                }
+                int ii=0;
                 for (unsigned long long i=0; i<timesteps-b; i=i+b) {
                     register long int  ts=0;
                     for (unsigned long long j=0; j<b; j++) {
                         ts=ts+timeseries[i+j];
                     }
                     fprintf(f, "%15.10lf, %ld\n", t, ts);
+                    if (bts_time) bts_time[ii]=t;
+                    if (bts_1) bts_1[ii]=ts;
                     //fprintf(stdout, "%15.10lf, %lu\n", t, ts);
                     t=t+corr_taumin*b;
+                    ii++;
+                }
+
+                if (bts_N>0 && partner && partner->save_binning && !partner->online_correlation && save_binning_time== partner->save_binning_time && corr_taumin==partner->corr_taumin && timesteps==partner->timesteps) {
+                    bts_2=(double*)calloc(bts_N+20, sizeof(double));
+                    free_bts2=true;
+                    ii=0;
+                    for (unsigned long long i=0; i<timesteps-b; i=i+b) {
+                        register long int  ts=0;
+                        for (unsigned long long j=0; j<b; j++) {
+                            ts=ts+partner->timeseries[i+j];
+                        }
+                        if (bts_2) bts_2[ii]=ts;
+                        ii++;
+                    }
                 }
             }
             fclose(f);
             std::string tsfn=fn;
+            std::string tsotherfn="";
+            if (partner) {
+                char fn1[255];
+                sprintf(fn1,"%s%sbts.dat", basename.c_str(), partner->get_object_name().c_str());
+                tsotherfn=fn1;
+            }
             std::cout<<" done!\n";
             sprintf(fn, "%s%sbtsplot.plt", basename.c_str(), object_name.c_str());
             std::cout<<"writing '"<<fn<<"' ...";
@@ -1433,6 +1513,7 @@ void FCSMeasurement::save() {
             fprintf(f, "dt_corr=%15.10lf\n", corr_taumin);
             fprintf(f, "dt=%15.10lf\n", save_binning_time);
             for (int plt=0; plt<2; plt++) {
+                //std::cout<<plt<<" 1\n";
                 if (plt==0) {
                     fprintf(f, "set terminal pdfcairo color solid font \"%s, 7\" linewidth 2 size 20cm,15cm\n", GNUPLOT_FONT);
                     fprintf(f, "set output \"%s\"\n", extract_file_name(basename+object_name+"btsplot.pdf").c_str());
@@ -1440,26 +1521,100 @@ void FCSMeasurement::save() {
                     fprintf(f, "set terminal wxt font \"%s, 8\"\n", GNUPLOT_FONT);
                     fprintf(f, "set output\n");
                 }
+                //std::cout<<plt<<" 2\n";
                 fprintf(f, "set xlabel \"time [seconds]\"\n");
                 fprintf(f, "set ylabel \"photon count [photons/%lfus]\"\n", corr_taumin*1e6);
                 fprintf(f, "set title \"counts per corrtaumin, object description: %s\"\n", description.c_str());
-                fprintf(f, "plot \"%s\" using 1:($2*dt_corr/dt) with steps\n", extract_file_name(tsfn).c_str());
+                if (partner) {
+                    fprintf(f, "plot \"%s\" using 1:($2*dt_corr/dt) title \"CR1: %s\" with steps lc rgb \"dark-green\", "
+                                    "\"%s\" using 1:($2*dt_corr/dt) title \"CR2: %s\" with steps lc rgb \"dark-red\"\n", extract_file_name(tsfn).c_str(), object_name.c_str(), extract_file_name(tsotherfn).c_str(), partner->get_object_name().c_str());
+                } else {
+                    fprintf(f, "plot \"%s\" using 1:($2*dt_corr/dt) with steps\n", extract_file_name(tsfn).c_str());
+                }
+                //std::cout<<plt<<" 3\n";
+
                 if (plt==1) fprintf(f, "pause -1\n");
                 fprintf(f, "set xlabel \"time [seconds]\"\n");
                 fprintf(f, "set ylabel \"photon count [photons/%lfms]\"\n", corr_taumin*b*1e3);
                 fprintf(f, "set title \"counts per bin time, object description: %s\"\n", description.c_str());
-                fprintf(f, "plot \"%s\" with steps\n", extract_file_name(tsfn).c_str());
+                if (partner) {
+                    fprintf(f, "plot \"%s\" title \"CR1: %s\" with steps lc rgb \"dark-green\", "
+                                    "\"%s\" title \"CR2: %s\" with steps lc rgb \"dark-red\"\n", extract_file_name(tsfn).c_str(), object_name.c_str(), extract_file_name(tsotherfn).c_str(), partner->get_object_name().c_str());
+                } else {
+                    fprintf(f, "plot \"%s\" with steps\n", extract_file_name(tsfn).c_str());
+                }
+                //std::cout<<plt<<" 4\n";
+
                 if (plt==1) fprintf(f, "pause -1\n");
                 fprintf(f, "set xlabel \"time [seconds]\"\n");
                 fprintf(f, "set ylabel \"photon count [kcps]\"\n");
                 fprintf(f, "set title \"counts, object description: %s\"\n", description.c_str());
-                fprintf(f, "plot \"%s\" using 1:(($2)/%lf/1000.0) with steps\n", extract_file_name(tsfn).c_str(), corr_taumin*b);
+                if (partner) {
+                    fprintf(f, "plot \"%s\" using 1:(($2)/%lf/1000.0) title \"CR1: %s\" with steps lc rgb \"dark-green\", "
+                                    "\"%s\" using 1:(($2)/%lf/1000.0) title \"CR2: %s\" with steps lc rgb \"dark-red\"\n", extract_file_name(tsfn).c_str(), corr_taumin*double(b), object_name.c_str(), extract_file_name(tsotherfn).c_str(), corr_taumin*double(b), partner->get_object_name().c_str());
+                } else {
+                    fprintf(f, "plot \"%s\" using 1:(($2)/%lf/1000.0) with steps\n", extract_file_name(tsfn).c_str(), corr_taumin*double(b));
+                }
+                //std::cout<<plt<<" 5\n";
+
                 if (plt==1) fprintf(f, "pause -1\n");
             }
             fclose(f);
             std::cout<<" done!\n";
         }
     }
+
+
+
+
+
+
+
+
+
+
+
+    sprintf(fn, "%s%salvacf.asc", basename.c_str(), object_name.c_str());
+    std::cout<<"writing '"<<fn<<"' ...";
+    f=fopen(fn, "w");
+    std::string alvmode="SINGLE AUTO CH0";
+    double* corr2=NULL;
+    if (partner && timesteps==partner->timesteps && corr_taumin==partner->corr_taumin && S==partner->S && P==partner->P && m==partner->m) {
+        alvmode="DUAL AUTO CH0";
+        corr2=partner->corr;
+    }
+    alv5000WriteHeader(f, description, duration, alvmode.c_str(), lambda_ex, 0, 0);
+    alv5000WriteCorrelation(f, istart, slots, corr_tau, corr, corr2);
+    alv5000WriteCountrate(f, bts_N, bts_time, bts_1, bts_2, true);
+    fclose(f);
+    std::cout<<" done!\n";
+
+    if (partner && timesteps==partner->timesteps && corr_taumin==partner->corr_taumin && S==partner->S && P==partner->P && m==partner->m) {
+        sprintf(fn, "%s%salvccf.asc", basename.c_str(), object_name.c_str());
+        std::cout<<"writing '"<<fn<<"' ...";
+        f=fopen(fn, "w");
+        alvmode="SINGLE CROSS CH0";
+        alv5000WriteHeader(f, description, duration, alvmode.c_str(), lambda_ex, 0, 0);
+        alv5000WriteCorrelation(f, istart, slots, corr_tau, corr_fccs);
+        alv5000WriteCountrate(f, bts_N, bts_time, bts_1, bts_2, true);
+        fclose(f);
+        std::cout<<" done!\n";
+    }
+    if (free_btstime && bts_time) {
+        free(bts_time);
+        bts_time=NULL;
+    }
+    if (free_bts1 && bts_1) {
+        free(bts_1);
+        bts_1=NULL;
+    }
+    if (free_bts2 && bts_2) {
+        free(bts_2);
+        bts_2=NULL;
+    }
+    bts_N=0;
+
+
 
    if (save_arrivaltimes) {
 

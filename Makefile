@@ -2,7 +2,10 @@ all: Release
 
 LIB=../../../LIB/trunk
 CC=g++
-CFLAGS =  -Wall -DHAVE_INLINE -DNO_LIBTIFF -DJKIMAGE_USES_TINYTIFF -m64 -I../../../LIB/trunk/ #--enable-auto-import
+
+BITS=64
+
+CFLAGS =  -Wall -DHAVE_INLINE -DNO_LIBTIFF -DJKIMAGE_USES_TINYTIFF -m$(BITS) -I../../../LIB/trunk/ #--enable-auto-import
 LDFLAGS = -lgsl -lgslcblas -lm
 
 Release: CFLAGS += -O3 -mtune=native -march=native -ffast-math -msse -msse2 -mfpmath=both -malign-double -mmmx -m3dnow  -ftree-vectorize -ftree-vectorizer-verbose=1
@@ -31,7 +34,8 @@ SRC_FILE= browniandynamics.cpp \
           $(LIB)/tools.cpp \
           $(LIB)/image_tools.cpp \
           $(LIB)/tinytiffreader.cpp \
-          $(LIB)/tinytiffwriter.cpp
+          $(LIB)/tinytiffwriter.cpp \
+          alvtools.cpp
 
 
 SRC_FILE_O = $(subst .cpp,.o,$(SRC_FILE))

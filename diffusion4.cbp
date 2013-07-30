@@ -94,6 +94,8 @@
 			<Option compile="1" />
 			<Option link="1" />
 		</Unit>
+		<Unit filename="alvtools.cpp" />
+		<Unit filename="alvtools.h" />
 		<Unit filename="browniandynamics.cpp" />
 		<Unit filename="browniandynamics.h" />
 		<Unit filename="childdynamics.cpp" />

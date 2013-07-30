@@ -26,6 +26,8 @@
 #include "../../../LIB/trunk/statistics_tools.h"
 #include "../../../LIB/trunk/jkimage.h"
 #include "../../../LIB/trunk/tinytiffwriter.h"
+#include "alvtools.h"
+
 
 
 /*! \brief Fluorescence Correlation Spectroscopy (FCS) class

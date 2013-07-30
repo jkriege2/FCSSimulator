@@ -41,17 +41,27 @@ struct MeasurementSortFunctor {
 
 void do_sim(std::string inifilename) {
 
+    std::cout<<"READING SIMULATION FILE "<<inifilename<<"\n";
+
     std::ofstream logfilestream;
     ScopedDelayedStreamDoubler2 stdredirect;
 
+    std::cout<<"INITIALIZING LOG-file ...\n";
     try {
         jkINIParser2 ini;
         ini.readFile(inifilename);
         std::string basename=ini.getSetAsString("simulation.basename", "");
+
+        cout<<"creating directory for output '"<<extract_file_path(basename+"config.ini").c_str()<<"' ... ";
+        mk_all_dir(extract_file_path(basename+"config.ini").c_str());
+        cout<<"done!\n\n";
+
+        std::cout<<"REDIRECTING LOG ... TO '"<<(basename+"log.txt")<<"'";
         logfilestream.open((basename+"log.txt").c_str());
         stdredirect.redirect(std::cout, logfilestream);
+        std::cout<<"\n";
     } catch (std::exception& E) {
-        std::cout<<"Error: COULD NOT CREATE LOG-FILE \n   "<<E.what()<<std::endl;
+        std::cout<<"\nError: COULD NOT CREATE LOG-FILE \n   "<<E.what()<<std::endl;
     }
 
     clock_t start, endtime;
@@ -59,6 +69,7 @@ void do_sim(std::string inifilename) {
 
     start = clock();
 
+    std::cout<<"READING SIMULATION PARAMETERS ...\n";
     try {
         dyn.clear();
         meas.clear();
@@ -72,11 +83,6 @@ void do_sim(std::string inifilename) {
         std::string basename=ini.getSetAsString("simulation.basename", "");
         //bool multithread=ini.getSetAsBool("simulation.multithread", false);
         double duration=ini.getSetAsDouble("simulation.duration", -1);
-
-        cout<<"creating directory for output '"<<extract_file_path(basename+"config.ini").c_str()<<"' ... ";
-        mk_all_dir(extract_file_path(basename+"config.ini").c_str());
-        cout<<"done!\n\n";
-
 
         ini.print();
 
@@ -335,8 +341,11 @@ int main(int argc, char* argv[])
         }
     }
     //std::cout<<"test spectra: "<<booltostr(test_spectra)<<std::endl;
-    fluorophors=new FluorophorManager(extract_file_path(argv[0]), test_spectra);
+    std::cout<<replace_to_system_pathseparator(argv[0])<<"\n";
+    std::cout<<extract_file_path(argv[0])<<"\n";
+    fluorophors=new FluorophorManager(extract_file_path(replace_to_system_pathseparator(argv[0])), test_spectra);
 
+    std::cout<<"INITIALIZATION FINISHED ... READING SIMULATION FILES!\n\n\n";
     if (do_execute) {
         if (argc>1) {
             std::vector<std::string> files;
