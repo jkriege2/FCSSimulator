@@ -14,7 +14,7 @@ FluorescenceMeasurement::FluorescenceMeasurement(FluorophorManager* fluorophors,
     gsl_rng_env_setup();
     rng_type = gsl_rng_taus;
     rng = gsl_rng_alloc (rng_type);
-    gsl_rng_set(rng, time(0));
+    gsl_rng_set(rng, gsl_rng_get(global_rng));
 }
 
 FluorescenceMeasurement::~FluorescenceMeasurement()
@@ -86,7 +86,7 @@ void FluorescenceMeasurement::read_config(jkINIParser2& parser, std::string grou
     }
     if (this->rng!=NULL) gsl_rng_free(this->rng);
     this->rng = gsl_rng_alloc(rng_type);
-    gsl_rng_set(this->rng, time(0));
+    gsl_rng_set(this->rng, gsl_rng_get(global_rng));
 
 
     for (int i=0; i<2; i++) {
@@ -97,11 +97,16 @@ void FluorescenceMeasurement::read_config(jkINIParser2& parser, std::string grou
             parser.enterGroup(group);
         }
 
+        if (parser.exists("rng_seed")) {
+            gsl_rng_set(this->rng, parser.getAsInt("rng_seed", gsl_rng_get(global_rng)));
+        }
+
         read_config_internal(parser);
         description=parser.getAsString("description", description);
 
         parser.leaveGroup();
     }
+    std::cout<<object_name<<" RNG-TEST: "<<gsl_rng_get(this->rng)<<", "<<gsl_rng_get(this->rng)<<", "<<gsl_rng_get(this->rng)<<", "<<gsl_rng_get(this->rng)<<", "<<gsl_rng_get(this->rng)<<"\n";
 
     //init();
 }
@@ -124,6 +129,7 @@ std::string FluorescenceMeasurement::report() {
 
 void FluorescenceMeasurement::init() {
     sim_time=0;
+    std::cout<<object_name<<" RNG-TEST: "<<gsl_rng_get(this->rng)<<", "<<gsl_rng_get(this->rng)<<", "<<gsl_rng_get(this->rng)<<", "<<gsl_rng_get(this->rng)<<", "<<gsl_rng_get(this->rng)<<"\n";
 }
 
 void FluorescenceMeasurement::propagate() {

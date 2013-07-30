@@ -84,6 +84,10 @@ void do_sim(std::string inifilename) {
         //bool multithread=ini.getSetAsBool("simulation.multithread", false);
         double duration=ini.getSetAsDouble("simulation.duration", -1);
 
+
+        global_rng=gsl_rng_alloc(gsl_rng_default);
+        gsl_rng_set(global_rng, ini.getSetAsInt("simulation.global_rng_seed", getHighResolutionTime()));
+
         ini.print();
 
 

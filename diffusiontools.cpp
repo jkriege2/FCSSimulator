@@ -4,6 +4,7 @@ std::vector<FluorophorDynamics*> dyn;
 std::vector<FluorescenceMeasurement*> meas;
 std::map<std::string, FluorophorDynamics*> dynmap;
 std::map<std::string, FluorescenceMeasurement*> measmap;
+gsl_rng * global_rng=NULL;
 
 FluorophorManager::FluorophorManager(std::string database_path, bool test_spectra){
     this->database_path=database_path;

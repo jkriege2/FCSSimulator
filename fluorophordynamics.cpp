@@ -62,7 +62,7 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, std::stri
     gsl_rng_env_setup();
     rng_type = gsl_rng_taus;
     rng = gsl_rng_alloc (rng_type);
-    gsl_rng_set(rng, time(0));
+    gsl_rng_set(rng, gsl_rng_get(global_rng));
 
     init_p_x=1;
     init_p_y=0;
@@ -122,7 +122,7 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, double si
     gsl_rng_env_setup();
     rng_type = gsl_rng_taus;
     rng = gsl_rng_alloc (rng_type);
-    gsl_rng_set(rng, time(0));
+    gsl_rng_set(rng, gsl_rng_get(global_rng));
     depletion_propability=0;
     reset_qmstate_at_simboxborder=false;
 
@@ -180,7 +180,7 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, double si
     gsl_rng_env_setup();
     rng_type = gsl_rng_taus;
     rng = gsl_rng_alloc (rng_type);
-    gsl_rng_set(rng, time(0));
+    gsl_rng_set(rng, gsl_rng_get(global_rng));
 
     init_p_x=1;
     init_p_y=0;
@@ -416,7 +416,7 @@ void FluorophorDynamics::read_config(jkINIParser2& parser, std::string group, st
     }
     if (this->rng!=NULL) gsl_rng_free(this->rng);
     this->rng = gsl_rng_alloc(rng_type);
-    gsl_rng_set(this->rng, time(0));
+    gsl_rng_set(this->rng, gsl_rng_get(global_rng));
 
 
     for (int i=0; i<2; i++) {
@@ -426,11 +426,16 @@ void FluorophorDynamics::read_config(jkINIParser2& parser, std::string group, st
         } else if (i==1) {
             parser.enterGroup(group);
         }
+        if (parser.exists("rng_seed")) {
+            gsl_rng_set(this->rng, parser.getAsInt("rng_seed", gsl_rng_get(global_rng)));
+        }
 
         read_config_internal(parser);
 
         parser.leaveGroup();
     }
+
+    std::cout<<object_name<<" RNG-TEST: "<<gsl_rng_get(this->rng)<<", "<<gsl_rng_get(this->rng)<<", "<<gsl_rng_get(this->rng)<<", "<<gsl_rng_get(this->rng)<<", "<<gsl_rng_get(this->rng)<<"\n";
 
     //init();
 }
@@ -604,6 +609,9 @@ void FluorophorDynamics::init_walker(unsigned long i, double x, double y, double
 }
 
 void FluorophorDynamics::init(){
+
+    std::cout<<object_name<<" RNG-TEST: "<<gsl_rng_get(this->rng)<<", "<<gsl_rng_get(this->rng)<<", "<<gsl_rng_get(this->rng)<<", "<<gsl_rng_get(this->rng)<<", "<<gsl_rng_get(this->rng)<<"\n";
+
     sim_time=0;
     endoftrajectory=false;
 
