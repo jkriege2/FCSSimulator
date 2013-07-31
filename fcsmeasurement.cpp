@@ -548,11 +548,13 @@ void FCSMeasurement::run_fcs_simulation(){
     double n00=I0*1e-6/Ephoton*sim_timestep;
     double n02=I02*1e-6/Ephoton2*sim_timestep;
     int bin_r=round(save_binning_time/corr_taumin); // binning ration
-
+    std::string walker_cnt="";
     // first we go through alle the fluorophors and integrate their contribution
     for (size_t d=0; d<dyn.size(); d++) { // go through all dynamics objects that provide data for this measurement object
         FluorophorDynamics::walkerState* dynn=dyn[d]->get_visible_walker_state();
         unsigned long wc=dyn[d]->get_visible_walker_count();
+        if (walker_cnt.size()>0) walker_cnt=walker_cnt+", ";
+        walker_cnt=walker_cnt+dyn[d]->get_object_name()+":"+inttostr(wc);
         if (!dyn[d]->end_of_trajectory_reached()) for (unsigned long i=0; i<wc; i++) { // iterate through all walkers in the d-th dynamics object
             if (dynn[i].exists) {
                 double x0,y0,z0;
@@ -687,7 +689,7 @@ void FCSMeasurement::run_fcs_simulation(){
             int mins=floor((eta-double(hrs*3600))/60.0);
             double secs=floor(eta-double(hrs*3600)-double(mins*60));
             //std::cout<<format("%4.1lf", percent)<<"% (ETA: "+format("%8.2lf", eta/60.0)+"min):   "<<repeated_string("     ", object_number-1)<<display_temp<<std::endl;
-            std::cout<<format("%4.1lf", percent)<<"% (ETA: "+inttostr(hrs)+":"+inttostr(mins)+":"+inttostr(secs)+"):   "<<repeated_string("     ", object_number-1)<<display_temp<<std::endl;
+            std::cout<<format("%4.1lf", percent)<<"% (ETA: "+inttostr(hrs)+":"+inttostr(mins)+":"+inttostr(secs)+"):   "<<repeated_string("     ", object_number-1)<<display_temp<<"  wc=["<<walker_cnt<<"]"<<std::endl;
             display_temp=0;
         } else {
             display_temp+=N;
