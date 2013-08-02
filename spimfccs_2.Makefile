@@ -1,9 +1,9 @@
-SCRIPTS= spimfccs3.ini\
-         spimfccs4.ini\
-         spimfccs2.ini\
-         spimfccs5.ini\
-         spimfccs1.ini\
-         spimfccs0.ini
+SCRIPTS= spimfccs2_3.ini\
+         spimfccs2_4.ini\
+         spimfccs2_2.ini\
+         spimfccs2_5.ini\
+         spimfccs2_1.ini\
+         spimfccs2_0.ini
 		 
 SHELL = sh
 
