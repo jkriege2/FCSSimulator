@@ -34,9 +34,9 @@ void alv5000WriteCorrelation(FILE* f, int istart, int slots, double* corr_tau, d
     fprintf(f, "\"Correlation\"\n");
     for (int i=istart; i<slots; i++) {
         if (corr_2) {
-            if (isfinite(corr_tau[i])&&isfinite(corr_1[i])&&isfinite(corr_2[i])) fprintf(f, "%14.5lg\t%14.5lg\t%14.5lg\n", corr_tau[i], corr_1[i], corr_2[i]);
+            if (isfinite(corr_tau[i])&&isfinite(corr_1[i])&&isfinite(corr_2[i])) fprintf(f, "%14.5lg\t%14.5lg\t%14.5lg\n", corr_tau[i]*1e3, corr_1[i], corr_2[i]);
         } else {
-            if (isfinite(corr_tau[i])&&isfinite(corr_1[i])) fprintf(f, "%14.5lg\t%14.5lg\n", corr_tau[i], corr_1[i]);
+            if (isfinite(corr_tau[i])&&isfinite(corr_1[i])) fprintf(f, "%14.5lg\t%14.5lg\n", corr_tau[i]*1e3, corr_1[i]);
         }
     }
 }
