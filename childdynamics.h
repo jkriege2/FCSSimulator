@@ -61,6 +61,8 @@ class ChildDynamics : public FluorophorDynamics
         /** \brief returns the parent class to read from */
         FluorophorDynamics* get_parent() const;
 
+        bool dont_copy_photophysics;
+
         /** \brief if set \c true, also the initial walker is visible */
         bool initial_walker_visible;
 

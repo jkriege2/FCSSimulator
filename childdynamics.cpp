@@ -8,6 +8,7 @@ ChildDynamics::ChildDynamics(FluorophorManager* fluorophors, std::string object_
 {
     parent="";
     initial_walker_visible=true;
+    dont_copy_photophysics=false;
 }
 
 ChildDynamics::~ChildDynamics()
@@ -19,6 +20,7 @@ void ChildDynamics::read_config_internal(jkINIParser2& parser) {
 
     parent=tolower(strstrip(parser.getAsString("parent", parent)));
     initial_walker_visible=parser.getAsBool("initial_walker_visible", initial_walker_visible);
+    dont_copy_photophysics=parser.getAsBool("dont_copy_photophysics", dont_copy_photophysics);
 }
 
 void ChildDynamics::init() {
@@ -61,8 +63,29 @@ void ChildDynamics::propagate(bool boundary_check) {
         sim_time=p->get_sim_time();
         endoftrajectory=p->end_of_trajectory_reached();
         FluorophorDynamics::walkerState* ws=p->get_walker_state();
-        for (unsigned long i=0; i<walker_count; i++) {
-            walker_state[i]=ws[i];
+        if (dont_copy_photophysics) {
+            FluorophorDynamics* p=get_parent();
+            FluorophorDynamics::walkerState* ws=p->get_walker_state();
+            for (unsigned long i=0; i<walker_count; i++) {
+                walker_state[i].x=ws[i].x;
+                walker_state[i].y=ws[i].y;
+                walker_state[i].z=ws[i].z;
+                walker_state[i].x0=ws[i].x0;
+                walker_state[i].y0=ws[i].y0;
+                walker_state[i].z0=ws[i].z0;
+                walker_state[i].ix=ws[i].ix;
+                walker_state[i].iy=ws[i].iy;
+                walker_state[i].iz=ws[i].iz;
+                walker_state[i].ix0=ws[i].ix0;
+                walker_state[i].iy0=ws[i].iy0;
+                walker_state[i].iz0=ws[i].iz0;
+                propagate_photophysics(i);
+            }
+        } else {
+            for (unsigned long i=0; i<walker_count; i++) {
+                walker_state[i]=ws[i];
+                propagate_photophysics(i);
+            }
         }
     }
 }
@@ -71,6 +94,7 @@ std::string ChildDynamics::report() {
     std::string s=FluorophorDynamics::report();
     s+="parent = "+parent+"\n";
     s+="initial_walker_visible = "+booltostr(initial_walker_visible)+"\n";
+    s+="dont_copy_photophysics = "+booltostr(dont_copy_photophysics)+"\n";
     return s;
 }
 
