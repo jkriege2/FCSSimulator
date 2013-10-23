@@ -269,7 +269,7 @@ void FluorophorDynamics::read_config_internal(jkINIParser2& parser) {
     //std::cout<<"fluorophor: "<<parser.getAsString("init_fluorophor")<<std::endl;
     if (parser.exists("init_fluorophor")) {
         init_fluorophor=tolower(parser.getSetAsString("init_fluorophor", init_fluorophor));
-        //std::cout<<"fluorophor: "<<init_fluorophor<<std::endl;
+        std::cout<<"WARNING: found init_fluorophor='"<<init_fluorophor<<"' in group '"<<parser.getGroupName()<<"'!\n           THIS WILL RESET ALL init_q_fluor_X and init_sigma_abs_X DEFINED IN A PARENT CLASS TO ITS DEFAULTS FROM THE FLUOROPHORE DATASET!\n\n";
         if (!fluorophors->fluorophorExists(init_fluorophor)) {
             throw FluorophorException(format("didn't find fluorophor %s in database", init_fluorophor.c_str()));
         }
@@ -347,7 +347,7 @@ void FluorophorDynamics::read_config_internal(jkINIParser2& parser) {
         std::cout<<std::endl<<std::endl<<"didn't find spectrum for "<<spec<<std::endl;
     }
 
-    std::cout<<spec<<" ("<<init_spectrum<<"): "<<init_q_fluor[0]<<", "<<init_sigma_abs[0]<<std::endl;
+    //std::cout<<spec<<" ("<<init_spectrum<<"): "<<init_q_fluor[0]<<", "<<init_sigma_abs[0]<<<<init_q_fluor[1]<<", "<<init_sigma_abs[1]<<std::endl;
     protocol_trajectories=parser.getSetAsInt("protocol_trajectories", protocol_trajectories);
     protocol_timestep_count=parser.getSetAsInt("protocol_timestep_count", protocol_timestep_count);;
 }
