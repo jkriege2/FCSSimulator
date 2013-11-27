@@ -1419,6 +1419,8 @@ void FCSMeasurement::save() {
             }
             std::cout<<" done!\n";
 
+
+
             sprintf(fn, "%s%sbtsplot.plt", basename.c_str(), object_name.c_str());
             std::cout<<"writing '"<<fn<<"' ...";
             f=fopen(fn, "w");
@@ -1567,9 +1569,34 @@ void FCSMeasurement::save() {
     }
 
 
-
-
-
+    if (bts_1 && bts_N>0) {
+        // write countrate in binary form:
+        //    channels [64-bit]:           1 = 1-channel data
+        //                                 2 = 2-channel data
+        //    entries  [64-bit]:           number of entries in countrate
+        //    timestep [64-bit]:           timestep as double in seconds
+        //    entries*channels doubles [64bit] containing the countrate
+        //    data layout interleaved:  ch0t0, ch1t0, ch0t1, ch1t1, ch0t2, ch1t2, ...
+        char fnb[1024];
+        sprintf(fnb, "%s%sbts.bin", basename.c_str(), object_name.c_str());
+        std::cout<<"writing '"<<fn<<"' ...";
+        f=fopen(fn, "w");
+        FILE* fb=fopen(fnb, "wb");
+        uint64_t temp;
+        temp=(partner)?2:1; fwrite(&temp, sizeof(temp), 1, fb);
+        temp=bts_N; fwrite(&temp, sizeof(temp), 1, fb);
+        fwrite(&save_binning_time, sizeof(save_binning_time), 1, fb);
+        if (partner)  {
+            for (unsigned long long i=0; i<bts_N; i++) {
+                fwrite(&(bts_1[i]), sizeof(double), 1, fb);
+                fwrite(&(bts_2[i]), sizeof(double), 1, fb);
+            }
+        } else {
+            fwrite(bts_1, bts_N*sizeof(double), 1, fb);
+        }
+        fclose(fb);
+        std::cout<<" done!\n";
+    }
 
 
 
