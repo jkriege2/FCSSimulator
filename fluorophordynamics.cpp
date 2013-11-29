@@ -1204,21 +1204,22 @@ void FluorophorDynamics::save_results() {
         std::cout<<"writing '"<<fn<<"' ...";
         f=fopen(fn, "w");
         
-        
-        for (uint64_t i=2; i<walker_statistics.size()-2; i++) {
-            fprintf(f, "%15.10lf %ld %ld %15.10lf %ld %15.10lf %15.10lf %15.10lf", walker_statistics[i].time, 
-                                                        walker_statistics[i].count_all, 
-                                                        walker_statistics[i].count_existing, 
-                                                        walker_statistics[i].average_brightness, 
-                                                        walker_statistics[i].average_steps,
-                                                        walker_statistics[i].posx,
-                                                        walker_statistics[i].posy,
-                                                        walker_statistics[i].posz
-                                                    );
-            for (long j=0; j<N_FLUORESCENT_STATES; j++) {      
-                fprintf(f, " %15.10lf", walker_statistics[i].state_distribution[j]);
+        if (walker_statistics.size()>2) {
+            for (uint64_t i=2; i<walker_statistics.size()-2; i++) {
+                fprintf(f, "%15.10lf %ld %ld %15.10lf %ld %15.10lf %15.10lf %15.10lf", walker_statistics[i].time, 
+                                                            walker_statistics[i].count_all, 
+                                                            walker_statistics[i].count_existing, 
+                                                            walker_statistics[i].average_brightness, 
+                                                            walker_statistics[i].average_steps,
+                                                            walker_statistics[i].posx,
+                                                            walker_statistics[i].posy,
+                                                            walker_statistics[i].posz
+                                                        );
+                for (long j=0; j<N_FLUORESCENT_STATES; j++) {      
+                    fprintf(f, " %15.10lf", walker_statistics[i].state_distribution[j]);
+                }
+                fprintf(f, "\n");
             }
-            fprintf(f, "\n");
         }
         fprintf(f, "\n");
         fclose(f);
