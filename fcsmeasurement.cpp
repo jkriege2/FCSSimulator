@@ -551,7 +551,7 @@ void FCSMeasurement::run_fcs_simulation(){
     std::string walker_cnt="";
     // first we go through alle the fluorophors and integrate their contribution
     for (size_t d=0; d<dyn.size(); d++) { // go through all dynamics objects that provide data for this measurement object
-        FluorophorDynamics::walkerState* dynn=dyn[d]->get_visible_walker_state();
+        const FluorophorDynamics::walkerState* dynn=dyn[d]->get_visible_walker_state();
         unsigned long wc=dyn[d]->get_visible_walker_count();
         if (walker_cnt.size()>0) walker_cnt=walker_cnt+", ";
         walker_cnt=walker_cnt+dyn[d]->get_object_name()+":"+inttostr(wc);
