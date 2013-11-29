@@ -547,7 +547,7 @@ void FCSMeasurement::run_fcs_simulation(){
     // number of fluorescence photons per molecule and sim_timestep, but you have to multiply by sigma_abs and q_fluor (walker dependent!)
     double n00=I0*1e-6/Ephoton*sim_timestep;
     double n02=I02*1e-6/Ephoton2*sim_timestep;
-    int bin_r=round(save_binning_time/corr_taumin); // binning ration
+    int bin_r=round(save_binning_time/corr_taumin); // binning ratio
     std::string walker_cnt="";
     // first we go through alle the fluorophors and integrate their contribution
     for (size_t d=0; d<dyn.size(); d++) { // go through all dynamics objects that provide data for this measurement object
@@ -1580,7 +1580,6 @@ void FCSMeasurement::save() {
         char fnb[1024];
         sprintf(fnb, "%s%sbts.bin", basename.c_str(), object_name.c_str());
         std::cout<<"writing '"<<fn<<"' ...";
-        f=fopen(fn, "w");
         FILE* fb=fopen(fnb, "wb");
         uint64_t temp;
         temp=(partner)?2:1; fwrite(&temp, sizeof(temp), 1, fb);

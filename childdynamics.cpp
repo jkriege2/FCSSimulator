@@ -9,6 +9,7 @@ ChildDynamics::ChildDynamics(FluorophorManager* fluorophors, std::string object_
     parent="";
     initial_walker_visible=true;
     dont_copy_photophysics=false;
+    copy_existstate=true;
 }
 
 ChildDynamics::~ChildDynamics()
@@ -21,6 +22,7 @@ void ChildDynamics::read_config_internal(jkINIParser2& parser) {
     parent=tolower(strstrip(parser.getAsString("parent", parent)));
     initial_walker_visible=parser.getAsBool("initial_walker_visible", initial_walker_visible);
     dont_copy_photophysics=parser.getAsBool("dont_copy_photophysics", dont_copy_photophysics);
+    copy_existstate=parser.getAsBool("copy_existstate", copy_existstate);
 }
 
 void ChildDynamics::init() {
@@ -67,6 +69,7 @@ void ChildDynamics::propagate(bool boundary_check) {
             FluorophorDynamics* p=get_parent();
             FluorophorDynamics::walkerState* ws=p->get_walker_state();
             for (unsigned long i=0; i<walker_count; i++) {
+                walker_state[i].exists=ws[i].exists || (!copy_existstate);
                 walker_state[i].x=ws[i].x;
                 walker_state[i].y=ws[i].y;
                 walker_state[i].z=ws[i].z;
@@ -84,9 +87,11 @@ void ChildDynamics::propagate(bool boundary_check) {
         } else {
             for (unsigned long i=0; i<walker_count; i++) {
                 walker_state[i]=ws[i];
+                walker_state[i].exists=ws[i].exists || (!copy_existstate);
                 propagate_photophysics(i);
             }
         }
+        store_step_protocol();
     }
 }
 
@@ -95,6 +100,7 @@ std::string ChildDynamics::report() {
     s+="parent = "+parent+"\n";
     s+="initial_walker_visible = "+booltostr(initial_walker_visible)+"\n";
     s+="dont_copy_photophysics = "+booltostr(dont_copy_photophysics)+"\n";
+    s+="copy_existstate = "+booltostr(copy_existstate)+"\n";
     return s;
 }
 

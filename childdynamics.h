@@ -65,7 +65,10 @@ class ChildDynamics : public FluorophorDynamics
 
         /** \brief if set \c true, also the initial walker is visible */
         bool initial_walker_visible;
-
+        
+        /** \brief if set \c true [default], the exists state of the walker is copied from the parent */
+        bool copy_existstate;
+        
         /*! \brief returns \c true , if this object depends on the given \ other object.
 
             This function is used to determine the order in which the propagate() method of all dynamics objects in this

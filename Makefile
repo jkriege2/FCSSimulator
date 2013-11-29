@@ -8,7 +8,7 @@ BITS=64
 CFLAGS =  -Wall -DHAVE_INLINE -DNO_LIBTIFF -DJKIMAGE_USES_TINYTIFF -m$(BITS) -I../../../LIB/trunk/ #--enable-auto-import
 LDFLAGS = -lgsl -lgslcblas -lm
 
-Release: CFLAGS += -O3 -mtune=native -march=native -ffast-math -msse -msse2 -mfpmath=both -malign-double -mmmx -m3dnow  -ftree-vectorize -ftree-vectorizer-verbose=1
+Release: CFLAGS += -O2 -mtune=native -march=native -ffast-math -msse -msse2 -mfpmath=both -malign-double -mmmx -m3dnow  -ftree-vectorize -ftree-vectorizer-verbose=1
 
 Debug: CC += -DDEBUG -g
 

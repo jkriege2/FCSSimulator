@@ -76,6 +76,7 @@ void FRETDynamics::propagate(bool boundary_check) {
 
             propagate_photophysics(i);
         }
+        store_step_protocol();
     }
 }
 

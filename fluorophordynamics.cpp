@@ -38,7 +38,7 @@ FluorophorDynamics::walkerState& FluorophorDynamics::walkerState::operator=(Fluo
     p_z=other.p_z;
     type=other.type;
     spectrum=other.spectrum;
-
+    
     return *this;
 }
 
@@ -64,6 +64,8 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, std::stri
     rng = gsl_rng_alloc (rng_type);
     gsl_rng_set(rng, gsl_rng_get(global_rng));
 
+    heatup_steps=0;
+    
     init_p_x=1;
     init_p_y=0;
     init_p_z=0;
@@ -87,6 +89,11 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, std::stri
     additional_walker_off_if_main_off=false;
     n_fluorophores=1;
 
+    store_walker_statistics=false;
+    walker_statistics_averageduration=100e-3;
+    walker_statistics.clear();
+    walker_statistics.push_back(FluorophorDynamics::walker_statistics_entry());
+    
     walker_state=NULL;
     walker_state_other=NULL;
     walker_dx=NULL;
@@ -133,6 +140,7 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, double si
     init_type=0;
     init_spectrum=-1;
     init_used_qm_states=1;
+    heatup_steps=0;
 
     for (int j=0; j<N_FLUORESCENT_STATES; j++) init_sigma_abs[j]=2.2e-20;
     for (int j=0; j<N_FLUORESCENT_STATES; j++) init_q_fluor[j]=0.1;
@@ -145,6 +153,11 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, double si
     additional_walker_off_if_main_off=false;
     n_fluorophores=1;
 
+    store_walker_statistics=false;
+    walker_statistics_averageduration=100e-3;
+    walker_statistics.clear();
+    walker_statistics.push_back(FluorophorDynamics::walker_statistics_entry());
+    
     walker_state=NULL;
     walker_state_other=NULL;
     walker_dx=NULL;
@@ -182,6 +195,11 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, double si
     rng = gsl_rng_alloc (rng_type);
     gsl_rng_set(rng, gsl_rng_get(global_rng));
 
+    store_walker_statistics=false;
+    walker_statistics_averageduration=100e-3;
+    walker_statistics.clear();
+    walker_statistics.push_back(FluorophorDynamics::walker_statistics_entry());
+    
     init_p_x=1;
     init_p_y=0;
     init_p_z=0;
@@ -189,6 +207,7 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, double si
     init_type=0;
     init_spectrum=-1;
     init_used_qm_states=1;
+    heatup_steps=0;
 
     for (int j=0; j<N_FLUORESCENT_STATES; j++) init_sigma_abs[j]=2.2e-20;
     for (int j=0; j<N_FLUORESCENT_STATES; j++) init_q_fluor[j]=0.1;
@@ -350,6 +369,14 @@ void FluorophorDynamics::read_config_internal(jkINIParser2& parser) {
     //std::cout<<spec<<" ("<<init_spectrum<<"): "<<init_q_fluor[0]<<", "<<init_sigma_abs[0]<<<<init_q_fluor[1]<<", "<<init_sigma_abs[1]<<std::endl;
     protocol_trajectories=parser.getSetAsInt("protocol_trajectories", protocol_trajectories);
     protocol_timestep_count=parser.getSetAsInt("protocol_timestep_count", protocol_timestep_count);;
+    
+    heatup_steps=parser.getSetAsInt("heatup_steps", heatup_steps);
+   
+    store_walker_statistics=parser.getSetAsBool("store_walker_statistics", store_walker_statistics);;
+    walker_statistics_averageduration=parser.getSetAsDouble("walker_statistics_averageduration", walker_statistics_averageduration);
+    walker_statistics.clear();
+    walker_statistics.push_back(walker_statistics_entry());
+    
 }
 
 void FluorophorDynamics::read_config(jkINIParser2& parser, std::string group, std::string supergroup) {
@@ -682,13 +709,31 @@ void FluorophorDynamics::init(){
             std::cout<<"done!\n";
         }
     }
+    
+    walker_statistics_nextsavetime=sim_time+walker_statistics_averageduration;
+    // create new step protocol
+    walker_statistics.push_back(walker_statistics_entry());
+    walker_statistics[walker_statistics.size()-1].time=sim_time+walker_statistics_averageduration/2.0;
 
     store_step_protocol();
+    
+    if (heatup_steps>0) {
+        std::cout<<"heating up "<<object_name<<" ("<<heatup_steps<<" steps)... ";
+        for (int i=0; i<heatup_steps; i++) {
+            propagate();
+            propagate_additional_walkers();
+        }
+        sim_time=0;
+        std::cout<<" DONE!\n";
+    }
 
 }
 
 void FluorophorDynamics::propagate(bool boundary_check){
+    
+    
     sim_time=sim_time+sim_timestep;
+    
     //std::cout<<">>> dyn    sim_time = "<<sim_time<<"\n";
 }
 
@@ -753,9 +798,16 @@ std::string FluorophorDynamics::report() {
         //s+=doublearraytostr(init_photophysics_transition, N_FLUORESCENT_STATES,N_FLUORESCENT_STATES,false)+"\n";
         s+="reset_qmstate_at_simboxborder = "+booltostr(reset_qmstate_at_simboxborder)+"\n";
     }
-    s+="depletion_propability = "+floattostr(depletion_propability)+"\n";
+    s+="depletion_propability = "+floattostr(depletion_propability)+"\n\n";
+    s+="heatup_steps = "+inttostr(heatup_steps)+"\n\n";
 
-
+    s+="store_walker_statistics = "+booltostr(store_walker_statistics)+"\n";
+    if (store_walker_statistics) {
+        s+="walker_statistics_averageduration = "+floattostr(walker_statistics_averageduration)+" seconds\n";
+        s+="walker_statistics_saved_steps = "+inttostr(walker_statistics.size())+"\n";
+    }
+    s+="\n";
+    
     return s;
 }
 
@@ -776,6 +828,55 @@ void FluorophorDynamics::store_step_protocol() {
         walkerState ws=walker_state[i];
         if (ws.time<protocol_timestep_count || protocol_timestep_count<0)
             fprintf(trajectoryFile[i], "%lg, %lg, %lg, %lg, %d, %d, %d, %lg, %lg, %lg\n", ws.time*sim_timestep, ws.x, ws.y, ws.z, ws.qm_state, ws.type, ws.spectrum, ws.p_x, ws.p_y, ws.p_z);
+    }
+    
+    if (store_walker_statistics) {
+        if (sim_time>=walker_statistics_nextsavetime) {
+            
+            // normalize current step
+            uint64_t cur=walker_statistics.size()-1;
+            walker_statistics[cur].average_brightness=walker_statistics[cur].average_brightness/double(walker_statistics[cur].average_steps);
+            walker_statistics[cur].count_all=walker_statistics[cur].count_all/double(walker_statistics[cur].average_steps);
+            walker_statistics[cur].count_existing=walker_statistics[cur].count_existing/double(walker_statistics[cur].average_steps);
+            walker_statistics[cur].posx=walker_statistics[cur].posx/double(walker_statistics[cur].average_steps);
+            walker_statistics[cur].posy=walker_statistics[cur].posy/double(walker_statistics[cur].average_steps);
+            walker_statistics[cur].posz=walker_statistics[cur].posz/double(walker_statistics[cur].average_steps);
+            for (int i=0; i<N_FLUORESCENT_STATES; i++) walker_statistics[cur].state_distribution[i]=walker_statistics[cur].state_distribution[i]/double(walker_statistics[cur].average_steps);
+            
+            
+            // create new step protocol
+            walker_statistics.push_back(walker_statistics_entry());
+            walker_statistics[walker_statistics.size()-1].time=sim_time+walker_statistics_averageduration/2.0;
+            walker_statistics_nextsavetime=walker_statistics_nextsavetime+walker_statistics_averageduration;
+        } else {
+            uint64_t cur=walker_statistics.size()-1;
+            
+            unsigned int wc=get_visible_walker_count();
+            walkerState* ws=get_visible_walker_state();
+            uint64_t viswalk=0;
+            double average_brightness=0;
+            double px=0, py=0, pz=0;
+            double state_distribution[N_FLUORESCENT_STATES];
+            for (int i=0; i<N_FLUORESCENT_STATES; i++) state_distribution[i]=0;
+            for (unsigned int i=0; i<wc; i++) {
+                if (ws[i].exists) {
+                    viswalk++;
+                    average_brightness=average_brightness+ws[i].sigma_abs[ws[i].qm_state]*ws[i].q_fluor[ws[i].qm_state];
+                    px=px+ws[i].x;
+                    py=py+ws[i].y;
+                    pz=pz+ws[i].z;
+                    state_distribution[ws[i].qm_state]++;
+                }
+            }
+            walker_statistics[cur].average_steps++;
+            walker_statistics[cur].average_brightness=walker_statistics[cur].average_brightness+average_brightness/double(viswalk);
+            walker_statistics[cur].posx=walker_statistics[cur].posx+px/double(viswalk);
+            walker_statistics[cur].posy=walker_statistics[cur].posy+py/double(viswalk);
+            walker_statistics[cur].posz=walker_statistics[cur].posz+pz/double(viswalk);
+            walker_statistics[cur].count_all=walker_statistics[cur].count_all+wc;
+            walker_statistics[cur].count_existing=walker_statistics[cur].count_existing+viswalk;
+            for (int i=0; i<N_FLUORESCENT_STATES; i++) walker_statistics[cur].state_distribution[i]=walker_statistics[cur].state_distribution[i]+state_distribution[i]/double(viswalk);
+        }
     }
     //std::cout<<"store step protocol done\n";
 }
@@ -949,7 +1050,7 @@ void FluorophorDynamics::save_results() {
     save();
 
     FILE* f;
-    char fn[255];
+    char fn[1024];
 
     if (additional_walker_position_mode==InSphere) {
         sprintf(fn, "%s%sinspherefluorophores.dat", basename.c_str(), object_name.c_str());
@@ -1092,6 +1193,89 @@ void FluorophorDynamics::save_results() {
         }
 
 
+        fclose(f);
+        std::cout<<" done!\n";
+    }
+    
+    
+    
+    if (store_walker_statistics) {
+        sprintf(fn, "%s%swalkerstatistics.dat", basename.c_str(), object_name.c_str());
+        std::cout<<"writing '"<<fn<<"' ...";
+        f=fopen(fn, "w");
+        
+        
+        for (uint64_t i=2; i<walker_statistics.size()-2; i++) {
+            fprintf(f, "%15.10lf %ld %ld %15.10lf %ld %15.10lf %15.10lf %15.10lf", walker_statistics[i].time, 
+                                                        walker_statistics[i].count_all, 
+                                                        walker_statistics[i].count_existing, 
+                                                        walker_statistics[i].average_brightness, 
+                                                        walker_statistics[i].average_steps,
+                                                        walker_statistics[i].posx,
+                                                        walker_statistics[i].posy,
+                                                        walker_statistics[i].posz
+                                                    );
+            for (long j=0; j<N_FLUORESCENT_STATES; j++) {      
+                fprintf(f, " %15.10lf", walker_statistics[i].state_distribution[j]);
+            }
+            fprintf(f, "\n");
+        }
+        fprintf(f, "\n");
+        fclose(f);
+        std::cout<<" done!\n";
+        std::string fnwalkerstat=fn;
+        
+        
+        
+        sprintf(fn, "%s%swalkerstatistics.plt", basename.c_str(), object_name.c_str());
+        std::cout<<"writing '"<<fn<<"' ...";
+        f=fopen(fn, "w");
+        for (int plt=0; plt<2; plt++) {
+            if (plt==0) {
+                fprintf(f, "set terminal pdfcairo color solid font \"%s, 5\" linewidth 2 size 20cm,15cm\n", GNUPLOT_FONT);
+                fprintf(f, "set output \"%s\"\n", extract_file_name(basename+object_name+"walkerstatistics.pdf").c_str());
+            } else if (plt==1) {
+                fprintf(f, "set terminal wxt font \"%s, 5\"\n", GNUPLOT_FONT);
+                fprintf(f, "set output\n");
+            }
+            
+            fprintf(f, "set size noratio\n");
+            fprintf(f, "set multiplot layout 2,1\n");
+            fprintf(f, "set xlabel \"time t [seconds]\"\n");
+            fprintf(f, "set ylabel \"average walker count\"\n");
+            fprintf(f, "set title \"walker count: %s, average over %lfms\"\n", object_name.c_str(), walker_statistics_averageduration*1000.0);
+            fprintf(f, "plot \"%s\" using 1:2 title \"all walkers\" with linespoints,  \"%s\" using 1:3 title \"visible walkers\" with linespoints\n"
+            "\n", extract_file_name(fnwalkerstat).c_str(), extract_file_name(fnwalkerstat).c_str());
+            
+            fprintf(f, "set xlabel \"time t [seconds]\"\n");
+            fprintf(f, "set ylabel \"average brightness (q*sigma)\"\n");
+            fprintf(f, "set title \"walker count: %s, average over %lfms\"\n", object_name.c_str(), walker_statistics_averageduration*1000.0);
+            fprintf(f, "plot \"%s\" using 1:4 notitle  with linespoints\n"
+            "\n", extract_file_name(fnwalkerstat).c_str());
+           
+            fprintf(f, "unset multiplot\n");
+            if (plt==1) fprintf(f, "pause -1\n\n");
+            
+            fprintf(f, "set xlabel \"time t [seconds]\"\n");
+            fprintf(f, "set ylabel \"position [micron]\"\n");
+            fprintf(f, "set title \"center of mass: %s, average over %lfms\"\n", object_name.c_str(), walker_statistics_averageduration*1000.0);
+            fprintf(f, "plot \"%s\" using 1:6 title \"x-position\"  with linespoints, \"%s\" using 1:7 title \"y-position\"  with linespoints, \"%s\" using 1:8 title \"z-position\"  with linespoints\n", extract_file_name(fnwalkerstat).c_str(), extract_file_name(fnwalkerstat).c_str(), extract_file_name(fnwalkerstat).c_str());                
+            if (plt==1) fprintf(f, "pause -1\n\n");
+                                
+            fprintf(f, "set xlabel \"time t [seconds]\"\n");
+            fprintf(f, "set ylabel \"fraction of particles in QM state\"\n");
+            fprintf(f, "set title \"QM state occupation: %s, average over %lfms\"\n", object_name.c_str(), walker_statistics_averageduration*1000.0);
+            fprintf(f, "plot [][-0.1:1.1]");
+            for (long j=0; j<N_FLUORESCENT_STATES; j++) {      
+                if (j>0) fprintf(f, ",  \\\n");
+                                fprintf(f, "   \"%s\" using 1:%d title \"qm_state %d\"  with lines", extract_file_name(fnwalkerstat).c_str(), j+9, j+1);                
+            }
+            fprintf(f, "\n\n");
+            if (plt==1) fprintf(f, "pause -1\n\n");
+                                
+        }
+        
+        
         fclose(f);
         std::cout<<" done!\n";
     }

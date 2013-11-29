@@ -369,6 +369,41 @@ class FluorophorDynamics
         AdditionalWalkerPositions additional_walker_position_mode;
         /** \brief radius of sphere if additional_walker_position_mode==InSphere */
         double additional_walker_sphere_radius;
+        
+        /** \brief indicates whether walker statistics is stored */
+        bool store_walker_statistics;
+        
+        /** \brief average statistics of this duration [s] for every entry */
+        double walker_statistics_averageduration;
+        double walker_statistics_nextsavetime;
+        
+        /** \brief number if simulation steps to heat up the simulation ... */
+        int heatup_steps;
+        
+        /** \brief struct for the walker statistics */
+        struct walker_statistics_entry {
+            walker_statistics_entry(double t=0.0) {
+                clear(t);
+            };
+            inline void clear(double t=0.0) {
+                time=t;
+                count_all=0;
+                count_existing=0;
+                average_brightness=0;
+                average_steps=0;
+                posx=posy=posz=0;
+                for (int i=0; i<N_FLUORESCENT_STATES; i++) state_distribution[i]=0;                
+            }
+            double time;
+            uint64_t count_all;
+            uint64_t count_existing;
+            double average_brightness;
+            double state_distribution[N_FLUORESCENT_STATES];
+            uint64_t average_steps;
+            double posx, posy, posz;
+        };
+        
+        std::vector<walker_statistics_entry> walker_statistics;
 
         /** \brief save the results of the measurement
          */
