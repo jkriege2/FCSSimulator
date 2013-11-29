@@ -86,10 +86,14 @@ void do_sim(std::string inifilename) {
 
 
         global_rng=gsl_rng_alloc(gsl_rng_default);
-        gsl_rng_set(global_rng, ini.getSetAsInt("simulation.global_rng_seed", getHighResolutionTime()));
-
+        int defaultSeed=(int)round(fmod(getHighResolutionTime(), double(0xFFFFFFFF)));
+        int usedSeed=ini.getSetAsInt("simulation.global_rng_seed", defaultSeed);
+        cout<<"seeding global RNG: "<<usedSeed<<"   [default: "<<defaultSeed<<"] time="<<getHighResolutionTime()<<" clipped_time="<<fmod(getHighResolutionTime(), double(0xFFFFFFFF))<<"\n";
+        gsl_rng_set(global_rng, usedSeed);
+        cout<<"testing global RNG: "<<gsl_rng_get(global_rng)<<" "<<gsl_rng_get(global_rng)<<" "<<gsl_rng_get(global_rng)<<" "<<gsl_rng_get(global_rng)<<" "<<gsl_rng_get(global_rng)<<" "<<"\n\n";
+ 
+       
         ini.print();
-
 
         cout<<"writing '"<<basename<<"config.ini' ... ";
         ini.writeFile(basename+"config.ini");
