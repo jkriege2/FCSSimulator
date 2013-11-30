@@ -1,8 +1,7 @@
 SCRIPTS= bleachingfccs_spimfccspaper0.ini\
          bleachingfccs_spimfccspaper1.ini\
          bleachingfccs_spimfccspaper2.ini\
-         bleachingfccs_spimfccspaper3.ini\
-         bleaching_spimfccspaper.ini
+         bleachingfccs_spimfccspaper3.ini
 
 
 SHELL = sh
