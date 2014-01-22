@@ -41,28 +41,28 @@ struct MeasurementSortFunctor {
 
 void do_sim(std::string inifilename) {
 
-    std::cout<<"READING SIMULATION FILE "<<inifilename<<"\n";
+        std::cout<<"READING SIMULATION FILE "<<inifilename<<"\n";
 
-    std::ofstream logfilestream;
-    ScopedDelayedStreamDoubler2 stdredirect;
+        std::ofstream logfilestream;
+        ScopedDelayedStreamDoubler2 stdredirect;
 
-    std::cout<<"INITIALIZING LOG-file ...\n";
-    try {
-        jkINIParser2 ini;
-        ini.readFile(inifilename);
-        std::string basename=ini.getSetAsString("simulation.basename", "");
+        std::cout<<"INITIALIZING LOG-file ...\n";
+        try {
+            jkINIParser2 ini;
+            ini.readFile(inifilename);
+            std::string basename=ini.getSetAsString("simulation.basename", "");
 
-        cout<<"creating directory for output '"<<extract_file_path(basename+"config.ini").c_str()<<"' ... ";
-        mk_all_dir(extract_file_path(basename+"config.ini").c_str());
-        cout<<"done!\n\n";
+            cout<<"creating directory for output '"<<extract_file_path(basename+"config.ini").c_str()<<"' ... ";
+            mk_all_dir(extract_file_path(basename+"config.ini").c_str());
+            cout<<"done!\n\n";
 
-        std::cout<<"REDIRECTING LOG ... TO '"<<(basename+"log.txt")<<"'";
-        logfilestream.open((basename+"log.txt").c_str());
-        stdredirect.redirect(std::cout, logfilestream);
-        std::cout<<"\n";
-    } catch (std::exception& E) {
-        std::cout<<"\nError: COULD NOT CREATE LOG-FILE \n   "<<E.what()<<std::endl;
-    }
+            std::cout<<"REDIRECTING LOG ... TO '"<<(basename+"log.txt")<<"'";
+            logfilestream.open((basename+"log.txt").c_str());
+            stdredirect.redirect(std::cout, logfilestream);
+            std::cout<<"\n";
+        } catch (std::exception& E) {
+            std::cout<<"\nError: COULD NOT CREATE LOG-FILE \n   "<<E.what()<<std::endl;
+        }
 
     clock_t start, endtime;
     double cpu_time_used;
@@ -91,8 +91,8 @@ void do_sim(std::string inifilename) {
         cout<<"seeding global RNG: "<<usedSeed<<"   [default: "<<defaultSeed<<"] time="<<getHighResolutionTime()<<" clipped_time="<<fmod(getHighResolutionTime(), double(0xFFFFFFFF))<<"\n";
         gsl_rng_set(global_rng, usedSeed);
         cout<<"testing global RNG: "<<gsl_rng_get(global_rng)<<" "<<gsl_rng_get(global_rng)<<" "<<gsl_rng_get(global_rng)<<" "<<gsl_rng_get(global_rng)<<" "<<gsl_rng_get(global_rng)<<" "<<"\n\n";
- 
-       
+
+
         ini.print();
 
         cout<<"writing '"<<basename<<"config.ini' ... ";
