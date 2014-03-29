@@ -929,7 +929,13 @@ void FCSMeasurement::save() {
         fprintf(f, "set xlabel \"average signal I\"\n");
         fprintf(f, "set ylabel \"signal variance sigma_I^2\"\n");
         fprintf(f, "set title \"detector signal vs. variance: %s\"\n", description.c_str());
-        fprintf(f, "plot \"%s\" using 2:3 title 'data' with points"
+        fprintf(f, "plot 1*x, title \"ideal sensor\" with lines, \"%s\" using 2:3 title 'data' with points"
+        ", f(x, offset, a) title sprintf('fit %%f + %%f * I', offset, a) with lines"
+        "\n", extract_file_name(dettestfn).c_str());
+        if (plt==1) fprintf(f, "pause -1\n");
+
+        fprintf(f, "set logscale xy\n");
+        fprintf(f, "plot 1*x, title \"ideal sensor\" with lines, \"%s\" using 2:3 title 'data' with points"
         ", f(x, offset, a) title sprintf('fit %%f + %%f * I', offset, a) with lines"
         "\n", extract_file_name(dettestfn).c_str());
         if (plt==1) fprintf(f, "pause -1\n");
