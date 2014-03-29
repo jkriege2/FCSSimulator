@@ -164,7 +164,8 @@ void FCSMeasurement::read_config_internal(jkINIParser2& parser) {
         }
     }
 
-
+    ndettest_max=parser.getAsInt("dettest_max", ndettest_max);
+    ndettest_step=parser.getAsInt("dettest_step", ndettest_step);
     max_photons=parser.getAsInt("max_photons", max_photons);
     min_photons=parser.getAsInt("min_photons", min_photons);
     det_wavelength_min=parser.getAsDouble("det_wavelength_min", det_wavelength_min);
@@ -701,10 +702,14 @@ void FCSMeasurement::run_fcs_simulation(){
 
 int32_t FCSMeasurement::getDetectedPhotons(double nphot_sum) const {
     register int32_t N=0;
+    double on=0;
+    if (offset_std>0) {
+        on=gsl_ran_gaussian_ziggurat(rng, offset_std);
+    }
     if (detector_type==0) {
-        N=gsl_ran_poisson(rng, nphot_sum);
+        N=(double)gsl_ran_poisson(rng, nphot_sum)+offset_rate+on;
     } else {
-        double d=gsl_ran_gaussian(rng, sqrt(nphot_sum*lindet_gain*lindet_gain*lindet_var_factor+lindet_readnoise*lindet_readnoise))+nphot_sum*lindet_gain;
+        double d=gsl_ran_gaussian_ziggurat(rng, sqrt(nphot_sum*lindet_gain*lindet_gain*lindet_var_factor+lindet_readnoise*lindet_readnoise))+nphot_sum*lindet_gain+offset_rate+on;
         N=round(d);
         if (d>max_photons) N=max_photons;
     }
@@ -714,12 +719,6 @@ int32_t FCSMeasurement::getDetectedPhotons(double nphot_sum) const {
         N=N+gsl_ran_poisson(rng, background_rate*corr_taumin);
     }
     //if (detector_type==1) std::cout<<"**     "<<N<<"\n";
-    if (offset_rate>0 && offset_std>0) {
-        double o=gsl_ran_gaussian(rng, offset_std)+offset_rate;
-        N=N+round(o);
-    } else if (offset_rate>0 && offset_std<=0) {
-        N=N+round(offset_rate);
-    }
     //if (detector_type==1) std::cout<<"***    "<<N<<"\n";
     N=N-offset_correction;
     //if (detector_type==1) std::cout<<"****   "<<N<<"\n";
@@ -888,7 +887,7 @@ void FCSMeasurement::save() {
     sprintf(fn, "%s%sdettest.dat", basename.c_str(), object_name.c_str());
     std::cout<<"writing '"<<fn<<"' ...";
     f=fopen(fn, "w");
-    long ndettests=1000;
+    long ndettests=10000;
     for (  double n_phot=0; n_phot<=ndettest_max; n_phot=n_phot+ndettest_step) {
         int32_t* Nm=(int32_t*)calloc(ndettests, sizeof(int32_t));
         for (int i=0; i<ndettests; i++) {
@@ -926,18 +925,35 @@ void FCSMeasurement::save() {
 
         fprintf(f, "set size noratio\n");
 
+        fprintf(f, "set multiplot layout 2,1\n");
+        fprintf(f, "unset logscale xy\n");
         fprintf(f, "set xlabel \"average signal I\"\n");
         fprintf(f, "set ylabel \"signal variance sigma_I^2\"\n");
         fprintf(f, "set title \"detector signal vs. variance: %s\"\n", description.c_str());
-        fprintf(f, "plot 1*x, title \"ideal sensor\" with lines, \"%s\" using 2:3 title 'data' with points"
+        fprintf(f, "plot 1*x title \"ideal sensor\" with lines, \"%s\" using 2:3 title 'data' with points"
         ", f(x, offset, a) title sprintf('fit %%f + %%f * I', offset, a) with lines"
         "\n", extract_file_name(dettestfn).c_str());
-        if (plt==1) fprintf(f, "pause -1\n");
 
         fprintf(f, "set logscale xy\n");
-        fprintf(f, "plot 1*x, title \"ideal sensor\" with lines, \"%s\" using 2:3 title 'data' with points"
+        fprintf(f, "plot 1*x title \"ideal sensor\" with lines, \"%s\" using 2:3 title 'data' with points"
         ", f(x, offset, a) title sprintf('fit %%f + %%f * I', offset, a) with lines"
         "\n", extract_file_name(dettestfn).c_str());
+        fprintf(f, "unset multiplot\n");
+        if (plt==1) fprintf(f, "pause -1\n");
+
+
+        fprintf(f, "set multiplot layout 2,1\n");
+        fprintf(f, "unset logscale xy\n");
+        fprintf(f, "set xlabel \"average signal I\"\n");
+        fprintf(f, "set ylabel \"signal to noise ration SNR\"\n");
+        fprintf(f, "set title \"detector signal to noise ration: %s\"\n", description.c_str());
+        fprintf(f, "plot \"%s\" using 1:(($2)/sqrt($3)) title 'data' with points"
+        "\n", extract_file_name(dettestfn).c_str());
+
+        fprintf(f, "set logscale xy\n");
+        fprintf(f, "plot \"%s\" using 1:(($2)/sqrt($3)) title 'data' with points"
+        "\n", extract_file_name(dettestfn).c_str());
+        fprintf(f, "unset multiplot\n");
         if (plt==1) fprintf(f, "pause -1\n");
 
     }
