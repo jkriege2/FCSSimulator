@@ -311,7 +311,7 @@ class FCSMeasurement: public FluorescenceMeasurement {
         uint64_t timeseries_size;
         bool timeseries_ended;
 
-        uint64_t lastNPhotons;
+        double lastNPhotons;
 
         /** \brief this array holds the generated binned time series */
         int32_t* binned_timeseries;
@@ -381,6 +381,7 @@ class FCSMeasurement: public FluorescenceMeasurement {
         double offset_std;
         /** \brief remove this offset photon counts [photons/(detection step)] from the acquired signal before correlation */
         double offset_correction;
+        double stochastic_offset_correction;
 
         /** \brief plot PSF from 0 to psfplot_xmax in x direction in micrometers */
         double psfplot_xmax;

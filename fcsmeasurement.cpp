@@ -32,6 +32,7 @@ FCSMeasurement::FCSMeasurement(FluorophorManager* fluorophors, std::string objec
     offset_rate=0;
     offset_std=0;
     offset_correction=0;
+    stochastic_offset_correction=0;
 
     ill_distribution=0;
     det_distribution=0;
@@ -175,6 +176,7 @@ void FCSMeasurement::read_config_internal(jkINIParser2& parser) {
     offset_rate=parser.getAsDouble("offset_rate", offset_rate);
     offset_std=parser.getAsDouble("offset_std", offset_std);
     offset_correction=parser.getAsDouble("offset_correction", offset_correction);
+    stochastic_offset_correction=parser.getAsDouble("stochastic_offset_correction", stochastic_offset_correction);
     psf_region_factor=parser.getAsDouble("psf_region_factor", psf_region_factor);
 
     ill_distribution=str_to_ill_distribution(parser.getSetAsString("ill_distribution", ill_distribution_to_str(ill_distribution)));
@@ -720,7 +722,6 @@ int32_t FCSMeasurement::getDetectedPhotons(double nphot_sum) const {
     }
     //if (detector_type==1) std::cout<<"**     "<<N<<"\n";
     //if (detector_type==1) std::cout<<"***    "<<N<<"\n";
-    N=N-offset_correction;
     //if (detector_type==1) std::cout<<"****   "<<N<<"\n";
 
     if (detector_type==1) {
@@ -732,6 +733,12 @@ int32_t FCSMeasurement::getDetectedPhotons(double nphot_sum) const {
     //if (detector_type==1) std::cout<<"****** "<<N<<"\n";
     if (N>max_photons) N=max_photons;
     //if (detector_type==1) std::cout<<"*******"<<N<<"\n";
+
+    N=N-offset_correction;
+    if (stochastic_offset_correction>0) {
+        N=N-gsl_ran_poisson(rng, stochastic_offset_correction);
+    }
+
     return N;
 }
 
@@ -2123,6 +2130,8 @@ std::string FCSMeasurement::report(){
     } else s+="no offset photons\n";
     if (offset_correction!=0) s+="offset_correction = "+floattostr(offset_correction)+" photons/detectionstep\n";
     else s+="no offset correction\n";
+    if (stochastic_offset_correction!=0) s+="stochastic_offset_correction = "+floattostr(stochastic_offset_correction)+" photons/detectionstep\n";
+    else s+="no stochastic offset correction\n";
     s+="EPhoton_ex = "+floattostr(Ephoton/1.602176487e-19/1e-3)+" meV\n";
     s+="EPhoton_ex2 = "+floattostr(Ephoton2/1.602176487e-19/1e-3)+" meV\n";
     s+="I0 = "+floattostr(I0)+" uW/m^2  =  "+floattostr(I0/1e12)+" uW/micron^2  =  "+floattostr(I0/1e6)+" uW/mm^2\n";
