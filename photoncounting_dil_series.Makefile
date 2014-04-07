@@ -1,9 +1,11 @@
 SCRIPTS= photoncounting_dil_series1.ini\
          photoncounting_dil_series2.ini\
-         photoncounting_dil_series3.ini\
-         photoncounting_dil_series4.ini\
-         photoncounting_dil_series5.ini\
-		 photoncounting_dil_series6.ini
+         photoncounting_dil_series3.ini
+		 
+#		 \
+#         photoncounting_dil_series4.ini\
+#         photoncounting_dil_series5.ini\
+#		 photoncounting_dil_series6.ini
 		 
 SHELL = sh
 
