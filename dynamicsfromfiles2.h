@@ -227,6 +227,10 @@ class DynamicsFromFiles2 : public FluorophorDynamics
         /** \brief if you use a linear combination of polarisation vectors, this compination is \f$ f\cdot\vec{p}+(1-f)\cdot\vec{p}_1 \f$
                    where \f$ f \f$ is this parameter. */
         double p_fraction;
+        
+        bool rotate_trajectories;
+        std::vector<double> alpha1,alpha2,alpha3;
+        int repeat_files;
 	
 	/** \brief number of trajectories to run in parallel in SequentialParallel mode */
 	int parallelTrajectories;
@@ -249,6 +253,7 @@ class DynamicsFromFiles2 : public FluorophorDynamics
             }
         };
         std::map<FILE*, BinaryFileInfo> binFileInfo;
+        void rotateTrajectory(int i, double alpha1, double alpha2, double alpha3);
 
 };
 

@@ -44,7 +44,9 @@ DynamicsFromFiles2::DynamicsFromFiles2(FluorophorManager* fluorophors, std::stri
     col_pz1=12;
     p_fraction=1.0;
     num_start=1;
+    rotate_trajectories=false;
     num_stop=1;
+    repeat_files=1;
     filenames="traj%.3d.dat";
     shiftmode=HalfTime;
     tmode=Sequential;
@@ -128,6 +130,19 @@ void DynamicsFromFiles2::read_config_internal(jkINIParser2& parser) {
             }
         }
     }
+    
+    repeat_files=parser.getSetAsInt("repeat_files", repeat_files);
+    if (repeat_files>1){
+        int oldtcount=trajectory_count;
+        for (int r=0; r<repeat_files; r++) {
+            for (int f=0; f<oldtcount; f++) {
+                std::string fn=trajectory_files[f];
+                trajectory_files.push_back(fn);
+                std::cout<<"repeating "<<fn<<std::endl;
+                trajectory_count++;
+            }
+        }
+    }
 
     std::string d=chartostr(separator_char);
     if (separator_char==' ') d="space";
@@ -149,6 +164,8 @@ void DynamicsFromFiles2::read_config_internal(jkINIParser2& parser) {
     qfluor_factor=parser.getSetAsDouble("qfluor_factor", qfluor_factor);
     max_columns=parser.getSetAsInt("max_columns", max_columns);
     max_lines=parser.getSetAsInt("max_lines", max_lines);
+    
+    rotate_trajectories=parser.getSetAsBool("rotate_trajectories", rotate_trajectories);
 
 
     std::string t="sequential";
@@ -384,6 +401,17 @@ void DynamicsFromFiles2::init() {
     tim.tock();
     timing_loadall=tim.get_duration();
     timing_load1=timing_load1/(double)trajectory_count;
+    
+    alpha1.clear();
+    alpha2.clear();
+    alpha3.clear();
+    if (rotate_trajectories){
+        for (int f=0; f<trajectory_files.size(); f++) {
+            alpha1.push_back(gsl_ran_flat(rng, -M_PI, M_PI));
+            alpha2.push_back(gsl_ran_flat(rng, -M_PI, M_PI));
+            alpha3.push_back(gsl_ran_flat(rng, -M_PI, M_PI));
+        }
+    }
 
     file_counter=0;
     line_counter=0;
@@ -466,6 +494,9 @@ void DynamicsFromFiles2::propagate(bool boundary_check) {
         if ((cc>col_qmstate) && (col_qmstate>=0) && (max_columns>col_qmstate)) {
             walker_state[file_counter].qm_state=(int)round(data[col_qmstate]);
         }
+        
+        rotateTrajectory(file_counter,  alpha1[file_counter],  alpha2[file_counter],  alpha3[file_counter]);
+        
         //std::cout<<line_counter<<": x="<<walker_state[0].x<<" y="<<walker_state[0].y<<" z="<<walker_state[0].z<<" p_x="<<walker_state[0].p_x<<" p_y="<<walker_state[0].p_y<<" p_z="<<walker_state[0].p_z<<" q_fluor="<<walker_state[0].q_fluor<<" sigma_abs="<<walker_state[0].sigma_abs<<std::endl;
         line_counter++;
         if (line_counter>=lc) {
@@ -540,6 +571,7 @@ void DynamicsFromFiles2::propagate(bool boundary_check) {
                     //std::cout<<line_counter<<": x="<<walker_state[0].x<<" y="<<walker_state[0].y<<" z="<<walker_state[0].z<<" p_x="<<walker_state[0].p_x<<" p_y="<<walker_state[0].p_y<<" p_z="<<walker_state[0].p_z<<" q_fluor="<<walker_state[0].q_fluor<<" sigma_abs="<<walker_state[0].sigma_abs<<std::endl;
 
                     anyRunning=true;
+                    rotateTrajectory(f,  alpha1[f],  alpha2[f],  alpha3[f]);
                 }
 	    }
 	    line_counter++;
@@ -600,6 +632,7 @@ void DynamicsFromFiles2::propagate(bool boundary_check) {
                 if ((cc>col_qmstate) && (col_qmstate>=0) && (max_columns>col_qmstate)) {
                     walker_state[file_counter].qm_state=(int)round(data[col_qmstate]);
                 }
+                rotateTrajectory(file_counter,  alpha1[file_counter],  alpha2[file_counter],  alpha3[file_counter]);
             } else {
                 walker_state[file_counter].exists=false; // deactivate fluorophor, if no more data exists
             }
@@ -607,6 +640,30 @@ void DynamicsFromFiles2::propagate(bool boundary_check) {
         }
         if (anyon) line_counter++; // if there is still some data available, increase linecount
         else endoftrajectory=true; // if there is no more data, signal this with     endoftrajectory=true!
+    }
+}
+ 
+ void DynamicsFromFiles2::rotateTrajectory(int i, double alpha1, double alpha2, double alpha3) {
+    if (rotate_trajectories) {
+        //for (int i=0; i<trajectory_count; i++) {
+            const double c1=cos(alpha1);
+            const double s1=sin(alpha1);
+            const double c2=cos(alpha2);
+            const double s2=sin(alpha2);
+            const double c3=cos(alpha3);
+            const double s3=sin(alpha3);
+            const double R[3][3]= {{c2,      -c3*s2,           s2*s3},
+                                  {c1*s2,    c1*c2*c2-s1*s3,   -c3*s1-c1*c2*s3},
+                                  {s1*s2,    c1*s3+c2*c3*s1,   c1*c3-c2*s1*s3}};
+            
+            const double x=walker_state[i].x;
+            const double y=walker_state[i].y;
+            const double z=walker_state[i].z;
+            walker_state[i].x=R[0][0]*x+R[0][1]*y+R[0][2]*z;
+            walker_state[i].y=R[1][0]*x+R[1][1]*y+R[1][2]*z;
+            walker_state[i].z=R[2][0]*x+R[2][1]*y+R[2][2]*z;
+            
+        //}
     }
 }
 
@@ -642,6 +699,8 @@ std::string DynamicsFromFiles2::report() {
     }
     if (shiftmode==HalfTime) s+="shift_mode = halftime (to position at file_duration/2)\n";
     if (shiftmode==NthTime) s+="shift_mode = nth_time (to position at (fileno+1)*file_duration/(trajectory_count+2))\n";
+    s+="rotate_trajectories = "+booltostr(rotate_trajectories)+"\n";
+    s+="repeat_files = "+inttostr(repeat_files)+"\n";
     s+="timing_loadall = "+floattostr(timing_loadall)+" secs\n";
     s+="timing_load1 = "+floattostr(timing_load1)+" secs\n";
     s+="max_files = "+inttostr(max_files)+"\n";
