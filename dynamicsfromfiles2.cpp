@@ -134,7 +134,7 @@ void DynamicsFromFiles2::read_config_internal(jkINIParser2& parser) {
     repeat_files=parser.getSetAsInt("repeat_files", repeat_files);
     if (repeat_files>1){
         int oldtcount=trajectory_count;
-        for (int r=0; r<repeat_files; r++) {
+        for (int r=1; r<repeat_files; r++) {
             for (int f=0; f<oldtcount; f++) {
                 std::string fn=trajectory_files[f];
                 trajectory_files.push_back(fn);
@@ -312,8 +312,8 @@ void DynamicsFromFiles2::init() {
         //data[i].load_csv(trajectory_files[i], separator_char, comment_char);
         unsigned long long lcount=dataFileCountLines(trajectory_files[i]);//count_lines(trajectory_files[i], comment_char);
         if (max_lines>0 && lcount>max_lines) lcount=max_lines;
-        if (lcount<1) throw FluorophorException(format("file '%s' does not contain data or does not exist", trajectory_files[i].c_str()));
         std::cout<<"lines="<<lcount<<"] ... "<<std::endl;
+        if (lcount<1) throw FluorophorException(format("file '%s' does not contain data or does not exist", trajectory_files[i].c_str()));
 
         FILE* f=dataFileOpen(trajectory_files[i]);//fopen(trajectory_files[i].c_str(), "r");
 
