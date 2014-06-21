@@ -1767,6 +1767,7 @@ void FCSMeasurement::save() {
                     std::string pw=strstrip(plot_with[i]);
                     if (measmap.count(pw)>0) {
                         FCSMeasurement* fcspw=dynamic_cast<FCSMeasurement*>(measmap[pw]);
+                        pw=measmap[pw]->get_object_name();
                         char fn2[1024];
                         sprintf(fn2, "%s%scorr.dat", basename.c_str(), pw.c_str());
                         if (fcspw) {
