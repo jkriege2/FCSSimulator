@@ -1801,6 +1801,7 @@ void FCSMeasurement::save() {
                     FCSMeasurement* fcspw=dynamic_cast<FCSMeasurement*>(measmap[pw]);
                     char fn2[1024];
                     char plt[8192];
+                    pw=measmap[pw]->get_object_name();
                     sprintf(fn2, "%s%spsf.dat", basename.c_str(), pw.c_str());
                     if (fcspw) {
                         fprintf(f, "fit Ax%d*g(x, wx%d) \"%s\" using 1:(($2)*($3)) via wx%d, Ax%d\n", i, i, extract_file_name(std::string(fn2)).c_str(), i, i);
@@ -1918,6 +1919,7 @@ void FCSMeasurement::save() {
                                 FCSMeasurement* fcspw=dynamic_cast<FCSMeasurement*>(measmap[pw]);
                                 char fn2[1024];
                                 char plt[8192];
+                                pw=measmap[pw]->get_object_name();
                                 sprintf(fn2, "%s%sarrivals.dat", basename.c_str(), pw.c_str());
                                 std::string atfn2=fn2;
                                 if (fcspw) {
@@ -1972,6 +1974,7 @@ void FCSMeasurement::save() {
                                 FCSMeasurement* fcspw=dynamic_cast<FCSMeasurement*>(measmap[pw]);
                                 char fn2[1024];
                                 char plt[8192];
+                                pw=measmap[pw]->get_object_name();
                                 sprintf(fn2, "%s%sbts.dat", basename.c_str(), pw.c_str());
                                 std::string atfn2=fn2;
                                 if (fcspw) {
