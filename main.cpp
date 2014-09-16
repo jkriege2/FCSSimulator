@@ -333,8 +333,8 @@ int main(int argc, char* argv[])
                 do_execute=false;
             }
             if (tolower(fn)=="--help")  {
-                std::cout<<"diffusion 4 FCS simulator\n";
-                std::cout<<"   (c)2008-2013 bz J.W.Krieger <j.krieger@dkfz.de>\n";
+                std::cout<<"diffusion 4 -- FCS simulator\n";
+                std::cout<<"   (c)2008-2014 bz J.W.Krieger <j.krieger@dkfz.de>\n";
                 std::cout<<"\nusage:\n";
                 std::cout<<"    diffusion4 [options] file1 [file2 [file3 ...] ] ]\n";
                 std::cout<<"\noptions:\n";
@@ -342,8 +342,9 @@ int main(int argc, char* argv[])
                 std::cout<<"    --testspectra: output test infor for fl. and abs. spectra in database\n";
                 std::cout<<"\nfiles:\n";
                 std::cout<<"    give a list of files to process. It is possible to use wildcards in\n";
-                std::cout<<"    filenames: * matches at least one character and ? matches exactlz one\n";
-                std::cout<<"    character.\n\n\n";
+                std::cout<<"    filenames: * matches at least one character and ? matches exactly one\n";
+                std::cout<<"    character.\n";
+                std::cout<<"    If no files are given, this program uses diffusion4.ini!\n\n\n";
                 do_execute=false;
             }
         }

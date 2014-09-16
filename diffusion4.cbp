@@ -67,6 +67,8 @@
 		<Unit filename="../../../LIB/trunk/correlator_multitau.h" />
 		<Unit filename="../../../LIB/trunk/datatable.cpp" />
 		<Unit filename="../../../LIB/trunk/datatable.h" />
+		<Unit filename="../../../LIB/trunk/gnuplot_tools.cpp" />
+		<Unit filename="../../../LIB/trunk/gnuplot_tools.h" />
 		<Unit filename="../../../LIB/trunk/highrestimer.cpp" />
 		<Unit filename="../../../LIB/trunk/highrestimer.h" />
 		<Unit filename="../../../LIB/trunk/image_tools.cpp" />
