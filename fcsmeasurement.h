@@ -46,11 +46,15 @@
    a Multiple-Tau correlator (see MultiTauCorrelator calss). The average number of photons in every
    sample timestep \f$ \Delta t_{sample} \f$ (which may be any integer multiple of the simulation
    timestep \f$ \Delta t_{sim} \f$ ) is calculates as:
-      \f[ n_{phot}(t_0)=\sum\limits_{t\in\{t_0, t_0+\Delta t_{sim},...,t_0+\Delta t_{sample} \}}\sum\limits_{i=1}^{N_{walker}}\frac{I_0\cdot \sigma_{abs,i}\cdot\Delta t_{sim}}{E_{photon}}\cdot q_{fluor,i}\cdot q_{detector}\cdot f_{spectral}(i,\lambda_{ex})\cdot f_{ex}(x_i,y_i,z_i,\vec{mu}_i)\cdot f_{det}(x_i,y_i,z_i,\vec{mu}_i) \f]
+      \f[ n_{phot}(t_0)=\sum\limits_{t\in\{t_0, t_0+\Delta t_{sim},...,t_0+\Delta t_{sample} \}}\sum\limits_{i=1}^{N_{walker}}\frac{I_0\cdot \sigma_{abs,i}\cdot\Delta t_{sim}}{E_{photon}}\cdot q_{fluor,i}\cdot q_{detector}\cdot f_{spectral}(i,\lambda_{ex})\cdot f_{exsat}(x_i,y_i,z_i,\vec{mu}_i)\cdot f_{det}(x_i,y_i,z_i,\vec{mu}_i) \f]
    Where:
-      \f[ f_{ex}(x,y,z,\vec{\mu})=(1-F_{ex}+F_{ex}\cdot(\vec{\mu}_i\cdot\vec{p}_{ex})^2\cdot\exp\left(-2\cdot\frac{(x-x_{ex})^2+(y-y_{ex})^2}{\mbox{psf\_r0}^2}-2\cdot\frac{(z-z_{ex})^2}{\mbox{psf\_z0}^2}\right) \f]
-      \f[ f_{det}(x,y,z,\vec{\mu})=(\vec{\mu}_i\cdot\vec{p}_{det})^2\cdot\exp\left(-2\cdot\frac{(x-x_{det})^2+(y-y_{det})^2}{\mbox{psf\_r0}^2}-2\cdot\frac{(z-z_{det})^2}{\mbox{psf\_z0}^2}\right) \f]
-   Here:
+      \f[ f_{exsat}(x_i,y_i,z_i,\vec{mu}_i)=\begin{cases} f_{ex}(x,y,z,\vec{\mu}) & \text{transition may not be saturated} \\ \frac{\alpha_{sat}\cdot f_{ex}(x,y,z,\vec{\mu})}{\alpha_{sat}+f_{ex}(x,y,z,\vec{\mu})} & \text{with saturation} \end{cases} \f]
+      \f[ f_{ex}(x,y,z,\vec{\mu})=(1-F_{ex}+F_{ex}\cdot(\vec{\mu}_i\cdot\vec{p}_{ex})^2\cdot\overbrace{\exp\left(-2\cdot\frac{(x-x_{ex})^2+(y-y_{ex})^2}{\mbox{expsf\_r0}^2}-2\cdot\frac{(z-z_{ex})^2}{\mbox{expsf\_z0}^2}\right)}^{=:I(x,y,z)} \f]
+      \f[ f_{det}(x,y,z,\vec{\mu})=(\vec{\mu}_i\cdot\vec{p}_{det})^2\cdot\underbrace{\exp\left(-2\cdot\frac{(x-x_{det})^2+(y-y_{det})^2}{\mbox{detpsf\_r0}^2}-2\cdot\frac{(z-z_{det})^2}{\mbox{detpsf\_z0}^2}\right)}_{=:\mbox{PSF}(x,y,z)} \f]
+   Here the excitation PSF (\f$ I(x,y,z)\f$) and detection PSF (\f$\mbox{PSF}(x,y,z)\f$ ) were given as Gaussian functions, but other shapes are possible (see below).
+   The function \f$ f_{exsat}(x_i,y_i,z_i,\vec{mu}_i) \f$ incorporates the illumination intensity profile and the saturation of the absorption process (if used).
+   The factor \f$\alpha_{sat}=I_{sat}/I_0\f$ describes the saturation intensity, relative to the maximum intensity \f$I_0\f$ of the excitation (see <a href="http://www.nat.vu.nl/~tvisser/saturation.pdf">http://www.nat.vu.nl/~tvisser/saturation.pdf</a> for details on the effect of saturation in fluorescence microscopy).
+   The symbols are defined as:
      - \f$ I_0 \f$ is the laser beam intensity peak intensity
      - \f$ \sigma_{abs,i} \f$ is the absorbtion cross section of the i-th walker
      - \f$ \Delta t_{sim} \f$ is the simulation timestep
@@ -72,7 +76,9 @@
      - \f$ f_{spectral}(i,\lambda_{ex})\in[0..1] \f$ is a spectral factor that gives the value of the absorbtion spectrum for the i-th
            walker at the given wavelength \f$ \lambda_{ex} \f$. The spectrum is normalized so that its highest peak is set to 1
      - \f$ \lambda_{ex} \f$ is the wavelength of the excitation laser
-   .
+     - \f$ I_{sat} \f$ is the saturation intensity (given by relative_saturation_intensity as \f$ I_{sat}=\mbox{relative\_saturation\_intensity}\cdot I_0 \f$)
+     - \f$ \alpha_{sat}=I_{sat}/I_0 \f$ is the relative saturation intensity
+  .
 
   The number of photons actually counted is calculated by choosing a random number from a
   poissonian distribution with average value \f$ n_{phot} \f$ . This introduces the photon
