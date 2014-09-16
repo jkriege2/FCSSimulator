@@ -1,6 +1,7 @@
 #include "alvtools.h"
 #include <math.h>
 #include <iostream>
+#include <time.h>
 
 void alv5000WriteHeader(FILE* f, std::string object_name, double duration, const char* mode, double wavelength, double cr0, double cr1) {
     time_t rawtime;
@@ -9,22 +10,41 @@ void alv5000WriteHeader(FILE* f, std::string object_name, double duration, const
     char timebuffer[256];
 
     fprintf(f, "ALV-5000/E-WIN Data\n");
-    strftime (timebuffer,256,"%e-%b-%C",timeinfo);
+
+    /*strftime (timebuffer,256,"%e-%b-%C",timeinfo);
+
     fprintf(f, "Date :	\"%s\"\n", timebuffer);
+
     strftime (timebuffer,256,"%T",timeinfo);
-    fprintf(f, "Time :	\"%s\"\n", timebuffer);
+
+    fprintf(f, "Time :	\"%s\"\n", timebuffer);*/
+    fprintf(f, "Date :	\"\"\n");
+    fprintf(f, "Time :	\"\"\n");
+
     fprintf(f, "Samplename : 	\"%s\"\n", object_name.c_str());
+
     for (int i=0; i<=9; i++) fprintf(f, "SampMemo(%d) : 	\"\"\n",i);
+
     fprintf(f, "Temperature [K] :	     298.16000\n");
+
     fprintf(f, "Viscosity [cp]  :	       0.89000\n");
+
     fprintf(f, "Refractive Index:	       1.33200\n");
+
     fprintf(f, "Wavelength [nm] :	     %lf\n", wavelength);
+
     fprintf(f, "Angle [°]       :	      90.00000\n");
+
     fprintf(f, "Duration [s]    :	     %lf\n", duration);
+
     fprintf(f, "Runs            :	         1\n");
+
     fprintf(f, "Mode            :	\"%s\"\n", mode);
+
     fprintf(f, "MeanCR0 [kHz]   :	       %lf\n", cr0);
+
     fprintf(f, "MeanCR1 [kHz]   :	       %lf\n", cr1);
+
 }
 
 

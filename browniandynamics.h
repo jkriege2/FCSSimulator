@@ -198,12 +198,12 @@ class BrownianDynamics: public FluorophorDynamics
          */
         virtual void test(unsigned int steps=1000, unsigned int walkers=100);
 
-        /*GetMacro(double, diff_coeff);
-        GetMacro(double, diff_coeff1);*/
+        /*GET_MACRO(double, diff_coeff);
+        GET_MACRO(double, diff_coeff1);*/
         inline double get_diff_coeff() { return diff_coeff[0]; };
         inline double get_diff_coeff1() { return diff_coeff[1]; };
-        GetMacro(double, diff_rot);
-        GetSetMacro(bool,use_rotational_diffusion);
+        GET_MACRO(double, diff_rot);
+        GET_SET_MACRO(bool,use_rotational_diffusion);
 
 };
 

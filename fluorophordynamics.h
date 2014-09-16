@@ -369,17 +369,17 @@ class FluorophorDynamics
         AdditionalWalkerPositions additional_walker_position_mode;
         /** \brief radius of sphere if additional_walker_position_mode==InSphere */
         double additional_walker_sphere_radius;
-        
+
         /** \brief indicates whether walker statistics is stored */
         bool store_walker_statistics;
-        
+
         /** \brief average statistics of this duration [s] for every entry */
         double walker_statistics_averageduration;
         double walker_statistics_nextsavetime;
-        
+
         /** \brief number if simulation steps to heat up the simulation ... */
         int heatup_steps;
-        
+
         /** \brief struct for the walker statistics */
         struct walker_statistics_entry {
             walker_statistics_entry(double t=0.0) {
@@ -392,7 +392,7 @@ class FluorophorDynamics
                 average_brightness=0;
                 average_steps=0;
                 posx=posy=posz=0;
-                for (int i=0; i<N_FLUORESCENT_STATES; i++) state_distribution[i]=0;                
+                for (int i=0; i<N_FLUORESCENT_STATES; i++) state_distribution[i]=0;
             }
             double time;
             uint64_t count_all;
@@ -402,7 +402,7 @@ class FluorophorDynamics
             uint64_t average_steps;
             double posx, posy, posz;
         };
-        
+
         std::vector<walker_statistics_entry> walker_statistics;
 
         /** \brief save the results of the measurement
@@ -527,10 +527,10 @@ class FluorophorDynamics
         /** \brief returns the simulational timestep */
         inline double get_sim_timestep() { return sim_timestep; };
 
-        GetMacro(VolumeShape, volume_shape);
-        GetMacro(double, sim_radius);
-        GetMacro(double, c_fluor);
-        GetSetMacro(int, init_qm_state);
+        GET_MACRO(VolumeShape, volume_shape);
+        GET_MACRO(double, sim_radius);
+        GET_MACRO(double, c_fluor);
+        GET_SET_MACRO(int, init_qm_state);
         double get_init_sigma_abs(int i) {
             if ((i>=0)&&(i<N_FLUORESCENT_STATES)) return init_sigma_abs[i];
             return 0;
@@ -539,25 +539,25 @@ class FluorophorDynamics
             if ((i>=0)&&(i<N_FLUORESCENT_STATES)) return init_q_fluor[i];
             return 0;
         };
-        GetSetMacro(double, init_p_x);
-        GetSetMacro(double, init_p_y);
-        GetSetMacro(double, init_p_z);
-        GetSetMacro(double, depletion_propability);
-        GetSetMacro(int, init_type);
-        GetSetMacro(int, init_spectrum);
-        //GetSetMacro(bool, test_spectra);
-        GetSetMacro(bool, use_photophysics);
-        GetSetMacro(std::string, basename);
-        GetSetMacro(std::string, object_name);
-        GetMacro(std::string, group);
-        GetMacro(std::string, supergroup);
-        GetMacro(bool, use_two_walkerstates);
-        GetMacro(double, sim_time);
+        GET_SET_MACRO(double, init_p_x);
+        GET_SET_MACRO(double, init_p_y);
+        GET_SET_MACRO(double, init_p_z);
+        GET_SET_MACRO(double, depletion_propability);
+        GET_SET_MACRO(int, init_type);
+        GET_SET_MACRO(int, init_spectrum);
+        //GET_SET_MACRO(bool, test_spectra);
+        GET_SET_MACRO(bool, use_photophysics);
+        GET_SET_MACRO(std::string, basename);
+        GET_SET_MACRO(std::string, object_name);
+        GET_MACRO(std::string, group);
+        GET_MACRO(std::string, supergroup);
+        GET_MACRO(bool, use_two_walkerstates);
+        GET_MACRO(double, sim_time);
 
-        GetSetMacro(bool, additional_walker_photophysics)
-        GetSetMacro(bool, additional_walker_off_if_main_off)
-        GetSetMacroI(AdditionalWalkerPositions, additional_walker_position_mode, init_walkers())
-        GetSetMacroI(double, additional_walker_sphere_radius, init_walkers())
+        GET_SET_MACRO(bool, additional_walker_photophysics)
+        GET_SET_MACRO(bool, additional_walker_off_if_main_off)
+        GET_SET_MACRO_I(AdditionalWalkerPositions, additional_walker_position_mode, init_walkers())
+        GET_SET_MACRO_I(double, additional_walker_sphere_radius, init_walkers())
 
 
         void set_use_two_walkerstates(bool v) {
@@ -570,7 +570,7 @@ class FluorophorDynamics
         /** \brief this method saves the stored trajectories (see save_trajectories) in files \c traj001.dat ... */
         void save_trajectories();
 
-        GetSetMacro(unsigned int, protocol_trajectories);
+        GET_SET_MACRO(unsigned int, protocol_trajectories);
 
 
 //        /** \brief get the absorption efficiency [0..1] from the given walker at the given wavelength [nm] at timestep 0

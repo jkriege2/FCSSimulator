@@ -14,6 +14,10 @@ FCSMeasurement::FCSMeasurement(FluorophorManager* fluorophors, std::string objec
 
     gaussbeam_pixel_normalization=1;
 
+    relative_saturation_intensity=1;
+    relative_saturation_intensity2=1;
+    use_saturation_intensity=false;
+
     psf_rz_image_rwidth=500;
     psf_rz_image_zwidth=1000;
 
@@ -191,6 +195,12 @@ void FCSMeasurement::read_config_internal(jkINIParser2& parser) {
 
     detpsf_r0=parser.getSetAsDouble("detpsf_r0", detpsf_r0);
     detpsf_z0=parser.getSetAsDouble("detpsf_z0", detpsf_z0);
+
+
+
+    relative_saturation_intensity=parser.getSetAsDouble("relative_saturation_intensity", relative_saturation_intensity);
+    relative_saturation_intensity2=parser.getSetAsDouble("relative_saturation_intensity2", relative_saturation_intensity2);
+    use_saturation_intensity=parser.getSetAsBool("use_saturation_intensity", use_saturation_intensity);
 
     corr_taumin=parser.getSetAsDouble("corr_taumin", corr_taumin);
     //std::cout<<"  >>>> read corr_taumin = "<<corr_taumin<<std::endl;
@@ -528,7 +538,7 @@ double FCSMeasurement::detectionEfficiency(double dx, double dy, double dz) cons
     return eff;
 }
 
-double FCSMeasurement::illuminationEfficiency(double dx, double dy, double dz, double expsf_r0, double expsf_z0) const {
+double FCSMeasurement::illuminationEfficiency(double dx, double dy, double dz, double expsf_r0, double expsf_z0, bool useISat, double ISatRel) const {
     double eff=0;
     double zz=0;
     switch (ill_distribution) {
@@ -543,7 +553,12 @@ double FCSMeasurement::illuminationEfficiency(double dx, double dy, double dz, d
             eff=gsl_pow_2(gsl_sf_sinc(zz));
             break;
     }
-    return eff;
+    if (useISat) {
+        return ISatRel*eff/(ISatRel+eff);
+    } else {
+        return eff;
+    }
+
 }
 
 void FCSMeasurement::run_fcs_simulation(){
@@ -581,7 +596,7 @@ void FCSMeasurement::run_fcs_simulation(){
                 if ((fabs(dz)<(psf_region_factor*detpsf_z0)) && ((dxs+dys)<gsl_pow_2(psf_region_factor*detpsf_r0))) {
                     double n0=dyn[d]->get_visible_walker_sigma_times_qfl(i);
                     n0=n0*n00*fluorophors->get_spectral_absorbance(dynn[i].spectrum, lambda_ex);
-                    n0=n0*illuminationEfficiency(edx, edy, edz, expsf_r0, expsf_z0);
+                    n0=n0*illuminationEfficiency(edx, edy, edz, expsf_r0, expsf_z0, use_saturation_intensity, relative_saturation_intensity);
 
                     n0sum=n0sum+n0;
                     //std::cout<<"nphot_sum="<<nphot_sum<<"\n";
@@ -594,7 +609,7 @@ void FCSMeasurement::run_fcs_simulation(){
                         edy=y0-ex_y02;
                         double n0=dyn[d]->get_visible_walker_sigma_times_qfl(i);
                         n0=n0*n02*fluorophors->get_spectral_absorbance(dynn[i].spectrum, lambda_ex2);
-                        n0=n0*illuminationEfficiency(edx, edy, edz, expsf_r02, expsf_z02);
+                        n0=n0*illuminationEfficiency(edx, edy, edz, expsf_r02, expsf_z02, use_saturation_intensity, relative_saturation_intensity2);
 
                         n0sum=n0sum+n0;
                         //std::cout<<"nphot_sum="<<nphot_sum<<"\n";
@@ -756,8 +771,10 @@ void FCSMeasurement::save() {
     if (correlator_type==3) istart=0;
 
     for (unsigned long long i=istart; i<slots; i++) {
-        if (correlator_type==1) fprintf(f, "%15.10lf, %15.10lf\n", corr_tau[i], corr[i]);
-        else                    fprintf(f, "%15.10lf, %15.10lf\n", corr_tau[i], corr[i]);
+        if (corr_tau[i]<duration) {
+            if (correlator_type==1) fprintf(f, "%15.10lf, %15.10lf\n", corr_tau[i], corr[i]);
+            else                    fprintf(f, "%15.10lf, %15.10lf\n", corr_tau[i], corr[i]);
+        }
     }
     fclose(f);
     std::cout<<" done!\n";
@@ -1127,7 +1144,7 @@ void FCSMeasurement::save() {
         double z=psfplot_zmax*double(i)/double(npoints);
 
         if (partner) {
-            fprintf(f, "%15.10lf, %15.10lf, %15.10lf,  %15.10lf, %15.10lf, %15.10lf,  %15.10lf, %15.10lf, %15.10lf\n", x, illuminationEfficiency(x,0,0,expsf_r0,expsf_z0), detectionEfficiency(x,0,0), y, illuminationEfficiency(0,y,0,expsf_r0,expsf_z0), detectionEfficiency(0,y,0), z, illuminationEfficiency(0,0,z,expsf_r0,expsf_z0), detectionEfficiency(0,0,z),       illuminationEfficiency(x,0,0,expsf_r02,expsf_z02), illuminationEfficiency(0,y,0,expsf_r02,expsf_z02), illuminationEfficiency(0,0,z,expsf_r02,expsf_z02));
+            fprintf(f, "%15.10lf, %15.10lf, %15.10lf,  %15.10lf, %15.10lf, %15.10lf,  %15.10lf, %15.10lf, %15.10lf,  %15.10lf, %15.10lf, %15.10lf\n", x, illuminationEfficiency(x,0,0,expsf_r0,expsf_z0), detectionEfficiency(x,0,0), y, illuminationEfficiency(0,y,0,expsf_r0,expsf_z0), detectionEfficiency(0,y,0), z, illuminationEfficiency(0,0,z,expsf_r0,expsf_z0), detectionEfficiency(0,0,z),       illuminationEfficiency(x,0,0,expsf_r02,expsf_z02), illuminationEfficiency(0,y,0,expsf_r02,expsf_z02), illuminationEfficiency(0,0,z,expsf_r02,expsf_z02));
         } else {
             fprintf(f, "%15.10lf, %15.10lf, %15.10lf,  %15.10lf, %15.10lf, %15.10lf,  %15.10lf, %15.10lf, %15.10lf\n", x, illuminationEfficiency(x,0,0,expsf_r0,expsf_z0), detectionEfficiency(x,0,0), y, illuminationEfficiency(0,y,0,expsf_r0,expsf_z0), detectionEfficiency(0,y,0), z, illuminationEfficiency(0,0,z,expsf_r0,expsf_z0), detectionEfficiency(0,0,z));
         }
@@ -1136,114 +1153,192 @@ void FCSMeasurement::save() {
     std::cout<<" done!\n";
     std::string psffn=fn;
 
+    std::string psfsatfn="";
+    if (use_saturation_intensity) {
+        sprintf(fn, "%s%spsfsat.dat", basename.c_str(), object_name.c_str());
+        std::cout<<"writing '"<<fn<<"' ...";
+        f=fopen(fn, "w");
+        long npoints=1000;
+        for (  long i=-npoints; i<=npoints; i++) {
+            double x=psfplot_xmax*double(i)/double(npoints);
+            double y=psfplot_ymax*double(i)/double(npoints);
+            double z=psfplot_zmax*double(i)/double(npoints);
 
-    sprintf(fn, "%s%spsfxy.dat", basename.c_str(), object_name.c_str());
-    std::cout<<"writing '"<<fn<<"' ...";
-    f=fopen(fn, "w");
-    long npointsi=100;
-    for (  long i=-npointsi; i<=npointsi; i++) {
-        for (  long j=-npointsi; j<=npointsi; j++) {
-            double x=psfplot_xmax*double(j)/double(npointsi);
-            double y=psfplot_ymax*double(i)/double(npointsi);
-
-            fprintf(f, "%15.10lf ", illuminationEfficiency(x,y,0,expsf_r0,expsf_z0));
+            if (partner) {
+                fprintf(f, "%15.10lf, %15.10lf, %15.10lf,  %15.10lf, %15.10lf, %15.10lf,  %15.10lf, %15.10lf, %15.10lf,  %15.10lf, %15.10lf, %15.10lf\n", x, illuminationEfficiency(x,0,0,expsf_r0,expsf_z0,use_saturation_intensity,relative_saturation_intensity), detectionEfficiency(x,0,0), y, illuminationEfficiency(0,y,0,expsf_r0,expsf_z0,use_saturation_intensity,relative_saturation_intensity), detectionEfficiency(0,y,0), z, illuminationEfficiency(0,0,z,expsf_r0,expsf_z0,use_saturation_intensity,relative_saturation_intensity), detectionEfficiency(0,0,z),       illuminationEfficiency(x,0,0,expsf_r02,expsf_z02,use_saturation_intensity,relative_saturation_intensity2), illuminationEfficiency(0,y,0,expsf_r02,expsf_z02,use_saturation_intensity,relative_saturation_intensity2), illuminationEfficiency(0,0,z,expsf_r02,expsf_z02,use_saturation_intensity,relative_saturation_intensity2));
+            } else {
+                fprintf(f, "%15.10lf, %15.10lf, %15.10lf,  %15.10lf, %15.10lf, %15.10lf,  %15.10lf, %15.10lf, %15.10lf\n", x, illuminationEfficiency(x,0,0,expsf_r0,expsf_z0,use_saturation_intensity,relative_saturation_intensity), detectionEfficiency(x,0,0), y, illuminationEfficiency(0,y,0,expsf_r0,expsf_z0,use_saturation_intensity,relative_saturation_intensity), detectionEfficiency(0,y,0), z, illuminationEfficiency(0,0,z,expsf_r0,expsf_z0,use_saturation_intensity,relative_saturation_intensity), detectionEfficiency(0,0,z));
+            }
         }
-        fprintf(f, "\n");
+        fclose(f);
+        std::cout<<" done!\n";
+        psfsatfn=fn;
     }
-    fprintf(f, "\n\n");
-    std::cout<<" .";
-    for (  long i=-npointsi; i<=npointsi; i++) {
-        for (  long j=-npointsi; j<=npointsi; j++) {
-            double x=psfplot_xmax*double(j)/double(npointsi);
-            double z=psfplot_zmax*double(i)/double(npointsi);
 
-            fprintf(f, "%15.10lf ", illuminationEfficiency(x,0,z,expsf_r0,expsf_z0));
-        }
-        fprintf(f, "\n");
-    }
-    fprintf(f, "\n\n");
-    std::cout<<" .";
-    for (  long i=-npointsi; i<=npointsi; i++) {
-        for (  long j=-npointsi; j<=npointsi; j++) {
-            double y=psfplot_ymax*double(j)/double(npointsi);
-            double z=psfplot_zmax*double(i)/double(npointsi);
 
-            fprintf(f, "%15.10lf ", illuminationEfficiency(0,y,z,expsf_r0,expsf_z0));
-        }
-        fprintf(f, "\n");
-    }
-    fprintf(f, "\n\n");
-    std::cout<<" .";
-    for (  long i=-npointsi; i<=npointsi; i++) {
-        for (  long j=-npointsi; j<=npointsi; j++) {
-            double x=psfplot_xmax*double(j)/double(npointsi);
-            double y=psfplot_ymax*double(i)/double(npointsi);
 
-            fprintf(f, "%15.10lf ", detectionEfficiency(x,y,0));
-        }
-        fprintf(f, "\n");
-    }
-    fprintf(f, "\n\n");
-    std::cout<<" .";
-    for (  long i=-npointsi; i<=npointsi; i++) {
-        for (  long j=-npointsi; j<=npointsi; j++) {
-            double x=psfplot_xmax*double(j)/double(npointsi);
-            double z=psfplot_zmax*double(i)/double(npointsi);
-
-            fprintf(f, "%15.10lf ", detectionEfficiency(x,0,z));
-        }
-        fprintf(f, "\n");
-    }
-    fprintf(f, "\n\n");
-    std::cout<<" .";
-    for (  long i=-npointsi; i<=npointsi; i++) {
-        for (  long j=-npointsi; j<=npointsi; j++) {
-            double y=psfplot_ymax*double(j)/double(npointsi);
-            double z=psfplot_zmax*double(i)/double(npointsi);
-
-            fprintf(f, "%15.10lf ", detectionEfficiency(0,y,z));
-        }
-        fprintf(f, "\n");
-    }
-    std::cout<<" .";
-    fprintf(f, "\n\n");
-
-    for (  long i=-npointsi; i<=npointsi; i++) {
-        for (  long j=-npointsi; j<=npointsi; j++) {
-            double x=psfplot_xmax*double(j)/double(npointsi);
-            double y=psfplot_ymax*double(i)/double(npointsi);
-
-            fprintf(f, "%15.10lf ", illuminationEfficiency(x,y,0,expsf_r0,expsf_z0)*detectionEfficiency(x,y,0));
-        }
-        fprintf(f, "\n");
-    }
-    std::cout<<" .";
-    fprintf(f, "\n\n");
-    for (  long i=-npointsi; i<=npointsi; i++) {
-        for (  long j=-npointsi; j<=npointsi; j++) {
-            double x=psfplot_xmax*double(j)/double(npointsi);
-            double z=psfplot_zmax*double(i)/double(npointsi);
-
-            fprintf(f, "%15.10lf ", illuminationEfficiency(x,0,z,expsf_r0,expsf_z0)*detectionEfficiency(x,0,z));
-        }
-        fprintf(f, "\n");
-    }
-    std::cout<<" .";
-    fprintf(f, "\n\n");
-    for (  long i=-npointsi; i<=npointsi; i++) {
-        for (  long j=-npointsi; j<=npointsi; j++) {
-            double y=psfplot_ymax*double(j)/double(npointsi);
-            double z=psfplot_zmax*double(i)/double(npointsi);
-
-            fprintf(f, "%15.10lf ", illuminationEfficiency(0,y,z,expsf_r0,expsf_z0)*detectionEfficiency(0,y,z));
-        }
-        fprintf(f, "\n");
-    }
-    std::cout<<" .";
-    fprintf(f, "\n\n");
-    fclose(f);
-    std::cout<<" done!\n";
+    long npointsi=201;
+    float* tmpimg=(float*)malloc(npointsi*npointsi*sizeof(float));
+    float* tmpx=(float*)malloc(npointsi*sizeof(float));
+    float* tmpy=(float*)malloc(npointsi*sizeof(float));
+    int ii;
+    sprintf(fn, "%s%spsfillxy.bin", basename.c_str(), object_name.c_str());
     std::string psfxyfn=fn;
+    std::cout<<"writing '"<<fn<<"' ...";
+    ii=0;
+    for (  long j=0; j<npointsi; j++) {
+        for (  long i=0; i<npointsi; i++) {
+            double x=psfplot_xmax*double(i-npointsi/2)/double(npointsi/2);
+            double y=psfplot_ymax*double(j-npointsi/2)/double(npointsi/2);
+            tmpx[i]=x;
+            tmpy[j]=y;
+            tmpimg[ii]=illuminationEfficiency(x,y,0,expsf_r0,expsf_z0);
+            ii++;
+        }
+    }
+    gnuplotWriteBinaryArray(fn, tmpimg, npointsi, npointsi, tmpx, tmpy);
+    std::cout<<" DONE!\n";
+    sprintf(fn, "%s%spsfillxz.bin", basename.c_str(), object_name.c_str());
+    std::string psfxzfn=fn;
+    std::cout<<"writing '"<<fn<<"' ...";
+    ii=0;
+    for (  long j=0; j<npointsi; j++) {
+        for (  long i=0; i<npointsi; i++) {
+            double x=psfplot_xmax*double(i-npointsi/2)/double(npointsi/2);
+            double z=psfplot_zmax*double(j-npointsi/2)/double(npointsi/2);
+            tmpx[i]=x;
+            tmpy[j]=z;
+            tmpimg[ii]=illuminationEfficiency(x,0,z,expsf_r0,expsf_z0);
+            ii++;
+        }
+    }
+    gnuplotWriteBinaryArray(fn, tmpimg, npointsi, npointsi, tmpx, tmpy);
+    std::cout<<" DONE!\n";
+    sprintf(fn, "%s%spsfillyz.bin", basename.c_str(), object_name.c_str());
+    std::string psfyzfn=fn;
+    std::cout<<"writing '"<<fn<<"' ...";
+    ii=0;
+    for (  long j=0; j<npointsi; j++) {
+        for (  long i=0; i<npointsi; i++) {
+            double y=psfplot_ymax*double(i-npointsi/2)/double(npointsi/2);
+            double z=psfplot_zmax*double(j-npointsi/2)/double(npointsi/2);
+            tmpx[i]=y;
+            tmpy[j]=z;
+            tmpimg[ii]=illuminationEfficiency(0,y,z,expsf_r0,expsf_z0);
+            ii++;
+        }
+    }
+    gnuplotWriteBinaryArray(fn, tmpimg, npointsi, npointsi, tmpx, tmpy);
+    std::cout<<" DONE!\n";
+
+
+
+    sprintf(fn, "%s%spsfdetxy.bin", basename.c_str(), object_name.c_str());
+    std::string psfdetxyfn=fn;
+    std::cout<<"writing '"<<fn<<"' ...";
+    ii=0;
+    for (  long j=0; j<npointsi; j++) {
+        for (  long i=0; i<npointsi; i++) {
+            double x=psfplot_xmax*double(i-npointsi/2)/double(npointsi/2);
+            double y=psfplot_ymax*double(j-npointsi/2)/double(npointsi/2);
+            tmpx[i]=x;
+            tmpy[j]=y;
+            tmpimg[ii]=detectionEfficiency(x,y,0);
+            ii++;
+        }
+    }
+    gnuplotWriteBinaryArray(fn, tmpimg, npointsi, npointsi, tmpx, tmpy);
+    std::cout<<" DONE!\n";
+    sprintf(fn, "%s%spsfdetxz.bin", basename.c_str(), object_name.c_str());
+    std::string psfdetxzfn=fn;
+    std::cout<<"writing '"<<fn<<"' ...";
+    ii=0;
+    for (  long j=0; j<npointsi; j++) {
+        for (  long i=0; i<npointsi; i++) {
+            double x=psfplot_xmax*double(i-npointsi/2)/double(npointsi/2);
+            double z=psfplot_zmax*double(j-npointsi/2)/double(npointsi/2);
+            tmpx[i]=x;
+            tmpy[j]=z;
+            tmpimg[ii]=detectionEfficiency(x,0,z);
+            ii++;
+        }
+    }
+    gnuplotWriteBinaryArray(fn, tmpimg, npointsi, npointsi, tmpx, tmpy);
+    std::cout<<" DONE!\n";
+    sprintf(fn, "%s%spsfdetyz.bin", basename.c_str(), object_name.c_str());
+    std::string psfdetyzfn=fn;
+    std::cout<<"writing '"<<fn<<"' ...";
+    ii=0;
+    for (  long j=0; j<npointsi; j++) {
+        for (  long i=0; i<npointsi; i++) {
+            double y=psfplot_ymax*double(i-npointsi/2)/double(npointsi/2);
+            double z=psfplot_zmax*double(j-npointsi/2)/double(npointsi/2);
+            tmpx[i]=y;
+            tmpy[j]=z;
+            tmpimg[ii]=detectionEfficiency(0,y,z);
+            ii++;
+        }
+    }
+    gnuplotWriteBinaryArray(fn, tmpimg, npointsi, npointsi, tmpx, tmpy);
+    std::cout<<" DONE!\n";
+
+
+
+
+
+
+    sprintf(fn, "%s%spsfdetillxy.bin", basename.c_str(), object_name.c_str());
+    std::string psfdetillxyfn=fn;
+    std::cout<<"writing '"<<fn<<"' ...";
+    ii=0;
+    for (  long j=0; j<npointsi; j++) {
+        for (  long i=0; i<npointsi; i++) {
+            double x=psfplot_xmax*double(i-npointsi/2)/double(npointsi/2);
+            double y=psfplot_ymax*double(j-npointsi/2)/double(npointsi/2);
+            tmpx[i]=x;
+            tmpy[j]=y;
+            tmpimg[ii]=illuminationEfficiency(x,y,0,expsf_r0,expsf_z0)*detectionEfficiency(x,y,0);
+            ii++;
+        }
+    }
+    gnuplotWriteBinaryArray(fn, tmpimg, npointsi, npointsi, tmpx, tmpy);
+    std::cout<<" DONE!\n";
+    sprintf(fn, "%s%spsfdetillxz.bin", basename.c_str(), object_name.c_str());
+    std::string psfdetillxzfn=fn;
+    std::cout<<"writing '"<<fn<<"' ...";
+    ii=0;
+    for (  long j=0; j<npointsi; j++) {
+        for (  long i=0; i<npointsi; i++) {
+            double x=psfplot_xmax*double(i-npointsi/2)/double(npointsi/2);
+            double z=psfplot_zmax*double(j-npointsi/2)/double(npointsi/2);
+            tmpx[i]=x;
+            tmpy[j]=z;
+            tmpimg[ii]=illuminationEfficiency(x,0,z,expsf_r0,expsf_z0)*detectionEfficiency(x,0,z);
+            ii++;
+        }
+    }
+    gnuplotWriteBinaryArray(fn, tmpimg, npointsi, npointsi, tmpx, tmpy);
+    std::cout<<" DONE!\n";
+    sprintf(fn, "%s%spsfdetillyz.bin", basename.c_str(), object_name.c_str());
+    std::string psfdetillyzfn=fn;
+    std::cout<<"writing '"<<fn<<"' ...";
+    ii=0;
+    for (  long j=0; j<npointsi; j++) {
+        for (  long i=0; i<npointsi; i++) {
+            double y=psfplot_ymax*double(i-npointsi/2)/double(npointsi/2);
+            double z=psfplot_zmax*double(j-npointsi/2)/double(npointsi/2);
+            tmpx[i]=y;
+            tmpy[j]=z;
+            tmpimg[ii]=illuminationEfficiency(0,y,z,expsf_r0,expsf_z0)*detectionEfficiency(0,y,z);
+            ii++;
+        }
+    }
+    gnuplotWriteBinaryArray(fn, tmpimg, npointsi, npointsi, tmpx, tmpy);
+    std::cout<<" DONE!\n";
+
+
+
+
 
 
     sprintf(fn, "%s%spsf.plt", basename.c_str(), object_name.c_str());
@@ -1256,6 +1351,8 @@ void FCSMeasurement::save() {
     fprintf(f, "deltaxi=%lf\n", psfplot_xmax/double(npointsi));
     fprintf(f, "deltayi=%lf\n", psfplot_ymax/double(npointsi));
     fprintf(f, "deltazi=%lf\n", psfplot_zmax/double(npointsi));
+    fprintf(f, "isat_norm=%lf\n", relative_saturation_intensity/(relative_saturation_intensity+1.0));
+    fprintf(f, "isat_norm2=%lf\n", relative_saturation_intensity2/(relative_saturation_intensity2+1.0));
     fprintf(f, "g(x,w)=exp(-2.0*x*x/w/w)\n");
     for (int plt=0; plt<2; plt++) {
         if (plt==0) {
@@ -1304,6 +1401,35 @@ void FCSMeasurement::save() {
             "\n", extract_file_name(psffn).c_str(), extract_file_name(psffn).c_str(), extract_file_name(psffn).c_str());
             if (mp==0) fprintf(f, "unset multiplot\n");
             if (plt==1) fprintf(f, "pause -1\n");
+
+            //psfsatfn="";
+            if (use_saturation_intensity) {
+                fprintf(f, "set title \"PSF with saturation: x-direction: %s\"\n", description.c_str());
+                fprintf(f, "set xlabel \"position x [micron]\"\n");
+                fprintf(f, "set ylabel \"intensity / detection probability [0..1]\"\n");
+                fprintf(f, "plot \"%s\" using 1:2 title \"illumination, Isat\" with lines, "
+                "\"%s\" using 1:(($2)/isat_norm) title \"illumination, Isat, norm.\" with lines, "
+                "\"%s\" using 1:2 title \"illumination, no Isat\" with lines"
+                "\n", extract_file_name(psfsatfn).c_str(),  extract_file_name(psfsatfn).c_str(), extract_file_name(psffn).c_str());
+                if (mp==1 && plt==1) fprintf(f, "pause -1\n");
+                fprintf(f, "set title \"PSF with saturation: y-direction: %s\"\n", description.c_str());
+                fprintf(f, "set xlabel \"position y [micron]\"\n");
+                fprintf(f, "set ylabel \"intensity / detection probability [0..1]\"\n");
+                fprintf(f, "plot \"%s\" using 4:5 title \"illumination, Isat\" with lines, "
+                "\"%s\" using 4:(($5)/isat_norm) title \"illumination, Isat, norm.\" with lines, "
+                "\"%s\" using 4:5 title \"illumination, no Isat\" with lines"
+                "\n", extract_file_name(psfsatfn).c_str(), extract_file_name(psfsatfn).c_str(),  extract_file_name(psffn).c_str());
+                if (mp==1 && plt==1) fprintf(f, "pause -1\n");
+                fprintf(f, "set title \"PSF with saturation: z-direction: %s\"\n", description.c_str());
+                fprintf(f, "set xlabel \"position z [micron]\"\n");
+                fprintf(f, "set ylabel \"intensity / detection probability [0..1]\"\n");
+                fprintf(f, "plot \"%s\" using 7:8 title \"illumination, Isat\" with lines, "
+                "\"%s\" using 7:(($8)/isat_norm) title \"illumination, Isat, norm.\" with lines, "
+                "\"%s\" using 7:8 title \"illumination, no Isat\" with lines"
+                "\n", extract_file_name(psfsatfn).c_str(), extract_file_name(psfsatfn).c_str(),  extract_file_name(psffn).c_str());
+                if (mp==0) fprintf(f, "unset multiplot\n");
+                if (plt==1) fprintf(f, "pause -1\n");
+            }
         }
         for (int transc=0; transc<2; transc++) {
             std::string trans="3";
@@ -1315,14 +1441,14 @@ void FCSMeasurement::save() {
             fprintf(f, "set ylabel \"position y [micron]\"\n");
             fprintf(f, "set size ratio deltayi/deltaxi\n");
             fprintf(f, "set title \"xy-cut: illumination %s%s\"\n", description.c_str(), title.c_str());
-            fprintf(f, "plot [0:2*npoints*deltaxi] [0:2*npoints*deltayi] \"%s\" using (($1)*deltaxi):(($2)*deltayi):%s matrix index 0 notitle with image"
+            fprintf(f, "plot  \"%s\" using 1:2:%s binary matrix notitle with image"
             "\n", extract_file_name(psfxyfn).c_str(), trans.c_str());
             fprintf(f, "set title \"xy-cut: detection %s%s\"\n", description.c_str(), title.c_str());
-            fprintf(f, "plot [0:2*npoints*deltaxi] [0:2*npoints*deltayi] \"%s\" using (($1)*deltaxi):(($2)*deltayi):%s matrix index 3 notitle with image"
-            "\n", extract_file_name(psfxyfn).c_str(), trans.c_str());
+            fprintf(f, "plot  \"%s\" using 1:2:%s binary matrix notitle with image"
+            "\n", extract_file_name(psfdetxyfn).c_str(), trans.c_str());
             fprintf(f, "set title \"xy-cut: ill*det %s%s\"\n", description.c_str(), title.c_str());
-            fprintf(f, "plot [0:2*npoints*deltaxi] [0:2*npoints*deltayi] \"%s\" using (($1)*deltaxi):(($2)*deltayi):%s matrix index 6 notitle with image"
-            "\n", extract_file_name(psfxyfn).c_str(), trans.c_str());
+            fprintf(f, "plot  \"%s\" using 1:2:%s binary matrix notitle with image"
+            "\n", extract_file_name(psfdetillxyfn).c_str(), trans.c_str());
             fprintf(f, "unset multiplot\n");
             if (plt==1) fprintf(f, "pause -1\n");
 
@@ -1331,14 +1457,14 @@ void FCSMeasurement::save() {
             fprintf(f, "set ylabel \"position z [micron]\"\n");
             fprintf(f, "set size ratio deltazi/deltaxi\n");
             fprintf(f, "set title \"xz-cut: illumination %s%s\"\n", description.c_str(), title.c_str());
-            fprintf(f, "plot [0:2*npoints*deltaxi] [0:2*npoints*deltazi] \"%s\" using (($1)*deltaxi):(($2)*deltazi):%s matrix index 1 notitle with image"
-            "\n", extract_file_name(psfxyfn).c_str(), trans.c_str());
+            fprintf(f, "plot  \"%s\" using 1:2:%s binary matrix notitle with image"
+            "\n", extract_file_name(psfxzfn).c_str(), trans.c_str());
             fprintf(f, "set title \"xz-cut: detection %s%s\"\n", description.c_str(), title.c_str());
-            fprintf(f, "plot [0:2*npoints*deltaxi] [0:2*npoints*deltazi] \"%s\" using (($1)*deltaxi):(($2)*deltazi):%s matrix index 4 notitle with image"
-            "\n", extract_file_name(psfxyfn).c_str(), trans.c_str());
+            fprintf(f, "plot  \"%s\" using 1:2:%s binary matrix notitle with image"
+            "\n", extract_file_name(psfdetxzfn).c_str(), trans.c_str());
             fprintf(f, "set title \"xz-cut: ill*det %s%s\"\n", description.c_str(), title.c_str());
-            fprintf(f, "plot [0:2*npoints*deltaxi] [0:2*npoints*deltazi] \"%s\" using (($1)*deltaxi):(($2)*deltazi):%s matrix index 7 notitle with image"
-            "\n", extract_file_name(psfxyfn).c_str(), trans.c_str());
+            fprintf(f, "plot  \"%s\" using 1:2:%s binary matrix notitle with image"
+            "\n", extract_file_name(psfdetillxzfn).c_str(), trans.c_str());
             fprintf(f, "unset multiplot\n");
             if (plt==1) fprintf(f, "pause -1\n");
 
@@ -1347,14 +1473,14 @@ void FCSMeasurement::save() {
             fprintf(f, "set ylabel \"position z [micron]\"\n");
             fprintf(f, "set size ratio deltazi/deltayi\n");
             fprintf(f, "set title \"yz-cut: illumination %s%s\"\n", description.c_str(), title.c_str());
-            fprintf(f, "plot [0:2*npoints*deltayi] [0:2*npoints*deltazi] \"%s\" using (($1)*deltayi):(($2)*deltazi):%s matrix index 2 notitle with image"
-            "\n", extract_file_name(psfxyfn).c_str(), trans.c_str());
+            fprintf(f, "plot  \"%s\" using 1:2:%s binary matrix notitle with image"
+            "\n", extract_file_name(psfyzfn).c_str(), trans.c_str());
             fprintf(f, "set title \"yz-cut: detection %s%s\"\n", description.c_str(), title.c_str());
-            fprintf(f, "plot [0:2*npoints*deltayi] [0:2*npoints*deltazi] [0:npoints*deltazi] \"%s\" using (($1)*deltayi):(($2)*deltazi):%s matrix index 5 notitle with image"
-            "\n", extract_file_name(psfxyfn).c_str(), trans.c_str());
+            fprintf(f, "plot  \"%s\" using 1:2:%s binary matrix notitle with image"
+            "\n", extract_file_name(psfdetyzfn).c_str(), trans.c_str());
             fprintf(f, "set title \"yz-cut: ill*det %s%s\"\n", description.c_str(), title.c_str());
-            fprintf(f, "plot [0:2*npoints*deltayi] [0:2*npoints*deltazi] [0:npoints*deltazi] \"%s\" using (($1)*deltayi):(($2)*deltazi):%s matrix index 8 notitle with image"
-            "\n", extract_file_name(psfxyfn).c_str(), trans.c_str());
+            fprintf(f, "plot  \"%s\" using 1:2:%s binary matrix notitle with image"
+            "\n", extract_file_name(psfdetillyzfn).c_str(), trans.c_str());
             fprintf(f, "unset multiplot\n");
             if (plt==1) fprintf(f, "pause -1\n");
         }
@@ -2140,9 +2266,20 @@ std::string FCSMeasurement::report(){
     s+="EPhoton_ex2 = "+floattostr(Ephoton2/1.602176487e-19/1e-3)+" meV\n";
     s+="I0 = "+floattostr(I0)+" uW/m^2  =  "+floattostr(I0/1e12)+" uW/micron^2  =  "+floattostr(I0/1e6)+" uW/mm^2\n";
     s+="P0 [on focus, i.e. on A=pi*(2*expsf_r0)^2] = "+floattostr(I0*(M_PI*gsl_pow_2(2.0*expsf_r0*1e-6)))+" uW\n";
+    if (use_saturation_intensity) {
+        s+="relative_saturation_intensity = "+floattostr(relative_saturation_intensity)+" * I0\n";
+        s+="Isat = "+floattostr(relative_saturation_intensity*I0)+" uW/m^2  =  "+floattostr(relative_saturation_intensity*I0/1e12)+" uW/micron^2  =  "+floattostr(relative_saturation_intensity*I0/1e6)+" uW/mm^2\n";
+    }
     if (lambda_ex2>0) {
         s+="I02 = "+floattostr(I02)+" uW/m^2  =  "+floattostr(I02/1e12)+" uW/micron^2  =  "+floattostr(I02/1e6)+" uW/mm^2\n";
         s+="P02 [on focus, i.e. on A=pi*(2*expsf_r02)^2] = "+floattostr(I02*(M_PI*gsl_pow_2(2.0*expsf_r02*1e-6)))+" uW\n";
+        if (use_saturation_intensity) {
+            s+="relative_saturation_intensity2 = "+floattostr(relative_saturation_intensity2)+" * I0\n";
+            s+="Isat2 = "+floattostr(relative_saturation_intensity2*I02)+" uW/m^2  =  "+floattostr(relative_saturation_intensity2*I02/1e12)+" uW/micron^2  =  "+floattostr(relative_saturation_intensity2*I02/1e6)+" uW/mm^2\n";
+        }
+    }
+    if (!use_saturation_intensity) {
+        s+="NOT USING SATURATION INETSITY\n";
     }
     for (size_t i=0; i<dyn.size(); i++) {
         s+="  using "+dyn[i]->get_object_name()+" data:\n";

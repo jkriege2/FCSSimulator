@@ -119,22 +119,22 @@ class FluorescenceImaging: public FluorescenceMeasurement
         /** \brief class destructor */
         virtual ~FluorescenceImaging();
 
-        GetSetMacro(double, psf_r0);
-        GetSetMacro(double, psf_z0);
-        GetSetMacro(double, exposure_time);
-        GetSetMacro(double, lambda_ex);
-        GetSetMacro(double, I0);
-        //GetSetMacro(double, sigma_abs);
-        //GetSetMacro(double, q_fluor);
-        GetSetMacro(double, q_det);
-        GetSetMacro(double, img_z0);
-        GetSetMacro(double, img_x0);
-        GetSetMacro(double, img_y0);
-        GetSetMacro(double, img_dx);
-        GetSetMacro(double, img_dy);
-        GetSetMacro(unsigned int, img_xpixel);
-        GetSetMacro(unsigned int, img_ypixel);
-        GetMacro(unsigned int, current_image);
+        GET_SET_MACRO(double, psf_r0);
+        GET_SET_MACRO(double, psf_z0);
+        GET_SET_MACRO(double, exposure_time);
+        GET_SET_MACRO(double, lambda_ex);
+        GET_SET_MACRO(double, I0);
+        //GET_SET_MACRO(double, sigma_abs);
+        //GET_SET_MACRO(double, q_fluor);
+        GET_SET_MACRO(double, q_det);
+        GET_SET_MACRO(double, img_z0);
+        GET_SET_MACRO(double, img_x0);
+        GET_SET_MACRO(double, img_y0);
+        GET_SET_MACRO(double, img_dx);
+        GET_SET_MACRO(double, img_dy);
+        GET_SET_MACRO(unsigned int, img_xpixel);
+        GET_SET_MACRO(unsigned int, img_ypixel);
+        GET_MACRO(unsigned int, current_image);
 
 
         /** \brief initialize the simulation */

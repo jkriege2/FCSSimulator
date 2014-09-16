@@ -84,12 +84,12 @@ class FluorescenceMeasurement: public TickTock
          */
         virtual void finalize_sim();
 
-        GetSetMacro(double, sim_timestep);
-        GetMacro(double, sim_time);
-        GetSetMacro(std::string, basename);
-        GetSetMacro(std::string, object_name);
-        GetSetMacro(std::string, description);
-        GetSetMacro(int, object_number);
+        GET_SET_MACRO(double, sim_timestep);
+        GET_MACRO(double, sim_time);
+        GET_SET_MACRO(std::string, basename);
+        GET_SET_MACRO(std::string, object_name);
+        GET_SET_MACRO(std::string, description);
+        GET_SET_MACRO(int, object_number);
 
         virtual bool depends_on(const FluorescenceMeasurement* other) const;
 

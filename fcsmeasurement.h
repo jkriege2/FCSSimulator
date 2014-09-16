@@ -26,6 +26,7 @@
 #include "../../../LIB/trunk/statistics_tools.h"
 #include "../../../LIB/trunk/jkimage.h"
 #include "../../../LIB/trunk/tinytiffwriter.h"
+#include "../../../LIB/trunk/gnuplot_tools.h"
 #include "alvtools.h"
 
 
@@ -142,39 +143,44 @@ class FCSMeasurement: public FluorescenceMeasurement {
 
         virtual void finalize_sim();
 
-        GetSetMacro(double, expsf_r0);
-        GetSetMacro(double, expsf_z0);
-        GetSetMacro(double, expsf_r02);
-        GetSetMacro(double, expsf_z02);
-        GetSetMacro(double, detpsf_r0);
-        GetSetMacro(double, detpsf_z0);
-        GetSetMacro(double, lambda_ex);
-        GetSetMacro(double, I0);
-        GetSetMacro(double, lambda_ex2);
-        GetSetMacro(double, I02);
-        GetSetMacro(double, q_det);
-        GetSetMacro(double, img_z0);
-        GetSetMacro(double, img_x0);
-        GetSetMacro(double, img_y0);
-        GetSetMacro(double, ex_z0);
-        GetSetMacro(double, ex_x0);
-        GetSetMacro(double, ex_y0);
-        GetSetMacro(double, ex_z02);
-        GetSetMacro(double, ex_x02);
-        GetSetMacro(double, ex_y02);
-        GetSetMacro(double, duration);
-        GetSetMacro(double, corr_taumin);
-        GetSetMacro(unsigned int, S);
-        GetSetMacro(unsigned int, m);
-        GetSetMacro(unsigned int, P);
-        GetSetMacro(unsigned int, correlator_type);
-        GetSetMacro(unsigned long long, timesteps);
-        GetSetMacro(unsigned int, detector_type);
-        GetSetMacro(unsigned int, lindet_bits);
-        GetSetMacro(double, lindet_gain);
-        GetSetMacro(double, lindet_readnoise);
-        GetSetMacro(double, lindet_var_factor);
-        GetSetMacro(std::string, fccs_partner);
+        GET_SET_MACRO(double, expsf_r0);
+        GET_SET_MACRO(double, expsf_z0);
+        GET_SET_MACRO(double, expsf_r02);
+        GET_SET_MACRO(double, expsf_z02);
+        GET_SET_MACRO(double, detpsf_r0);
+        GET_SET_MACRO(double, detpsf_z0);
+        GET_SET_MACRO(double, lambda_ex);
+        GET_SET_MACRO(double, I0);
+        GET_SET_MACRO(double, lambda_ex2);
+        GET_SET_MACRO(double, I02);
+        GET_SET_MACRO(double, q_det);
+        GET_SET_MACRO(double, img_z0);
+        GET_SET_MACRO(double, img_x0);
+        GET_SET_MACRO(double, img_y0);
+        GET_SET_MACRO(double, ex_z0);
+        GET_SET_MACRO(double, ex_x0);
+        GET_SET_MACRO(double, ex_y0);
+        GET_SET_MACRO(double, ex_z02);
+        GET_SET_MACRO(double, ex_x02);
+        GET_SET_MACRO(double, ex_y02);
+
+        GET_SET_MACRO(double, relative_saturation_intensity);
+        GET_SET_MACRO(double, relative_saturation_intensity2);
+        GET_SET_MACRO(bool, use_saturation_intensity);
+
+        GET_SET_MACRO(double, duration);
+        GET_SET_MACRO(double, corr_taumin);
+        GET_SET_MACRO(unsigned int, S);
+        GET_SET_MACRO(unsigned int, m);
+        GET_SET_MACRO(unsigned int, P);
+        GET_SET_MACRO(unsigned int, correlator_type);
+        GET_SET_MACRO(unsigned long long, timesteps);
+        GET_SET_MACRO(unsigned int, detector_type);
+        GET_SET_MACRO(unsigned int, lindet_bits);
+        GET_SET_MACRO(double, lindet_gain);
+        GET_SET_MACRO(double, lindet_readnoise);
+        GET_SET_MACRO(double, lindet_var_factor);
+        GET_SET_MACRO(std::string, fccs_partner);
 
         bool getTimeSeries(int32_t** timeseries, int64_t& timeseries_size);
         bool getLastNPhotons(int64_t& N);
@@ -254,6 +260,16 @@ class FCSMeasurement: public FluorescenceMeasurement {
         double ex_x02;
         /** \brief y-position of the laser focus 2 [microns] */
         double ex_y02;
+
+
+        /** \brief relative saturation intensity for excitation beam 1 (relative to peak intensity in focus) */
+        double relative_saturation_intensity;
+        /** \brief relative saturation intensity for excitation beam 2 (relative to peak intensity in focus) */
+        double relative_saturation_intensity2;
+
+        /** \brief indicates, whether the saturation intensity is used */
+        bool use_saturation_intensity;
+
 
         /** \brief x-component of detector polarisation */
         double d_x;
@@ -508,7 +524,7 @@ class FCSMeasurement: public FluorescenceMeasurement {
          double pixel_size_integrationdelta;
 
          double detectionEfficiency(double dx, double dy, double dz) const;
-         double illuminationEfficiency(double dx, double dy, double dz, double expsf_r0, double expsf_z0) const;
+         double illuminationEfficiency(double dx, double dy, double dz, double expsf_r0, double expsf_z0, bool useISat=false, double ISatRel=1) const;
          int32_t getDetectedPhotons(double nphot_sum) const;
 
          /** \brief maximum avg. photon counts for detector test */
