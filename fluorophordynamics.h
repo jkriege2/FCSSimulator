@@ -1,3 +1,8 @@
+
+
+#ifndef FLUOROPHORDYNAMICS_H
+#define FLUOROPHORDYNAMICS_H
+
 #include <cmath>
 #include <iostream>
 #include <string>
@@ -17,11 +22,20 @@
 #include "diffusiontools.h"
 
 
-#ifndef FLUOROPHORDYNAMICS_H
-#define FLUOROPHORDYNAMICS_H
-
 
 #define N_FLUORESCENT_STATES 32
+
+
+class RelativeAbsorbanceReader {
+    public:
+        virtual ~RelativeAbsorbanceReader() {};
+        /** \brief returns the relative absorbance of the given walker in the give fluorophore dynamics. */
+        double get_relative_absorbance_for(FluorophorDynamics* dyn, int i);
+        virtual double get_relative_absorbance_for(FluorophorDynamics* dyn, int i, double x, double y, double z)=0;
+
+};
+
+
 
 /*! \brief this is the virtual base class for any class describing fluorophor dynamics
    \ingroup diff4_dynamic
@@ -62,6 +76,15 @@
   for the propability to go from state \f$ i \f$ to state \f$ f \f$ : \f$ p_{if}=\mathbb{P}(i\rightarrow f) \f$. The current state
   is stored in qm_state. The function get_walker_qfluor() returns the fluorescence efficiency of the current walker in its current
   state.
+
+  The photophysics may also depend on the fluorescence intensity emitted by a FluorescenceMeasurement object implementing the interface
+  RelativeAbsorbanceReader. If this feature is switched on (photophysics_absorbance_dependent=true), the relative absorbance
+  of the object abs_reader (if !=NULL) is read for every fluorophore and then is multiplied by photophysics_absorbance_factor.
+  This factor \f$\alpha\f$ is used to scale (down) the jump probabilities \f$ p_{if} \forall i\neq f \f$ in the photophysics transition matrix!
+
+  \section FD_depletion Reservoir Depletion Simulation
+  This class also implements a simulation of reservoir depletion, where a random-walker is switched off (and left that way) with a certain propbability depletion_probability,
+  every time it hits the simulation box boundary.
 
 
   \section FD_threads threading support
@@ -304,6 +327,17 @@ class FluorophorDynamics
         /** \brief all classes in this list are notified (by calling their handle_parent_walker_count_changed() method) if the walker count in this class changed. \note The hooks are called AFTER iit_walkers() !!! */
         std::vector<FluorophorDynamics*> notify_when_walkercount_changes;
 
+        /** \brief if the photo-physics depends on the illumination intensity/relative absorbance, the readers in this list are used to calculate the relative absorbance of a fluorophore at a given position */
+        std::string absorbance_reader;
+
+        RelativeAbsorbanceReader* get_abs_reader() const;
+
+        /** \brief indicates, whether the photo physics depends on the relative absorbance */
+        bool photophysics_absorbance_dependent;
+        /** \brief the relative absorbance, multiplied by this factor is the factor for the jump-probabilities  */
+        double photophysics_absorbance_factor;
+
+
         /** \brief set the number of walkers and allocate the according amount of memory for walker_state */
         void change_walker_count(unsigned long N_walker, unsigned long N_fluorophores);
         /** \brief get the number of walkers for the current simulation settings */
@@ -462,10 +496,20 @@ class FluorophorDynamics
         /** \brief implements the photophysics. Overwrite this if you want higher oder photophysics, other than fluorescence lifetime, triplet dynamics and photobleaching
          *
          * \param walker the walker to do the simulation for
-         * \param intensity the laser intensity at theposition of the walker
+         *
+         * \note this function internally calls propagate_photophysics_scaled(), in the basic implementation with scale=1.0!
          *
          */
         virtual void propagate_photophysics(int walker);
+
+        /** \brief implements the photophysics. Overwrite this if you want higher oder photophysics, other than fluorescence lifetime, triplet dynamics and photobleaching
+         *
+         * \param walker the walker to do the simulation for
+         * \param scale a scaling factor for the jump probabilities, i.e. if scale<1, the jump probabilities will be smaller than initially and in the opposite case larger.
+         *              make sure, that if scale>1, the summed probability does not get >1!!!
+         *
+         */
+        virtual void propagate_photophysics_scaled(int walker, double scale=1.0);
 
         /** \brief propagates the additional walkers
          *
@@ -553,6 +597,7 @@ class FluorophorDynamics
         GET_MACRO(std::string, supergroup);
         GET_MACRO(bool, use_two_walkerstates);
         GET_MACRO(double, sim_time);
+        GET_MACRO(std::string, absorbance_reader);
 
         GET_SET_MACRO(bool, additional_walker_photophysics)
         GET_SET_MACRO(bool, additional_walker_off_if_main_off)

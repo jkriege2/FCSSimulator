@@ -1,3 +1,8 @@
+
+#ifndef FLUORESCENCEMEASUREMENT_H
+#define FLUORESCENCEMEASUREMENT_H
+
+
 #include "../../../LIB/trunk/jkiniparser2.h"
 #include <string>
 #include <vector>
@@ -9,11 +14,6 @@
 #include "../../../LIB/trunk/ticktock.h"
 
 #include "diffusiontools.h"
-
-#ifndef FLUORESCENCEMEASUREMENT_H
-#define FLUORESCENCEMEASUREMENT_H
-
-
 
 
 /*! \brief abstract base class for all fluorescence measurement schemes

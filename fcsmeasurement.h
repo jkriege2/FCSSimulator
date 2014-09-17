@@ -130,7 +130,7 @@
     \f[ \tilde{I}_{det}(x_o, y_o, z_o)=\left[\sum\limits_{x=0}^{N_{grid}-1}\sum\limits_{y=0}^{N_{grid}-1} f(\sqrt{(x-N_{grid}/2-x_o)^2+(y-N_{grid}/2-y_o)^2}, z_o)\cdot \Delta a^2\right]/\max\limits_{z}\left[\sum\limits_{r=0}^{r_{max}} f(r, z)\cdot \left(\pi(r+1)^2-\pi r^2\right)\cdot\mbox{psf\_rz\_image\_zresolution}^2 \right] \f]
 
  */
-class FCSMeasurement: public FluorescenceMeasurement {
+class FCSMeasurement: public FluorescenceMeasurement, public RelativeAbsorbanceReader {
     public:
         /** Default constructor */
         FCSMeasurement(FluorophorManager* fluorophors, std::string objectname=std::string(""));
@@ -148,6 +148,9 @@ class FCSMeasurement: public FluorescenceMeasurement {
         virtual std::string report();
 
         virtual void finalize_sim();
+
+        /** \brief returns the relative absorbance of the given walker in the give fluorophore dynamics. */
+        virtual double get_relative_absorbance_for(FluorophorDynamics* dyn, int i, double x, double y, double z);
 
         GET_SET_MACRO(double, expsf_r0);
         GET_SET_MACRO(double, expsf_z0);

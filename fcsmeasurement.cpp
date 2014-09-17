@@ -127,7 +127,7 @@ FCSMeasurement::FCSMeasurement(FluorophorManager* fluorophors, std::string objec
 
     correlation_runtime=0;
 
-    ndettest_max=300;
+    ndettest_max=50;
     ndettest_step=1;
 
 }
@@ -183,9 +183,10 @@ void FCSMeasurement::read_config_internal(jkINIParser2& parser) {
     stochastic_offset_correction=parser.getAsDouble("stochastic_offset_correction", stochastic_offset_correction);
     psf_region_factor=parser.getAsDouble("psf_region_factor", psf_region_factor);
 
+    //std::cout<<object_name<<"::read_config_internal:  ill_distribution="<<ill_distribution<<"="<<ill_distribution_to_str(ill_distribution)<<"  from_parser["<<parser.getGroupName()<<"]="<<parser.getSetAsString("ill_distribution", "");
     ill_distribution=str_to_ill_distribution(parser.getSetAsString("ill_distribution", ill_distribution_to_str(ill_distribution)));
     det_distribution=str_to_det_distribution(parser.getSetAsString("det_distribution", det_distribution_to_str(det_distribution)));
-
+    //std::cout<<"  -->  ill_distribution="<<ill_distribution<<"="<<ill_distribution_to_str(ill_distribution)<<"\n";
     pixel_size=parser.getSetAsDouble("pixel_size", pixel_size);
     pixel_size_integrationdelta=parser.getSetAsDouble("pixel_size_integrationdelta", pixel_size_integrationdelta);
     expsf_r0=parser.getSetAsDouble("expsf_r0", expsf_r0);
@@ -561,11 +562,55 @@ double FCSMeasurement::illuminationEfficiency(double dx, double dy, double dz, d
 
 }
 
+
+double FCSMeasurement::get_relative_absorbance_for(FluorophorDynamics* dyn, int i, double x0, double y0, double z0) {
+    const FluorophorDynamics::walkerState* dynn=dyn->get_visible_walker_state();
+    if (i<0 || i>=dyn->get_visible_walker_count()) {
+        std::cout<<i<<"/"<<dyn->get_visible_walker_count()<<" FAILED!\n";
+        return 0;
+    }
+    const FluorophorDynamics::walkerState* walker=&(dynn[i]);
+    const double n00=I0*1e-6/Ephoton*sim_timestep;
+    const double n02=I02*1e-6/Ephoton2*sim_timestep;
+
+    const double edx=x0-ex_x0;
+    const double edy=y0-ex_y0;
+    const double edz=z0-ex_z0;
+    double n0=1;//dyn->get_visible_walker_sigma_times_qfl(i);
+    //std::cout<<"----\n ["<<x0<<","<<y0<<","<<z0<<"]["<<ex_x0<<","<<ex_y0<<","<<ex_z0<<"] "<<n0;
+    n0=n0*fluorophors->get_spectral_absorbance(walker->spectrum, lambda_ex);
+    //std::cout<<" s:"<<n0;
+    n0=n0*illuminationEfficiency(edx, edy, edz, expsf_r0, expsf_z0, use_saturation_intensity, relative_saturation_intensity);
+    //std::cout<<" i:"<<n0;
+    double n0sum=n0;
+    // second excitation focus
+    if (lambda_ex2>0) {
+        const double edx=x0-ex_x02;
+        const double edz=z0-ex_z02;
+        const double edy=y0-ex_y02;
+        double n0=1;//dyn->get_visible_walker_sigma_times_qfl(i);
+        n0=n0*n02/n00*fluorophors->get_spectral_absorbance(walker->spectrum, lambda_ex2);
+        n0=n0*illuminationEfficiency(edx, edy, edz, expsf_r02, expsf_z02, use_saturation_intensity, relative_saturation_intensity2);
+
+        n0sum=n0sum+n0;
+        //std::cout<<"nphot_sum="<<nphot_sum<<"\n";
+    }
+    //std::cout<<" l2:"<<n0sum;
+    if (polarised_excitation) {
+        const double dpx=walker->p_x;
+        const double dpy=walker->p_y;
+        const double dpz=walker->p_z;
+        n0sum=n0sum*(1.0-e_pol_fraction+e_pol_fraction*gsl_pow_2(dpx*e_x+dpy*e_y+dpz*e_z));
+    }
+    //std::cout<<" p:"<<n0sum<<"\n";
+    return n0sum;
+}
+
 void FCSMeasurement::run_fcs_simulation(){
     // number of fluorescence photons per molecule and sim_timestep, but you have to multiply by sigma_abs and q_fluor (walker dependent!)
-    double n00=I0*1e-6/Ephoton*sim_timestep;
-    double n02=I02*1e-6/Ephoton2*sim_timestep;
-    int bin_r=round(save_binning_time/corr_taumin); // binning ratio
+    const double n00=I0*1e-6/Ephoton*sim_timestep;
+    const double n02=I02*1e-6/Ephoton2*sim_timestep;
+    const int bin_r=round(save_binning_time/corr_taumin); // binning ratio
     std::string walker_cnt="";
     // first we go through alle the fluorophors and integrate their contribution
     for (size_t d=0; d<dyn.size(); d++) { // go through all dynamics objects that provide data for this measurement object
@@ -575,24 +620,24 @@ void FCSMeasurement::run_fcs_simulation(){
         walker_cnt=walker_cnt+dyn[d]->get_object_name()+":"+inttostr(wc);
         if (!dyn[d]->end_of_trajectory_reached()) for (unsigned long i=0; i<wc; i++) { // iterate through all walkers in the d-th dynamics object
             if (dynn[i].exists) {
-                double x0,y0,z0;
+                //double x0,y0,z0;
                 //dynn->get_walker_position(i, &x0, &y0, &z0);
-                x0=dynn[i].x;
-                y0=dynn[i].y;
-                z0=dynn[i].z;
-                double dx=x0-img_x0;
-                double dz=z0-img_z0;
-                double dy=y0-img_y0;
+                const double x0=dynn[i].x;
+                const double y0=dynn[i].y;
+                const double z0=dynn[i].z;
+                const double dx=x0-img_x0;
+                const double dz=z0-img_z0;
+                const double dy=y0-img_y0;
                 double n0sum=0;
-                double dxs=dx*dx;
-                double dys=dy*dy;
+                const double dxs=dx*dx;
+                const double dys=dy*dy;
 
 
 
                 // first excitation focus
-                double edx=x0-ex_x0;
-                double edz=z0-ex_z0;
-                double edy=y0-ex_y0;
+                const double edx=x0-ex_x0;
+                const double edz=z0-ex_z0;
+                const double edy=y0-ex_y0;
                 if ((fabs(dz)<(psf_region_factor*detpsf_z0)) && ((dxs+dys)<gsl_pow_2(psf_region_factor*detpsf_r0))) {
                     double n0=dyn[d]->get_visible_walker_sigma_times_qfl(i);
                     n0=n0*n00*fluorophors->get_spectral_absorbance(dynn[i].spectrum, lambda_ex);
@@ -604,9 +649,9 @@ void FCSMeasurement::run_fcs_simulation(){
 
                     // second excitation focus
                     if (lambda_ex2>0) {
-                        edx=x0-ex_x02;
-                        edz=z0-ex_z02;
-                        edy=y0-ex_y02;
+                        const double edx=x0-ex_x02;
+                        const double edz=z0-ex_z02;
+                        const double edy=y0-ex_y02;
                         double n0=dyn[d]->get_visible_walker_sigma_times_qfl(i);
                         n0=n0*n02*fluorophors->get_spectral_absorbance(dynn[i].spectrum, lambda_ex2);
                         n0=n0*illuminationEfficiency(edx, edy, edz, expsf_r02, expsf_z02, use_saturation_intensity, relative_saturation_intensity2);
@@ -2299,9 +2344,18 @@ std::string FCSMeasurement::report(){
         if (det_wavelength_min>0 && det_wavelength_max>0) {
             s+="    deteted fraction of emission spectrum = "+floattostr(fluorophors->get_spectral_fluorescence(dyn[i]->get_init_spectrum(),det_wavelength_min, det_wavelength_max)*100.0)+" %\n";
         }
+        s+="    test: get_relative_absorbance_for(dynamics[absorbance_reader="+dyn[i]->get_absorbance_reader()+"], 0, 0,0,0) = "+floattostr(get_relative_absorbance_for(dyn[i], 0, ex_x0,ex_y0,ex_z0))+"\n";
+        s+="          get_relative_absorbance_for(dynamics[absorbance_reader="+dyn[i]->get_absorbance_reader()+"], 0, detpsf_r0/10,0,0) = "+floattostr(get_relative_absorbance_for(dyn[i], 0, ex_x0+detpsf_r0/10.0,ex_y0,ex_z0))+"\n";
+        s+="          get_relative_absorbance_for(dynamics[absorbance_reader="+dyn[i]->get_absorbance_reader()+"], 0, detpsf_r0/2,0,0) = "+floattostr(get_relative_absorbance_for(dyn[i], 0, ex_x0+detpsf_r0/2.0,ex_y0,ex_z0))+"\n";
+        s+="          get_relative_absorbance_for(dynamics[absorbance_reader="+dyn[i]->get_absorbance_reader()+"], 0, detpsf_r0,0,0) = "+floattostr(get_relative_absorbance_for(dyn[i], 0, ex_x0+detpsf_r0,ex_y0,ex_z0))+"\n";
+        s+="          get_relative_absorbance_for(dynamics[absorbance_reader="+dyn[i]->get_absorbance_reader()+"], 0, detpsf_r0*2,0,0) = "+floattostr(get_relative_absorbance_for(dyn[i], 0, ex_x0+detpsf_r0*2.0,ex_y0,ex_z0))+"\n";
+        s+="          get_relative_absorbance_for(dynamics[absorbance_reader="+dyn[i]->get_absorbance_reader()+"], 0, 0,0,detpsf_z0/10) = "+floattostr(get_relative_absorbance_for(dyn[i], 0, ex_x0,ex_y0,ex_z0+detpsf_z0/10.0))+"\n";
+        s+="          get_relative_absorbance_for(dynamics[absorbance_reader="+dyn[i]->get_absorbance_reader()+"], 0, 0,0,detpsf_z0/2) = "+floattostr(get_relative_absorbance_for(dyn[i], 0, ex_x0,ex_y0,ex_z0+detpsf_z0/2.0))+"\n";
+        s+="          get_relative_absorbance_for(dynamics[absorbance_reader="+dyn[i]->get_absorbance_reader()+"], 0, 0,0,detpsf_z0) = "+floattostr(get_relative_absorbance_for(dyn[i], 0, ex_x0,ex_y0,ex_z0+detpsf_z0))+"\n";
+        s+="          get_relative_absorbance_for(dynamics[absorbance_reader="+dyn[i]->get_absorbance_reader()+"], 0, 0,0,detpsf_z0*2) = "+floattostr(get_relative_absorbance_for(dyn[i], 0, ex_x0,ex_y0,ex_z0+detpsf_z0*2.0))+"\n";
     }
     s+="duration = "+floattostr(duration*1e3)+" msecs\n";
-    s+="=> timesteps = "+inttostr(timesteps)+"     à  timestep-duration = "+floattostr(sim_timestep*1e9)+" nsecs\n";
+    s+="=> timesteps = "+inttostr(timesteps)+"     with  timestep-duration = "+floattostr(sim_timestep*1e9)+" nsecs\n";
     s+="correlator:  S(#corr)="+inttostr(S)+"   P(#chan/dec)="+inttostr(P)+"    m(binRatio)="+inttostr(m)+"\n";
     s+="             corr_tau_min= "+floattostr_fmt(corr_taumin*1e9, "%lg")+" ns = "+floattostr(corr_taumin/sim_timestep)+" simulation timesteps\n";
     s+="             correlator_type= "+inttostr(correlator_type);
@@ -2356,6 +2410,7 @@ std::string FCSMeasurement::report(){
 
 int FCSMeasurement::str_to_ill_distribution(std::string i) const {
     std::string s=tolower(i);
+    //std::cout<<"str_to_ill_distribution("<<i<<")\n";
     if (s=="gaussian") return 0;
     if (s=="gaussian_spim") return 1;
     if (s=="slit_spim") return 2;
