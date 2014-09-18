@@ -19,6 +19,7 @@
 				<Option output="diffusion4" prefix_auto="1" extension_auto="1" />
 				<Option type="1" />
 				<Option compiler="mingw64" />
+				<Option parameters="test_photophysics_absdependent.ini" />
 				<Compiler>
 					<Add option="-fexpensive-optimizations" />
 					<Add option="-O2" />
