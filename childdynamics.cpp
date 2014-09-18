@@ -10,6 +10,7 @@ ChildDynamics::ChildDynamics(FluorophorManager* fluorophors, std::string object_
     initial_walker_visible=true;
     dont_copy_photophysics=false;
     copy_existstate=true;
+    reset_qmstate_on_boundary=true;
 }
 
 ChildDynamics::~ChildDynamics()
@@ -23,15 +24,20 @@ void ChildDynamics::read_config_internal(jkINIParser2& parser) {
     initial_walker_visible=parser.getAsBool("initial_walker_visible", initial_walker_visible);
     dont_copy_photophysics=parser.getAsBool("dont_copy_photophysics", dont_copy_photophysics);
     copy_existstate=parser.getAsBool("copy_existstate", copy_existstate);
+    reset_qmstate_on_boundary=parser.getAsBool("reset_qmstate_on_boundary", reset_qmstate_on_boundary);
 }
 
 void ChildDynamics::init() {
     FluorophorDynamics* p=get_parent();
+    //std::cout<<"### START "<<p<<"\n";
     if (p) {
+        //std::cout<<"### ensure_dynamics_is_hooked \n";
         p->ensure_dynamics_is_hooked(this);
+        //std::cout<<"### handle_parent_walker_count_changed \n";
         handle_parent_walker_count_changed(p->get_walker_count(), n_fluorophores);
         sim_time=p->get_sim_time();
         endoftrajectory=p->end_of_trajectory_reached();
+        //std::cout<<"### set_sim_timestep \n";
         set_sim_timestep(p->get_sim_timestep());
     } else {
         change_walker_count(0,n_fluorophores);
@@ -39,10 +45,12 @@ void ChildDynamics::init() {
         endoftrajectory=false;
         set_sim_timestep(sim_timestep);
     }
-
+    //std::cout<<"### init_additional_walkers\n";
     init_additional_walkers();
 
+    //std::cout<<"### store_step_protocol\n";
     store_step_protocol();
+    //std::cout<<"### DONE\n";
 
 }
 
@@ -70,6 +78,10 @@ void ChildDynamics::propagate(bool boundary_check) {
             FluorophorDynamics::walkerState* ws=p->get_walker_state();
             for (unsigned long i=0; i<walker_count; i++) {
                 walker_state[i].exists=ws[i].exists || (!copy_existstate);
+                if (reset_qmstate_on_boundary && (ws[i].was_just_reset || ws[i].time<=0)) {
+                    walker_state[i].qm_state=0;
+                    //std::cout<<"### "<<object_name<<": reset qm_state "<<i<<"\n";
+                }
                 walker_state[i].x=ws[i].x;
                 walker_state[i].y=ws[i].y;
                 walker_state[i].z=ws[i].z;
@@ -101,6 +113,7 @@ std::string ChildDynamics::report() {
     s+="initial_walker_visible = "+booltostr(initial_walker_visible)+"\n";
     s+="dont_copy_photophysics = "+booltostr(dont_copy_photophysics)+"\n";
     s+="copy_existstate = "+booltostr(copy_existstate)+"\n";
+    s+="reset_qmstate_on_boundary = "+booltostr(reset_qmstate_on_boundary)+"\n";
     return s;
 }
 

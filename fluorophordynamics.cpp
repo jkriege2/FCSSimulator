@@ -37,6 +37,7 @@ FluorophorDynamics::walkerState& FluorophorDynamics::walkerState::operator=(Fluo
     ix0=other.ix0;
     iy0=other.iy0;
     iz0=other.iz0;
+    was_just_reset=other.was_just_reset;
 
     qm_state=other.qm_state;
     memcpy(sigma_abs, other.sigma_abs, N_FLUORESCENT_STATES*sizeof(double));
@@ -598,6 +599,7 @@ void FluorophorDynamics::propagate_additional_walkers() {
                     walker_state[i+j*walker_count].x=walker_state[i].x;
                     walker_state[i+j*walker_count].y=walker_state[i].y;
                     walker_state[i+j*walker_count].z=walker_state[i].z;
+                    walker_state[i+j*walker_count].was_just_reset=walker_state[i].was_just_reset;
                     if (additional_walker_off_if_main_off && !walker_state[i].exists) walker_state[i+j*walker_count].exists=false;
                 }
             }
@@ -614,6 +616,7 @@ void FluorophorDynamics::propagate_additional_walkers() {
                     walker_state[i+j*walker_count].x=walker_state[i].x+walker_dx[i+j*walker_count];
                     walker_state[i+j*walker_count].y=walker_state[i].y+walker_dy[i+j*walker_count];
                     walker_state[i+j*walker_count].z=walker_state[i].z+walker_dz[i+j*walker_count];
+                    walker_state[i+j*walker_count].was_just_reset=walker_state[i].was_just_reset;
                     if (additional_walker_off_if_main_off && !walker_state[i].exists) walker_state[i+j*walker_count].exists=false;
                 }
             }
@@ -639,6 +642,7 @@ void FluorophorDynamics::propagate_additional_walkers() {
 void FluorophorDynamics::init_walker(unsigned long i, double x, double y, double z) {
     walker_state[i].time=0;
     walker_state[i].exists=true;
+    walker_state[i].was_just_reset=false;
     walker_state[i].x=x;
     walker_state[i].y=y;
     walker_state[i].z=z;
@@ -782,9 +786,11 @@ void FluorophorDynamics::propagate_photophysics(int i) {
     //photophysics_absorbance_dependent=false;
     //photophysics_absorbance_factor=1;
     register double alpha=1.0;
-    RelativeAbsorbanceReader* absorbance_reader=get_abs_reader();
-    if (photophysics_absorbance_dependent && absorbance_reader) {
-        alpha+absorbance_reader->get_relative_absorbance_for(this, i)*photophysics_absorbance_factor;
+    if (photophysics_absorbance_dependent) {
+        RelativeAbsorbanceReader* absorbance_reader=get_abs_reader();
+        if(absorbance_reader) {
+            alpha+absorbance_reader->get_relative_absorbance_for(this, i)*photophysics_absorbance_factor;
+        }
     }
     propagate_photophysics_scaled(i, alpha);
 }
@@ -792,18 +798,140 @@ void FluorophorDynamics::propagate_photophysics(int i) {
 void FluorophorDynamics::propagate_photophysics_scaled(int i, double scale) {
     if (!use_photophysics) return;
     if (walker_state[i].used_qm_states<=1) return;
-    register int state=walker_state[i].qm_state;
+    const int& state=walker_state[i].qm_state;
     register double p=0;
-    register double r=gsl_rng_uniform(rng);
-    for (register int f=0; f<mmin(walker_state[i].used_qm_states,N_FLUORESCENT_STATES); f++) {
-        p=p+walker_state[i].photophysics_transition[state*N_FLUORESCENT_STATES+f]*scale;
-        if (p >= r) {
-            walker_state[i].qm_state=f;
-            break;
+    const double r=gsl_rng_uniform(rng);
+    register int maxs=mmin(walker_state[i].used_qm_states,N_FLUORESCENT_STATES);
+    // omit the diagonal-element
+    register int f=0;
+    while (f<maxs) {
+        if (f!=state) {
+            p=p+walker_state[i].photophysics_transition[state*N_FLUORESCENT_STATES+f]*scale;
+            if (r <= p) {
+                walker_state[i].qm_state=f;
+                return;
+            }
         }
+        f++;
     }
+
+    walker_state[i].qm_state=state;
 }
 
+void FluorophorDynamics::test_photophysics(unsigned int steps, unsigned int walkers) {
+    std::cout<<"init photophysics-test ... \n";
+    unsigned int nw=walkers;
+    unsigned int plot_walkers=5;
+    init();
+    change_walker_count(nw, 1);
+    std::cout<<"setup photophysics-test ... \n";
+    int used_states=0;
+    for (unsigned int i=0; i<nw; i++) {
+        walker_state[i].x=0;
+        walker_state[i].y=0;
+        walker_state[i].z=0;
+        walker_state[i].p_x=0;
+        walker_state[i].p_y=0;
+        walker_state[i].p_z=1;
+        walker_state[i].qm_state=0;
+        used_states=mmax(used_states, walker_state[i].used_qm_states);
+    }
+
+    //sim_time=0;
+    std::cout<<"opening output file ... basename="<<basename<<"  object_name="<<object_name<<"\n";
+    FILE* f1=fopen((basename+object_name+"photophysicstest_traj.dat").c_str(), "w");
+    int nhist=100;
+    double state_count[N_FLUORESCENT_STATES];
+    for (int i=0; i<N_FLUORESCENT_STATES; i++) {
+        state_count[i]=0;
+    }
+
+    std::cout<<"starting photophysics-test propagation ";
+    for (unsigned int i=0; i<steps; i++) {
+        for (unsigned int w=0; w<nw; w++) {
+            propagate_photophysics_scaled(w, 1);
+        }
+        //propagate(true);
+        for (unsigned int w=0; w<nw; w++) {
+            state_count[walker_state[w].qm_state]++;
+        }
+        fprintf(f1, "%20.10lf", (double)(i+1)*sim_timestep*1e6);
+        for (unsigned int w=0; w<mmin(plot_walkers,nw); w++) {
+            fprintf(f1, ", %d", walker_state[w].qm_state);
+        }
+        fprintf(f1, "\n");
+        if (i%100==0) std::cout<<".";
+    }
+    fclose(f1);
+    std::cout<<" ready!"<<std::endl;
+    std::cout<<"writing output-files ..."<<std::endl;
+
+    used_states=0;
+    for (int i=0; i<N_FLUORESCENT_STATES; i++) {
+        state_count[i]=state_count[i]/double(steps*nw);
+        if (state_count[i]>0.0) used_states=i+1;
+    }
+    std::cout<<"   - histogram"<<std::endl;
+    FILE* f2=fopen((basename+object_name+"photophysicstest_hist.dat").c_str(), "w");
+    for (int i=0; i<N_FLUORESCENT_STATES; i++) {
+        fprintf(f2, "%d, %20.10lf\n", i, state_count[i]);
+    }
+    fclose(f2);
+    std::cout<<"   - plot"<<std::endl;
+    FILE* f=fopen((basename+object_name+"photophysicstest_plot.plt").c_str(), "w");
+    fprintf(f, "unset multiplot\n");
+    fprintf(f, "reset\n");
+    for (int plt=0; plt<2; plt++) {
+        std::cout<<"     * plot plt="<<plt<<std::endl;
+        if (plt==0) {
+            fprintf(f, "set terminal pdfcairo color solid font \"%s, 7\" linewidth 2 size 20cm,15cm\n", GNUPLOT_FONT);
+            fprintf(f, "set output \"%s\"\n", extract_file_name(basename+object_name+"photophysicstest_plot.pdf").c_str());
+        } else if (plt==1) {
+            fprintf(f, "set terminal wxt font \"%s, 8\"\n", GNUPLOT_FONT);
+            fprintf(f, "set output\n");
+        }
+        fprintf(f, "set multiplot layout 3,1\n");
+        fprintf(f, "set title \"State Trajectory\"\n");
+        fprintf(f, "set xlabel \"simulation time [microseconds]\"\n");
+        fprintf(f, "set ylabel \"QM state\"\n");
+        fprintf(f, "plot ");
+        unsigned int pw=mmin(plot_walkers,nw);
+        std::cout<<"     * plot-walkers="<<pw<<std::endl;
+        for (unsigned int i=0; i<pw; i++) {
+            if (i>0) fprintf(f, ", ");
+            fprintf(f, "\"%s\" using 1:(%d+($%d)) title \"walker %d\" with steps", extract_file_name(basename+object_name+"photophysicstest_traj.dat").c_str(), i*(used_states+1), 2+i, i+1);
+        }
+        fprintf(f, "\n");
+        fprintf(f, "plot [0:1000]");
+        for (unsigned int i=0; i<pw; i++) {
+            if (i>0) fprintf(f, ", ");
+            fprintf(f, "\"%s\" using 1:(%d+($%d)) title \"walker %d\" with steps", extract_file_name(basename+object_name+"photophysicstest_traj.dat").c_str(), (used_states+1)*i, 2+i, i+1);
+        }
+        fprintf(f, "\n");
+        fprintf(f, "plot [0:100]");
+        for (unsigned int i=0; i<pw; i++) {
+            if (i>0) fprintf(f, ", ");
+            fprintf(f, "\"%s\" using 1:(%d+($%d)) title \"walker %d\" with steps", extract_file_name(basename+object_name+"photophysicstest_traj.dat").c_str(), (used_states+1)*i, 2+i, i+1);
+        }
+        fprintf(f, "\n");
+        fprintf(f, "unset multiplot\n");
+        if (plt==1) fprintf(f, "pause -1\n");
+        fprintf(f, "set title \"state histogram\"\n");
+        fprintf(f, "set xlabel \"QM state\"\n");
+        fprintf(f, "set ylabel \"frequency\"\n");
+        fprintf(f, "set boxwidth 0.9 relative\n");
+        fprintf(f, "set style fill solid 1.0\n");
+
+        fprintf(f, "plot [0:%d] \"%s\" using 1:2 notitle with boxes\n", used_states, extract_file_name(basename+object_name+"photophysicstest_hist.dat").c_str());
+        if (plt==1) fprintf(f, "pause -1\n");
+    }
+    fclose(f);
+
+    f=fopen((basename+object_name+"photophysicstest_config.txt").c_str(), "w");
+    fprintf(f, "%s\n", report().c_str());
+    fclose(f);
+    std::cout<<"test done!\n";
+}
 
 std::string FluorophorDynamics::report() {
     std::string s="";
@@ -837,7 +965,10 @@ std::string FluorophorDynamics::report() {
     s+="init_q_fluor = "+doublevectortostr(init_q_fluor, N_FLUORESCENT_STATES)+" \n";
     s+="init_qm_state = "+inttostr(init_qm_state)+"\n";
     s+="init_type = "+inttostr(init_type)+"\n";
+    double init_sigma_absnm2[N_FLUORESCENT_STATES];
+    for (int i=0; i<N_FLUORESCENT_STATES; i++) init_sigma_absnm2[i]=init_sigma_abs[i]*1e18;
     s+="init_sigma_abs = "+doublevectortostr(init_sigma_abs, N_FLUORESCENT_STATES)+" meters^2\n";
+    s+="               = "+doublevectortostr(init_sigma_absnm2, N_FLUORESCENT_STATES)+" nanometers^2\n";
     if (!use_photophysics) {
         s+="no photophysics simulation!\n";
     } else {
@@ -963,7 +1094,7 @@ void FluorophorDynamics::perform_boundary_check(unsigned long i) {
     register double nx=walker_state[i].x;
     register double ny=walker_state[i].y;
     register double nz=walker_state[i].z;
-
+    walker_state[i].was_just_reset=false;
     if (walker_state[i].exists) {
         if (volume_shape==0) {
             if (   (nx<0) || (nx>sim_x)
@@ -1023,6 +1154,7 @@ void FluorophorDynamics::perform_boundary_check(unsigned long i) {
                         walker_state[i].y=y;
                         walker_state[i].z=z;
                     }
+                    walker_state[i].was_just_reset=true;
                     walker_state[i].time=0;
                     walker_state[i].x0=walker_state[i].x;
                     walker_state[i].y0=walker_state[i].y;
@@ -1040,7 +1172,6 @@ void FluorophorDynamics::perform_boundary_check(unsigned long i) {
                     double x=sim_radius*nx;
                     double y=sim_radius*ny;
                     double z=sim_radius*nz;
-                    walker_state[i].time=0;
                     if (reset_qmstate_at_simboxborder)  {
                         init_walker(i, x, y, z);
                     }   else {
@@ -1049,6 +1180,8 @@ void FluorophorDynamics::perform_boundary_check(unsigned long i) {
                         walker_state[i].z=z;
 
                     }
+                    walker_state[i].time=0;
+                    walker_state[i].was_just_reset=true;
                     walker_state[i].x0=walker_state[i].x;
                     walker_state[i].y0=walker_state[i].y;
                     walker_state[i].z0=walker_state[i].z;
@@ -1261,11 +1394,11 @@ void FluorophorDynamics::save_results() {
 
         if (walker_statistics.size()>2) {
             for (uint64_t i=2; i<walker_statistics.size()-2; i++) {
-                fprintf(f, "%15.10lf %ld %ld %15.10lf %ld %15.10lf %15.10lf %15.10lf", walker_statistics[i].time,
-                                                            walker_statistics[i].count_all,
-                                                            walker_statistics[i].count_existing,
+                fprintf(f, "%15.10lf %lld %lld %15.10lf %lld %15.10lf %15.10lf %15.10lf", walker_statistics[i].time,
+                                                            (int64_t)walker_statistics[i].count_all,
+                                                            (int64_t)walker_statistics[i].count_existing,
                                                             walker_statistics[i].average_brightness,
-                                                            walker_statistics[i].average_steps,
+                                                            (int64_t)walker_statistics[i].average_steps,
                                                             walker_statistics[i].posx,
                                                             walker_statistics[i].posy,
                                                             walker_statistics[i].posz
@@ -1324,7 +1457,7 @@ void FluorophorDynamics::save_results() {
             fprintf(f, "plot [][-0.1:1.1]");
             for (long j=0; j<N_FLUORESCENT_STATES; j++) {
                 if (j>0) fprintf(f, ",  \\\n");
-                                fprintf(f, "   \"%s\" using 1:%d title \"qm_state %d\"  with lines", extract_file_name(fnwalkerstat).c_str(), j+9, j+1);
+                                fprintf(f, "   \"%s\" using 1:%ld title \"qm_state %ld\"  with lines", extract_file_name(fnwalkerstat).c_str(), j+9, j+1);
             }
             fprintf(f, "\n\n");
             if (plt==1) fprintf(f, "pause -1\n\n");

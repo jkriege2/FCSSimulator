@@ -15,8 +15,10 @@ BrownianDynamics::BrownianDynamics(FluorophorManager* fluorophors, std::string o
     use_rotational_diffusion=false;
     diffarea_x0[0]=0;
     n_fluorophores_local=1;
+    heatup_steps=0;
     for (int i=1; i<DCOUNT; i++) {
-        diffarea_x0[i]=10000;
+        diffarea_x0[i]=100000;
+        diff_coeff[i]=20;
     }
     init();
 }
@@ -34,6 +36,11 @@ BrownianDynamics::BrownianDynamics(FluorophorManager* fluorophors, double sim_x,
     diff_rot=100;
     use_rotational_diffusion=false;
     n_fluorophores_local=1;
+    heatup_steps=0;
+    for (int i=1; i<DCOUNT; i++) {
+        diffarea_x0[i]=100000;
+        diff_coeff[i]=20;
+    }
     init();
 }
 
@@ -48,8 +55,10 @@ BrownianDynamics::BrownianDynamics(FluorophorManager* fluorophors, double sim_ra
     set_diff_coeff(10, 20);
     diffarea_x0[0]=0;
     n_fluorophores_local=1;
+    heatup_steps=0;
     for (int i=1; i<DCOUNT; i++) {
         diffarea_x0[i]=10000;
+        diff_coeff[i]=20;
     }
     diff_rot=100;
     use_rotational_diffusion=false;
@@ -138,9 +147,10 @@ void BrownianDynamics::propagate(bool boundary_check){
                 walker_state[i].y=ny;
                 walker_state[i].z=nz;
 
-                if ((save_msd_every_n_timesteps>0)&&((walker_state[i].time%save_msd_every_n_timesteps)==(save_msd_every_n_timesteps-1))) {
+                if ((save_msd_every_n_timesteps>0)&&msd&&((walker_state[i].time%save_msd_every_n_timesteps)==(save_msd_every_n_timesteps-1))) {
                     double m=gsl_pow_2(nx-walker_state[i].x0)+gsl_pow_2(ny-walker_state[i].y0)+gsl_pow_2(nz-walker_state[i].z0);
                     int idx=walker_state[i].time/save_msd_every_n_timesteps;
+                    //std::cout<<save_msd_every_n_timesteps<<", "<<msd<<", "<<msd_size<<", "<<idx<<"\n";
                     if ((idx>=0)&&(idx<msd_size)) {
                         msd[idx] += m;
                         msd2[idx] += m*m;
@@ -353,12 +363,13 @@ std::string BrownianDynamics::report() {
 }
 
 void BrownianDynamics::test(unsigned int steps, unsigned int walkers) {
+    FluorophorDynamics::test(steps, walkers);
     std::cout<<"init test ... ";
     unsigned int nw=walkers;
     use_rotational_diffusion=true;
     init();
     change_walker_count(nw, 1);
-    std::cout<<"setup test ... ";
+    std::cout<<"setup test ... \n";
     for (unsigned int i=0; i<nw; i++) {
         walker_state[i].x=0;
         walker_state[i].y=0;
@@ -368,13 +379,13 @@ void BrownianDynamics::test(unsigned int steps, unsigned int walkers) {
         walker_state[i].p_z=1;
     }
     //sim_time=0;
-    std::cout<<"opening output file ... ";
+    std::cout<<"opening output file ... \n";
     FILE* f=fopen((basename+object_name+"test_x2.dat").c_str(), "w");
     FILE* f1=fopen((basename+object_name+"test_traj.dat").c_str(), "w");
     int nhist=100;
-    gsl_histogram * h_theta = gsl_histogram_alloc (nhist);
+    gsl_histogram * h_theta = gsl_histogram_alloc (nhist+1);
     gsl_histogram_set_ranges_uniform (h_theta, 0, 180);
-    gsl_histogram * h_phi = gsl_histogram_alloc(nhist);
+    gsl_histogram * h_phi = gsl_histogram_alloc(nhist+1);
     gsl_histogram_set_ranges_uniform(h_phi, 0, 360);
     std::cout<<"starting test propagation ";
     for (unsigned int i=0; i<steps; i++) {
@@ -399,8 +410,7 @@ void BrownianDynamics::test(unsigned int steps, unsigned int walkers) {
         if (i%100==0) std::cout<<".";
     }
     std::cout<<" ready!"<<std::endl;
-    gsl_histogram_free (h_theta);
-    gsl_histogram_free (h_phi);
+    std::cout<<"writing test results ... "<<std::endl;
     fclose(f);
     fclose(f1);
     FILE* f2=fopen((basename+object_name+"test_hist_rot.dat").c_str(), "w");
@@ -469,8 +479,11 @@ void BrownianDynamics::test(unsigned int steps, unsigned int walkers) {
         if (plt==1) fprintf(f, "pause -1\n");
     }
     fclose(f);
+    gsl_histogram_free (h_theta);
+    gsl_histogram_free (h_phi);
 
     f=fopen((basename+object_name+"test_config.txt").c_str(), "w");
     fprintf(f, "%s\n", report().c_str());
     fclose(f);
+    std::cout<<"test DONE!"<<std::endl;
 }

@@ -139,9 +139,25 @@ void do_sim(std::string inifilename) {
                 dynmap[oname]=d;
                 dynmap[lgname]=d;
                 d->set_basename(basename);
-                if (ini.groupExists(gname+".test_dynamics")) {
-                    d->read_config(ini, gname+".test_dynamics", supergroup);
-                    d->test(ini.getSetAsInt(gname+".test_dynamics.sim_steps", 10000), ini.getSetAsInt(gname+".test_dynamics.walkers", 200));
+                bool dotest;
+                int test_steps=0;
+                int test_walkers=0;
+                dotest=ini.groupExists(supergroup+".test_dynamics") || ini.getAsBool(supergroup+".test_dynamics", false);
+                dotest=dotest || ini.groupExists(gname+".test_dynamics") || ini.getAsBool(gname+".test_dynamics", false);
+                test_steps=ini.getSetAsInt(gname+".test_dynamics.sim_steps", ini.getSetAsInt(supergroup+".test_dynamics.sim_steps", 10000));
+                test_walkers=ini.getSetAsInt(gname+".test_dynamics.walkers", ini.getSetAsInt(supergroup+".test_dynamics.walkers", 200));
+                if (dotest) {
+                    d->read_config(ini, gname/*+".test_dynamics"*/, supergroup);
+                    d->test(test_steps, test_walkers);
+                }
+                dotest=ini.groupExists(supergroup+".test_photophysics") || ini.getAsBool(supergroup+".test_photophysics", false);
+                dotest=dotest || ini.groupExists(gname+".test_photophysics") || ini.getAsBool(gname+".test_photophysics", false);
+                test_steps=ini.getSetAsInt(gname+".test_photophysics.sim_steps", ini.getSetAsInt(supergroup+".test_photophysics.sim_steps", 10000));
+                test_walkers=ini.getSetAsInt(gname+".test_photophysics.walkers", ini.getSetAsInt(supergroup+".test_photophysics.walkers", 200));
+                d->set_basename(basename);
+                if (dotest) {
+                    d->read_config(ini, gname/*+".test_photophysics"*/, supergroup);
+                    d->test_photophysics(test_steps, test_walkers);
                 }
                 d->read_config(ini, gname, supergroup);
                 std::cout<<"created "<<supergroup<<" dynamics object '"<<oname<<"' ("<<lgname<<")\n";
@@ -154,6 +170,7 @@ void do_sim(std::string inifilename) {
 
         std::cout<<"initializing dynamics objects:\n";
         for (size_t i=0; i<dyn.size(); i++) {
+            std::cout<<"    initializing "<< dyn[i]->get_supergroup() <<" dynamics object '"<<dyn[i]->get_object_name()<<"' ("<<dyn[i]->get_group()<<") ... \n";
             dyn[i]->init();
             double rt=dyn[i]->estimate_runtime();
             if (rt>estimated_max_runtime) estimated_max_runtime=rt;

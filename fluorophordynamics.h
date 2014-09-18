@@ -23,7 +23,7 @@
 
 
 
-#define N_FLUORESCENT_STATES 32
+#define N_FLUORESCENT_STATES 16
 
 
 class RelativeAbsorbanceReader {
@@ -197,6 +197,9 @@ class FluorophorDynamics
             int type;
             /** \brief this specifies the absorption spectrum to use for the fluorophor see get_spectral_efficiency() for details */
             int spectrum;
+
+            /** \brief indicates, that this object has JUST been reset */
+            bool was_just_reset;
 
             walkerState& operator=(walkerState& other);
             walkerState(walkerState& other);
@@ -654,6 +657,12 @@ class FluorophorDynamics
         /** \brief tests the dynamics simulation by computing some walker steps and theroy results
          */
         virtual void test(unsigned int steps=1000, unsigned int walkers=100) {};
+
+        /** \brief tests the photophysics simulation
+         *
+         *  This does NOT use the scaling by intensity feature!!!
+         */
+        virtual void test_photophysics(unsigned int steps=1000, unsigned int walkers=100);
 
         /** \brief goes through all walkers and loads the spectra used by these walkers. */
         virtual void load_all_used_spectra();
