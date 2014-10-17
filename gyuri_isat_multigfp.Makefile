@@ -1,5 +1,5 @@
 SCRIPTS= gyuri_isat_multigfp0.ini\
-	  gyuri_isat_multigfp4.ini\
+	     gyuri_isat_multigfp4.ini\
          gyuri_isat_multigfp8.ini\
          gyuri_isat_multigfp1.ini\
          gyuri_isat_multigfp5.ini\
@@ -9,7 +9,11 @@ SCRIPTS= gyuri_isat_multigfp0.ini\
          gyuri_isat_multigfp6.ini\
          gyuri_isat_multigfp9.ini\
          gyuri_isat_multigfp10.ini\
-         gyuri_isat_multigfp11.ini
+         gyuri_isat_multigfp11.ini\
+         gyuri_isat_multigfp12.ini\
+         gyuri_isat_multigfp13.ini\
+         gyuri_isat_multigfp14.ini\
+         gyuri_isat_multigfp15.ini
 
 
 SHELL = sh
