@@ -789,7 +789,7 @@ void FluorophorDynamics::propagate_photophysics(int i) {
     if (photophysics_absorbance_dependent) {
         RelativeAbsorbanceReader* absorbance_reader=get_abs_reader();
         if(absorbance_reader) {
-            alpha+absorbance_reader->get_relative_absorbance_for(this, i)*photophysics_absorbance_factor;
+            alpha=absorbance_reader->get_relative_absorbance_for(this, i)*photophysics_absorbance_factor;
         }
     }
     propagate_photophysics_scaled(i, alpha);
