@@ -34,6 +34,8 @@ endif
 all: ${SCRIPTS_TARGET}
 
 %.target: %.ini
+	@echo -e "random wait before starting $< ..."
+    bash -c "sleep $[ ( $RANDOM % 10 )  + 1 ]s"
 	@echo -e "starting on $< ..."
 	${TERMINAL_COMMAND} ./diffusion4${EXE_SUFFIX} $< > $<.log
 	@echo -e "work on $< DONE!"
