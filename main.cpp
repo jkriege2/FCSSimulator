@@ -86,7 +86,7 @@ void do_sim(std::string inifilename) {
 
 
         global_rng=gsl_rng_alloc(gsl_rng_default);
-        int defaultSeed=(int)(fmod(getHighResolutionTime()*12.0, double(0xFFFFFFFF)));
+        int defaultSeed=(int)(fmod(getHighResolutionTime()*12.0, double(0xFFFFFFFF)))+time(0);
         int usedSeed=ini.getSetAsInt("simulation.global_rng_seed", defaultSeed);
         cout<<"seeding global RNG: "<<usedSeed<<"   [default: "<<defaultSeed<<"] time="<<getHighResolutionTime()<<" clipped_time="<<fmod(getHighResolutionTime(), double(0xFFFFFFFF))<<"\n";
         gsl_rng_set(global_rng, usedSeed);
