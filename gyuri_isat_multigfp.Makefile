@@ -13,7 +13,11 @@ SCRIPTS= gyuri_isat_multigfp0.ini\
          gyuri_isat_multigfp12.ini\
          gyuri_isat_multigfp13.ini\
          gyuri_isat_multigfp14.ini\
-         gyuri_isat_multigfp15.ini
+         gyuri_isat_multigfp15.ini\
+		 gyuri_isat_multigfp16.ini\
+         gyuri_isat_multigfp17.ini\
+         gyuri_isat_multigfp18.ini\
+         gyuri_isat_multigfp19.ini
 
 
 SHELL = sh
