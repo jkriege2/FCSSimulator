@@ -446,7 +446,7 @@ class FluorophorDynamics
          */
         virtual void save();
     public:
-        /** \brief class constructor with standard volume 30*30*30µm^3 and a concentration of 1nM */
+        /** \brief class constructor with standard volume 30*30*30micron^3 and a concentration of 1nM */
         FluorophorDynamics(FluorophorManager* fluorophors, std::string object_name=std::string(""));
 
 

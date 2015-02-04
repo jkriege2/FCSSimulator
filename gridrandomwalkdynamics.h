@@ -18,7 +18,7 @@
 class GridRandomWalkDynamics : public FluorophorDynamics
 {
     protected:
-        /** \brief diffusion coeffizient in [µm^2/s] */
+        /** \brief diffusion coeffizient in [micron^2/s] */
         double diff_coeff;
 
         /** \brief width of a grid cell in [micrometers] */

@@ -65,18 +65,18 @@ class BrownianDynamics: public FluorophorDynamics
     protected:
         /** \brief rotational diffusion coefficient [rad^2/s] */
         double diff_rot;
-        /** \brief diffusion coeffizient in [µm^2/s] */
+        /** \brief diffusion coeffizient in [micron^2/s] */
         double diff_coeff[DCOUNT];
-        /** \brief a second diffusion coeffizient in [µm^2/s] */
+        /** \brief a second diffusion coeffizient in [micron^2/s] */
         //double diff_coeff1;
 
         /** \brief there are two areas of diffusion coefficients. One is in the x<diffarea_x0 half space (diff_coeff) and
          *         one in the x>=diffarea_x0 half space (diff_coeff1) */
         double diffarea_x0[DCOUNT];
 
-        /** \brief width of jump length distribution (standard deviation of gaussian!) in [µm] for diff_coeff */
+        /** \brief width of jump length distribution (standard deviation of gaussian!) in [micron] for diff_coeff */
         double sigma_jump[DCOUNT];
-        /** \brief width of jump length distribution (standard deviation of gaussian!) in [µm] for diff_coeff1 */
+        /** \brief width of jump length distribution (standard deviation of gaussian!) in [micron] for diff_coeff1 */
         //double sigma_jump1;
         /** \brief width of a single angle jump for rotational diffusion */
         double sigma_rotjump;
@@ -109,7 +109,7 @@ class BrownianDynamics: public FluorophorDynamics
         virtual unsigned long calc_walker_count();
 
     public:
-        /** \brief class constructor with standard volume 30*30*30µm^3 and a concentration of 1nM */
+        /** \brief class constructor with standard volume 30*30*30micron^3 and a concentration of 1nM */
         BrownianDynamics(FluorophorManager* fluorophors, std::string object_name=std::string(""));
 
         /** \brief class constructor, initialises with a box of the given dimensions */
