@@ -23,7 +23,7 @@ all: ${SCRIPTS_TARGET}
 %.target: %.ini
 	@echo -e "random wait before starting $< ..."
 	@bash random_sleep.sh
-	@bash -c "sleep $$[ ( $$RANDOM % 10 )  + 1 ]s"
+	@bash -c "sleep $$[ ( $$RANDOM % 15 )  + 1 ]s"
 	@echo -e "starting on $< ..."
 	${TERMINAL_COMMAND} ./diffusion4${EXE_SUFFIX} $< > $<.log
 	@echo -e "work on $< DONE!"
