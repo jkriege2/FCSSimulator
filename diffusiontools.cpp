@@ -6,6 +6,8 @@ std::map<std::string, FluorophorDynamics*> dynmap;
 std::map<std::string, FluorescenceMeasurement*> measmap;
 gsl_rng * global_rng=NULL;
 
+std::map<std::string, std::string> preset_ini_params;
+
 FluorophorManager::FluorophorManager(std::string database_path, bool test_spectra){
     this->database_path=database_path;
     this->test_spectra=test_spectra;

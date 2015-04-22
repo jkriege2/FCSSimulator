@@ -39,17 +39,19 @@ struct MeasurementSortFunctor {
 } myMeasurementSortFunctor;
 
 
-void do_sim(std::string inifilename) {
+void do_sim(std::string inifilename, int argc, char* argv[]) {
 
         std::cout<<"READING SIMULATION FILE "<<inifilename<<"\n";
 
         std::ofstream logfilestream;
         ScopedDelayedStreamDoubler2 stdredirect;
+		
+		
 
         std::cout<<"INITIALIZING LOG-file ...\n";
         try {
-            jkINIParser2 ini;
-            ini.readFile(inifilename);
+            jkINIParser2 ini(argc,argv);
+            ini.readFile(inifilename, preset_ini_params);
             std::string basename=ini.getSetAsString("simulation.basename", "");
 
             cout<<"creating directory for output '"<<extract_file_path(basename+"config.ini").c_str()<<"' ... ";
@@ -76,8 +78,8 @@ void do_sim(std::string inifilename) {
         dynmap.clear();
         measmap.clear();
         cout<<"reading config '"<<inifilename<<"' ... ";
-        jkINIParser2 ini;
-        ini.readFile(inifilename);
+        jkINIParser2 ini(argc,argv);
+        ini.readFile(inifilename, preset_ini_params);
         cout<<"done!\n\n";
 
         std::string basename=ini.getSetAsString("simulation.basename", "");
@@ -351,7 +353,7 @@ int main(int argc, char* argv[])
             }
             if (tolower(fn)=="--help")  {
                 std::cout<<"diffusion 4 -- FCS simulator\n";
-                std::cout<<"   (c)2008-2014 bz J.W.Krieger <j.krieger@dkfz.de>\n";
+                std::cout<<"   (c)2008-2015 bz J.W.Krieger <j.krieger@dkfz.de>\n";
                 std::cout<<"\nusage:\n";
                 std::cout<<"    diffusion4 [options] file1 [file2 [file3 ...] ] ]\n";
                 std::cout<<"\noptions:\n";
@@ -391,16 +393,36 @@ int main(int argc, char* argv[])
                         files.push_back(files1[j]);
                         std::cout<<"   will simluate '"<<files1[j]<<"' ...\n";
                     }
-                }
+                } else if (fn.size()>2 && fn[0]=='-' && fn[1]=='R') {
+				    std::string num;
+					for (int jj=2; jj<fn.size(); jj++) {
+					    num=num+fn[jj];
+					}
+					preset_ini_params["runid"]=num;
+                } else if (fn.size()>2 && fn[0]=='-' && fn[1]=='D') {
+				    std::string name, value;
+					int jj;
+					for (jj=2; jj<fn.size(); jj++) {
+					    if (fn[jj]=='=') break;
+					    name=name+fn[jj];
+					}
+					jj++;
+					if (jj<fn.size()) {
+					    for (; jj<fn.size(); jj++) {
+					        value=value+fn[jj];
+					    }
+				    }
+					if (name.size()>0 && value.size()>0) preset_ini_params[name]=value;
+				}
             }
             for (unsigned int i=0; i<files.size(); i++) {
                 std::cout<<"---------------------------------------------------------------------------------------------------------"<<std::endl<<std::endl;
                 std::cout<<"--  simulating for "<<files[i]<<"   "<<i+1<<"/"<<files.size()<<std::endl;
                 std::cout<<"---------------------------------------------------------------------------------------------------------"<<std::endl<<std::endl;
-                do_sim(files[i]);
+                do_sim(files[i], argc, argv);
             }
         } else {
-            do_sim("diffusion4.ini");
+            do_sim("diffusion4.ini", argc, argv);
         }
     }
 

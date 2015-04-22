@@ -265,6 +265,7 @@ extern std::vector<FluorescenceMeasurement*> meas;
 extern std::map<std::string, FluorophorDynamics*> dynmap;
 extern std::map<std::string, FluorescenceMeasurement*> measmap;
 extern gsl_rng * global_rng;
+extern std::map<std::string, std::string> preset_ini_params;
 
 
 extern double gaussbeam_w(double z, double z0, double w0);
