@@ -11,7 +11,7 @@ CFLAGS =  -Wall  -DNO_LIBTIFF -DJKIMAGE_USES_TINYTIFF -m$(BITS) -I../../../LIB/t
 #--enable-auto-import
 LDFLAGS = -L./extlibs/gsl/lib/ -lgsl -lgslcblas -lm
 
-Release: CFLAGS += -O2 -mtune=native -march=native -ffast-math -msse -msse2 -mfpmath=both -malign-double -mmmx -m3dnow  -ftree-vectorize -ftree-vectorizer-verbose=0
+Release: CFLAGS += -O2 -mtune=native -march=native -ffast-math -msse -msse2 -mfpmath=sse -malign-double -DQF_DONT_USE_ALIGNED_MALLOC  -ftree-vectorize -ftree-vectorizer-verbose=0
 
 Debug: CC += -DDEBUG -g
 
