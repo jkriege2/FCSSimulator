@@ -1789,7 +1789,7 @@ void FCSMeasurement::save() {
             unsigned long long NUP=bts_N;
             if (NUP>0) {
                 for (int i=bts_N-1; i>=0; i--) {
-                    if ((!bts_i || (bts_1[i]==0)) && (!bts_2 || (bts_2[i]==0))) {
+                    if ((!bts_1 || (bts_1[i]==0)) && (!bts_2 || (bts_2[i]==0))) {
                         NUP--;
                     } else {
                         break;
@@ -1807,7 +1807,7 @@ void FCSMeasurement::save() {
             unsigned long long NUP=bts_N;
             if (NUP>0) {
                 for (int i=bts_N-1; i>=0; i--) {
-                    if ((!bts_i || (bts_1[i]==0)) && (!bts_2 || (bts_2[i]==0))) {
+                    if ((!bts_1 || (bts_1[i]==0)) && (!bts_2 || (bts_2[i]==0))) {
                         NUP--;
                     } else {
                         break;
