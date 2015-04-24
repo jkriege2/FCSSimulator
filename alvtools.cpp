@@ -68,6 +68,14 @@ void alv5000WriteCountrate(FILE* f, int bts_N, double* bts_time, double* bts_1, 
         fprintf(f, "\"Count Rate\"\n");
         double factor=1;
         if (bts_is_photoncounts) factor=1.0/(bts_time[1]-bts_time[0])/1000.0;
+        int NUP=bts_N;
+        for (int i=bts_N-1; i>=0; i--) {
+            if (bts_1[i]==0 && bts_2[i]==0) {
+                NUP--;
+            } else {
+                break;
+            }
+        }
         for (int i=0; i<bts_N; i++) {
             double t=bts_time[i];
             double c1=bts_1[i]*factor;

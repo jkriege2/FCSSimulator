@@ -402,11 +402,11 @@ void FCSMeasurement::finalize_sim(){
         } else if (correlator_type==2) {
             statisticsAutocorrelateCreateMultiTau(taus, S, m, P);
             corr=(double*)malloc(S*P*sizeof(double));
-            statisticsAutocorrelateMultiTauSymmetric<int32_t,int64_t>(corr, timeseries, timesteps, taus, S*P);
+            statisticsAutocorrelateMultiTauSymmetric<int32_t,double>(corr, timeseries, timesteps, taus, S*P);
         } else if (correlator_type==3) {
             statisticsAutocorrelateCreateMultiTau(taus, S, m, P);
             corr=(double*)malloc(S*P*sizeof(double));
-            statisticsAutocorrelateMultiTauAvgSymmetric<int32_t,int64_t,int64_t>(corr, timeseries, timesteps, S, m, P, 1);
+            statisticsAutocorrelateMultiTauAvgSymmetric<int32_t,int64_t,double>(corr, timeseries, timesteps, S, m, P, 1);
         }
 
         if (partner) {
@@ -421,10 +421,10 @@ void FCSMeasurement::finalize_sim(){
                     }
                 } else if (correlator_type==2) {
                     corr_fccs=(double*)malloc(S*P*sizeof(double));
-                    statisticsCrosscorrelateMultiTauSymmetric<int32_t,int64_t>(corr_fccs, timeseries, partner->timeseries, timesteps, taus, S*P);
+                    statisticsCrosscorrelateMultiTauSymmetric<int32_t,double>(corr_fccs, timeseries, partner->timeseries, timesteps, taus, S*P);
                 } else if (correlator_type==3) {
                     corr_fccs=(double*)malloc(S*P*sizeof(double));
-                    statisticsCrosscorrelateMultiTauAvgSymmetric<int32_t,int64_t,int64_t>(corr_fccs, timeseries, partner->timeseries, timesteps, S, m, P, 1);
+                    statisticsCrosscorrelateMultiTauAvgSymmetric<int32_t,int64_t,double>(corr_fccs, timeseries, partner->timeseries, timesteps, S, m, P, 1);
                 }
             } else {
                 throw MeasurementException("The FCCS partner object recorded with different settings! Crosscorreation not possible!");
@@ -1786,12 +1786,29 @@ void FCSMeasurement::save() {
         temp=bts_N; fwrite(&temp, sizeof(temp), 1, fb);
         fwrite(&save_binning_time, sizeof(save_binning_time), 1, fb);
         if (partner)  {
-            for (unsigned long long i=0; i<bts_N; i++) {
+            unsigned long long NUP=bts_N;
+            for (int i=bts_N-1; i>=0; i--) {
+                if (bts_1[i]==0 && bts_2[i]==0) {
+                    NUP--;
+                } else {
+                    break;
+                }
+            }
+
+            for (unsigned long long i=0; i<NUP; i++) {
                 fwrite(&(bts_1[i]), sizeof(double), 1, fb);
                 fwrite(&(bts_2[i]), sizeof(double), 1, fb);
             }
         } else {
-            fwrite(bts_1, bts_N*sizeof(double), 1, fb);
+            unsigned long long NUP=bts_N;
+            for (int i=bts_N-1; i>=0; i--) {
+                if (bts_1[i]==0 && bts_2[i]==0) {
+                    NUP--;
+                } else {
+                    break;
+                }
+            }
+            fwrite(bts_1, NUP*sizeof(double), 1, fb);
         }
         fclose(fb);
         std::cout<<" done!\n";

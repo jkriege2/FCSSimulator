@@ -23,7 +23,7 @@
 
 
 
-#define N_FLUORESCENT_STATES 16
+#define N_FLUORESCENT_STATES 6
 
 
 class RelativeAbsorbanceReader {
