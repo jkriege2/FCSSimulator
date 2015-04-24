@@ -1787,31 +1787,35 @@ void FCSMeasurement::save() {
         fwrite(&save_binning_time, sizeof(save_binning_time), 1, fb);
         if (partner)  {
             unsigned long long NUP=bts_N;
-            for (int i=bts_N-1; i>=0; i--) {
-                if (bts_1[i]==0 && bts_2[i]==0) {
-                    NUP--;
-                } else {
-                    break;
-                }
-            }
-
             if (NUP>0) {
-                for (unsigned long long i=0; i<NUP; i++) {
-                    fwrite(&(bts_1[i]), sizeof(double), 1, fb);
-                    fwrite(&(bts_2[i]), sizeof(double), 1, fb);
+                for (int i=bts_N-1; i>=0; i--) {
+                    if (bts_1[i]==0 && bts_2[i]==0) {
+                        NUP--;
+                    } else {
+                        break;
+                    }
+                }
+
+                if (NUP>0) {
+                    for (unsigned long long i=0; i<NUP; i++) {
+                        fwrite(&(bts_1[i]), sizeof(double), 1, fb);
+                        fwrite(&(bts_2[i]), sizeof(double), 1, fb);
+                    }
                 }
             }
         } else {
             unsigned long long NUP=bts_N;
-            for (int i=bts_N-1; i>=0; i--) {
-                if (bts_1[i]==0 && bts_2[i]==0) {
-                    NUP--;
-                } else {
-                    break;
-                }
-            }
             if (NUP>0) {
-                fwrite(bts_1, NUP*sizeof(double), 1, fb);
+                for (int i=bts_N-1; i>=0; i--) {
+                    if (bts_1[i]==0 && bts_2[i]==0) {
+                        NUP--;
+                    } else {
+                        break;
+                    }
+                }
+                if (NUP>0) {
+                    fwrite(bts_1, NUP*sizeof(double), 1, fb);
+                }
             }
         }
         fclose(fb);
