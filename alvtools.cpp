@@ -76,15 +76,17 @@ void alv5000WriteCountrate(FILE* f, int bts_N, double* bts_time, double* bts_1, 
                 break;
             }
         }
-        for (int i=0; i<bts_N; i++) {
-            double t=bts_time[i];
-            double c1=bts_1[i]*factor;
-            double c2=0;
-            if (bts_2) c2=bts_2[i]*factor;
-            if (!isfinite(c1)) c1=0;
-            if (!isfinite(c2)) c2=0;
-            if (bts_2) fprintf(f, "%14.5lf\t%14.5lf\t%14.5lf\n", t, c1, c2);
-            else fprintf(f, "%14.5lf\t%14.5lf\n", t, c1);
+        if (NUP>0) {
+            for (int i=0; i<NUP; i++) {
+                double t=bts_time[i];
+                double c1=bts_1[i]*factor;
+                double c2=0;
+                if (bts_2) c2=bts_2[i]*factor;
+                if (!isfinite(c1)) c1=0;
+                if (!isfinite(c2)) c2=0;
+                if (bts_2) fprintf(f, "%14.5lf\t%14.5lf\t%14.5lf\n", t, c1, c2);
+                else fprintf(f, "%14.5lf\t%14.5lf\n", t, c1);
+            }
         }
     }
 }

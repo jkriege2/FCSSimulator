@@ -1795,9 +1795,11 @@ void FCSMeasurement::save() {
                 }
             }
 
-            for (unsigned long long i=0; i<NUP; i++) {
-                fwrite(&(bts_1[i]), sizeof(double), 1, fb);
-                fwrite(&(bts_2[i]), sizeof(double), 1, fb);
+            if (NUP>0) {
+                for (unsigned long long i=0; i<NUP; i++) {
+                    fwrite(&(bts_1[i]), sizeof(double), 1, fb);
+                    fwrite(&(bts_2[i]), sizeof(double), 1, fb);
+                }
             }
         } else {
             unsigned long long NUP=bts_N;
@@ -1808,7 +1810,9 @@ void FCSMeasurement::save() {
                     break;
                 }
             }
-            fwrite(bts_1, NUP*sizeof(double), 1, fb);
+            if (NUP>0) {
+                fwrite(bts_1, NUP*sizeof(double), 1, fb);
+            }
         }
         fclose(fb);
         std::cout<<" done!\n";
