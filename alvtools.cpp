@@ -48,15 +48,15 @@ void alv5000WriteHeader(FILE* f, std::string object_name, double duration, const
 }
 
 
-void alv5000WriteCorrelation(FILE* f, int istart, int slots, double* corr_tau, double* corr_1, double* corr_2) {
+void alv5000WriteCorrelation(FILE* f, int istart, int slots, double* corr_tau, double* corr_1, double* corr_2, double subtractFromCF) {
     if (!f || slots<=0 || !corr_tau || !corr_1) return;
     fprintf(f, "\n");
     fprintf(f, "\"Correlation\"\n");
     for (int i=istart; i<slots; i++) {
         if (corr_2) {
-            if (isfinite(corr_tau[i])&&isfinite(corr_1[i])&&isfinite(corr_2[i])) fprintf(f, "%14.5lg\t%14.5lg\t%14.5lg\n", corr_tau[i]*1e3, corr_1[i], corr_2[i]);
+            if (isfinite(corr_tau[i])&&isfinite(corr_1[i])&&isfinite(corr_2[i])) fprintf(f, "%14.5lg\t%14.5lg\t%14.5lg\n", corr_tau[i]*1e3, corr_1[i]-subtractFromCF, corr_2[i]-subtractFromCF);
         } else {
-            if (isfinite(corr_tau[i])&&isfinite(corr_1[i])) fprintf(f, "%14.5lg\t%14.5lg\n", corr_tau[i]*1e3, corr_1[i]);
+            if (isfinite(corr_tau[i])&&isfinite(corr_1[i])) fprintf(f, "%14.5lg\t%14.5lg\n", corr_tau[i]*1e3, corr_1[i]-subtractFromCF);
         }
     }
 }
