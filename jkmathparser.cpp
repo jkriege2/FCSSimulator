@@ -1,7 +1,5 @@
 /*
-    Copyright (c) 2008-2014 Jan W. Krieger (<jan@jkrieger.de>, <j.krieger@dkfz.de>), German Cancer Research Center
-
-    last modification: $LastChangedDate: 2015-09-30 15:27:19 +0200 (Mi, 30 Sep 2015) $  (revision $Rev: 4040 $)
+    Copyright (c) 2008-2015 Jan W. Krieger (<jan@jkrieger.de>), German Cancer Research Center + IWR, University Heidelberg
 
     This software is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,6 +14,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+
 
 
 
