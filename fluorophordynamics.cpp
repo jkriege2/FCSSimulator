@@ -2,7 +2,7 @@
 
 //#include <boost/thread/mutex.hpp>
 
-#include "../../../LIB/trunk/datatable.h"
+#include "datatable.h"
 #include <stdio.h>
 #include <sys/types.h>
 #include <dirent.h>

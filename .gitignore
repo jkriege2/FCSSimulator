@@ -26,3 +26,7 @@
 *.exe
 *.out
 *.app
+/extlibs/gsl/bin
+/extlibs/gsl/include
+/extlibs/gsl/lib
+/extlibs/gsl/share

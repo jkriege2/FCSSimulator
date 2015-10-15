@@ -1,6 +1,6 @@
 #include "dynamicsfromfiles2.h"
-#include "../../../LIB/trunk/ticktock.h"
-#include "../../../LIB/trunk/tools.h"
+#include "ticktock.h"
+#include "tools.h"
 
 
 DynamicsFromFiles2::DynamicsFromFiles2(FluorophorManager* fluorophors, std::string object_name):

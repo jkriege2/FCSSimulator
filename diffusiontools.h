@@ -17,9 +17,9 @@
 #include <sys/types.h>
 #include <dirent.h>
 
-#include "../../../LIB/trunk/tools.h"
-#include "../../../LIB/trunk/jkiniparser2.h"
-#include "../../../LIB/trunk/datatable.h"
+#include "tools.h"
+#include "jkiniparser2.h"
+#include "datatable.h"
 
 #ifdef __WINDOWS__
 #  define GNUPLOT_FONT "Arial"

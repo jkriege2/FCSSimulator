@@ -3,15 +3,15 @@
 #define FLUORESCENCEMEASUREMENT_H
 
 
-#include "../../../LIB/trunk/jkiniparser2.h"
+#include "jkiniparser2.h"
 #include <string>
 #include <vector>
-#include "../../../LIB/trunk/tools.h"
+#include "tools.h"
 #include "fluorophordynamics.h"
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
-#include "../../../LIB/trunk/ticktock.h"
+#include "ticktock.h"
 
 #include "diffusiontools.h"
 

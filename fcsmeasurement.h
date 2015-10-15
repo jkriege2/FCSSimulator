@@ -17,16 +17,16 @@
 //#include <boost/thread/thread.hpp>
 
 #include "browniandynamics.h"
-#include "../../../LIB/trunk/tools.h"
-#include "../../../LIB/trunk/jkiniparser2.h"
-#include "../../../LIB/trunk/multitau-correlator.h"
+#include "tools.h"
+#include "jkiniparser2.h"
+#include "multitau-correlator.h"
 #include "fluorophordynamics.h"
 #include "fluorescencemeasurement.h"
-#include "../../../LIB/trunk/correlator_multitau.h"
-#include "../../../LIB/trunk/statistics_tools.h"
-#include "../../../LIB/trunk/jkimage.h"
-#include "../../../LIB/trunk/tinytiffwriter.h"
-#include "../../../LIB/trunk/gnuplot_tools.h"
+#include "extlibs/STatisticsTools/correlator_multitau.h"
+#include "extlibs/STatisticsTools/statistics_tools.h"
+#include "jkimage.h"
+#include "extlibs/TinyTIFF/tinytiffwriter.h"
+#include "gnuplot_tools.h"
 #include "alvtools.h"
 
 

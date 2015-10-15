@@ -9,8 +9,8 @@
 #include <gsl/gsl_randist.h>
 #include <cstdlib>
 
-#include "../../../LIB/trunk/tools.h"
-#include "../../../LIB/trunk/jkiniparser2.h"
+#include "tools.h"
+#include "jkiniparser2.h"
 #include "fluorophordynamics.h"
 #include "diffusiontools.h"
 

@@ -3,13 +3,13 @@
 
 #include "fluorescencemeasurement.h"
 #include "diffusiontools.h"
-#include "../../../LIB/trunk/jkiniparser2.h"
+#include "jkiniparser2.h"
 #include <string>
 #include <vector>
 #include <map>
-#include "../../../LIB/trunk/tools.h"
+#include "tools.h"
 #include "fluorophordynamics.h"
-#include "../../../LIB/trunk/multitau-msd.h"
+#include "extlibs/StatisticsTools/multitau-msd.h"
 
 /*! \brief measurement class that plots trajectories
     \ingroup diff4_measurement

@@ -1,0 +1,8 @@
+[submodule "extlibs/StatisticsTools"]
+	path = extlibs/StatisticsTools
+	url = https://github.com/jkriege2/StatisticsTools.git
+	branch = master
+[submodule "extlibs/TinyTIFF"]
+	path = extlibs/TinyTIFF
+	url = https://jkriege2@github.com/jkriege2/TinyTIFF.git
+	branch = master

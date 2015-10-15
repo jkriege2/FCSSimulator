@@ -4,7 +4,7 @@
 #include "fluorophordynamics.h"
 #include<string>
 #include<map>
-#include "../../../LIB/trunk/tools.h"
+#include "tools.h"
 
 /** \brief this class loads several datafiles, containing trajectories and uses these trajectories
  *         for the dynamics simulation

@@ -7,7 +7,7 @@ CC=g++
 
 BITS=64
 
-CFLAGS =  -Wall -DQF_DONT_USE_ALIGNED_MALLOC -DNO_LIBTIFF -DJKIMAGE_USES_TINYTIFF -m$(BITS) -I../../../LIB/trunk/ -I./extlibs/gsl/include/  -fexceptions
+CFLAGS =  -Wall -DQF_DONT_USE_ALIGNED_MALLOC -DNO_LIBTIFF -DJKIMAGE_USES_TINYTIFF -m$(BITS) -I. -I./extlibs/TinyTIFF/ -I./extlibs/StatisticsTools/ -I./extlibs/gsl/include/  -fexceptions
 #--enable-auto-import
 LDFLAGS = -L./extlibs/gsl/lib/ -lgsl -lgslcblas -lm
 
@@ -29,16 +29,16 @@ SRC_FILE= browniandynamics.cpp \
           childdynamics.cpp \
           trajectoryplot.cpp \
           fretdynamics.cpp \
-          $(LIB)/datatable.cpp \
-          $(LIB)/highrestimer.cpp \
-          $(LIB)/jkiniparser2.cpp \
-          $(LIB)/jkmathparser.cpp \
-          $(LIB)/statistics_tools.cpp \
-          $(LIB)/tools.cpp \
-          $(LIB)/image_tools.cpp \
-          $(LIB)/tinytiffreader.cpp \
-          $(LIB)/tinytiffwriter.cpp \
-          $(LIB)/gnuplot_tools.cpp \
+          datatable.cpp \
+          highrestimer.cpp \
+          jkiniparser2.cpp \
+          jkmathparser.cpp \
+          extlibs/StatisticsTools/statistics_tools.cpp \
+          tools.cpp \
+          image_tools.cpp \
+          extlibs/TinyTIFF/tinytiffreader.cpp \
+          extlibs/TinyTIFF/tinytiffwriter.cpp \
+          gnuplot_tools.cpp \
           alvtools.cpp
 
 
