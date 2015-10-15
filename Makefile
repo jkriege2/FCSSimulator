@@ -7,9 +7,16 @@ CC=g++
 
 BITS=64
 
-CFLAGS =  -Wall -DQF_DONT_USE_ALIGNED_MALLOC -DNO_LIBTIFF -DJKIMAGE_USES_TINYTIFF -m$(BITS) -I. -I./extlibs/TinyTIFF/ -I./extlibs/StatisticsTools/ -I./extlibs/gsl/include/  -fexceptions
+CFLAGS =  -Wall -DQF_DONT_USE_ALIGNED_MALLOC -DNO_LIBTIFF -DJKIMAGE_USES_TINYTIFF -m$(BITS) -I. -I./extlibs/TinyTIFF/ -I./extlibs/StatisticsTools/  -fexceptions
 #--enable-auto-import
-LDFLAGS = -L./extlibs/gsl/lib/ -lgsl -lgslcblas -lm
+LDFLAGS = -lm
+ifeq ($(wildcard ../../extlibs/gsl/lib/libgsl.a),)
+	CFLAGS += -I../../extlibs/gsl/include/
+	LDFLAGS += -L../../extlibs/gsl/lib/ -lgsl -lgslcblas
+else
+	CFLAGS += -I./extlibs/gsl/include/ 
+	LDFLAGS += -L./extlibs/gsl/lib/ -lgsl -lgslcblas
+endif
 
 Release: CFLAGS += -O2 -mtune=native -march=native -ffast-math -msse -msse2 -mfpmath=sse -malign-double  -ftree-vectorize -ftree-vectorizer-verbose=0
 
