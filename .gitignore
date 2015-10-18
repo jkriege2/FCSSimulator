@@ -30,6 +30,6 @@
 /extlibs/gsl/include
 /extlibs/gsl/lib
 /extlibs/gsl/share
-/fretdynamics.h
-/fretdynamics.cpp
+/diffusion4
+/diffusion4_test
 /*.layout
