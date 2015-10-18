@@ -239,3 +239,25 @@ std::string FluorescenceImaging::report() {
     s+="save_binary_images = "+booltostr(save_binary_images)+"\n";
     return s;
 }
+
+std::string FluorescenceImaging::dot_get_properties() {
+    std::string s=FluorescenceMeasurement::dot_get_properties();
+    s+="image_pos0 = ["+floattostr(img_x0)+", "+floattostr(img_y0)+", "+floattostr(img_z0)+"] &mu;m<BR/>";
+    s+="image_size = "+floattostr(img_dx)+" * "+floattostr(img_dy)+" um^2;      "+inttostr(img_xpixel)+" * "+inttostr(img_ypixel)+" pixels<BR/>";
+    s+="pixel_size = "+floattostr(img_dx/(double)img_xpixel*1e3)+" * "+floattostr(img_dy/(double)img_ypixel*1e3)+" nm&sup2;<BR/>";
+    double Veff=4.0/3.0*M_PI*psf_r0*psf_r0*psf_z0;
+    s+="focus_volume (Veff) = "+floattostr(Veff)+" femto litre<BR/>";
+    s+="lambda_ex = "+floattostr(lambda_ex)+" nm<BR/>";
+    s+="EPhoton_ex = "+floattostr(Ephoton/1.602176487e-19/1e-3)+" meV<BR/>";
+    s+="I0 = "+floattostr(I0)+" uW/m^2  =  "+floattostr(I0/1e12)+" uW/&mu;m&sup2;<BR/>";
+//    s+="sigma_abs = "+floattostr(sigma_abs)+" m^2  =  "+floattostr(sigma_abs/1e-20)+" Angstrom^2\n";
+//    s+="q_fluor = "+floattostr(q_fluor*100.0)+" %\n";
+    s+="q_det = "+floattostr(q_det*100.0)+" %<BR/>";
+    s+="abs_photons/(molecule*s) = "+floattostr(I0*1e-6/Ephoton*sigma_abs)+"<BR/>";
+    s+="fluor_photons/(molecule*s) = "+floattostr(q_fluor*I0*1e-6/Ephoton*sigma_abs)+"<BR/>";
+    s+="det_photons/(molecule*s) = "+floattostr(q_det*q_fluor*I0*1e-6/Ephoton*sigma_abs)+"<BR/>";
+    s+="exposure_time = "+floattostr(exposure_time*1e3)+" msecs<BR/>";
+    s+="imaging_delay = "+floattostr(imaging_delay*1e3)+" msecs<BR/>";
+    s+="save_binary_images = "+booltostr(save_binary_images)+"<BR/>";
+    return s;
+}

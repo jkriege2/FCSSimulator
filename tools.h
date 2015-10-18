@@ -607,7 +607,7 @@ LIB_EXPORT std::string uinttostr_fmt(unsigned long data, std::string format="%ld
  *
  * If \a belowIsZero>0 and \c abs(data) is smaller than \a belowIsZero, then \c "0" is returned.
  */
-LIB_EXPORT std::string floattostr(double data, int past_comma=-1, bool remove_trail0=false, double belowIsZero=1e-16);
+LIB_EXPORT std::string floattostr(double data, int past_comma=-1, bool remove_trail0=true, double belowIsZero=1e-16);
 /*! \brief convert a given string to a double floating point value.
 
     \param data input string

@@ -51,6 +51,10 @@ class MSDMeasurement : public FluorescenceMeasurement
         /** \brief report the object state */
         virtual std::string report();
 
+
+        /*! \brief return DOT label-code (for GraphViz) that represents the nodes properties
+        */
+        virtual std::string dot_get_properties() ;
     protected:
 
         virtual void save();

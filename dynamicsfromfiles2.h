@@ -50,8 +50,8 @@
  *   - col 9: absorbtion cross section in [m^2]
  *   - col 10: quantum state [integer]
  * .
- * 
- * 
+ *
+ *
  * Input files may also be in a simple binary format:
  * \verbatim
       contents                                size [bytes]  format
@@ -68,8 +68,8 @@
     | y[1]                                 |  intsize       signed integer
     | z[1]                                 |  intsize       signed integer
     +--------------------------------------+
-    | ...                                  |  
-    | ...                                  |  
+    | ...                                  |
+    | ...                                  |
     +--------------------------------------+
     | x[number_of_records-1]               |  intsize       signed integer
     | y[number_of_records-1]               |  intsize       signed integer
@@ -100,29 +100,32 @@ class DynamicsFromFiles2 : public FluorophorDynamics
         virtual std::string report();
 
         virtual double estimate_runtime();
-        
+
         enum FileFormats {
             ffCSV=0,
             ffBinary=1
         };
-        
+
         static std::string fileFormatToString(FileFormats format) {
             if (format==ffBinary) return "binary";
             return "csv";
         }
-        
+
         static FileFormats stringToFileFormat(std::string format) {
             std::string f=tolower(format);
             if (f=="b" || f=="bin" || f=="binary" || f=="1") return ffBinary;
             return ffCSV;
         }
+
+        virtual std::string dot_get_properties() ;
+        virtual std::string dot_get_links() ;
     protected:
         /** \brief read configuration from INI file */
         virtual void read_config_internal(jkINIParser2& parser);
-	
+
 	/** \brief set all walkers to non-existent and set end of trajectory true */
 	void setAllDone();
-        
+
         /** \brief read a single line or record from a trajectory file */
         virtual std::vector<double> dataFileReadLine(FILE* f);
         /** \brief open a trajectory file for reading */
@@ -245,11 +248,11 @@ class DynamicsFromFiles2 : public FluorophorDynamics
         /** \brief if you use a linear combination of polarisation vectors, this compination is \f$ f\cdot\vec{p}+(1-f)\cdot\vec{p}_1 \f$
                    where \f$ f \f$ is this parameter. */
         double p_fraction;
-        
+
         bool rotate_trajectories;
         std::vector<double> alpha1,alpha2,alpha3;
         int repeat_files;
-	
+
 	/** \brief number of trajectories to run in parallel in SequentialParallel mode */
 	int parallelTrajectories;
 
@@ -258,14 +261,14 @@ class DynamicsFromFiles2 : public FluorophorDynamics
         double timing_loadall;
         /** \brief how long did it take to load 1 file (in average) */
         double timing_load1;
-        
+
         struct BinaryFileInfo {
             int intSize;
             uint64_t records;
             uint16_t entries;
-            
+
             BinaryFileInfo() {
-                intSize=sizeof(int); 
+                intSize=sizeof(int);
                 records=0;
                 entries=3;
             }

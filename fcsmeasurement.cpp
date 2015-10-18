@@ -2254,23 +2254,23 @@ std::string FCSMeasurement::report(){
     s+="pos_laser     = ["+floattostr(ex_x0)+", "+floattostr(ex_y0)+", "+floattostr(ex_z0)+"] um\n";
     s+="distance_laser_detector = ["+floattostr(img_x0-ex_x0)+", "+floattostr(img_y0-ex_y0)+", "+floattostr(img_z0-ex_z0)+"] um\n";
     s+="                        = "+floattostr(sqrt(gsl_pow_2(img_x0-ex_x0)+gsl_pow_2(img_y0-ex_y0)+gsl_pow_2(img_z0-ex_z0)))+" um\n";
-    s+="expsf_r0 = "+floattostr(expsf_r0)+" microns\n";
-    s+="expsf_z0 = "+floattostr(expsf_z0)+" microns\n";
+    s+="expsf_r0 = "+floattostr(expsf_r0)+" &mu;m<BR/>";
+    s+="expsf_z0 = "+floattostr(expsf_z0)+" &mu;m<BR/>";
     if (lambda_ex2>0) {
         s+="pos_laser2    = ["+floattostr(ex_x02)+", "+floattostr(ex_y02)+", "+floattostr(ex_z02)+"] um\n";
         s+="distance_laser2_detector = ["+floattostr(img_x0-ex_x02)+", "+floattostr(img_y0-ex_y02)+", "+floattostr(img_z0-ex_z02)+"] um\n";
         s+="                        = "+floattostr(sqrt(gsl_pow_2(img_x0-ex_x02)+gsl_pow_2(img_y0-ex_y02)+gsl_pow_2(img_z0-ex_z02)))+" um\n";
-        s+="expsf_r02 = "+floattostr(expsf_r02)+" microns\n";
-        s+="expsf_z02 = "+floattostr(expsf_z02)+" microns\n";
+        s+="expsf_r02 = "+floattostr(expsf_r02)+" &mu;m<BR/>";
+        s+="expsf_z02 = "+floattostr(expsf_z02)+" &mu;m<BR/>";
     }
 
     s+="pos_detection = ["+floattostr(img_x0)+", "+floattostr(img_y0)+", "+floattostr(img_z0)+"] um\n";
-    s+="detpsf_r0 = "+floattostr(detpsf_r0)+" microns\n";
-    s+="detpsf_z0 = "+floattostr(detpsf_z0)+" microns\n";
-    s+="pixel_size = "+floattostr(pixel_size)+" microns\n";
-    s+="pixel_size_integrationdelta = "+floattostr(pixel_size_integrationdelta)+" microns\n";
+    s+="detpsf_r0 = "+floattostr(detpsf_r0)+" &mu;m<BR/>";
+    s+="detpsf_z0 = "+floattostr(detpsf_z0)+" &mu;m<BR/>";
+    s+="pixel_size = "+floattostr(pixel_size)+" &mu;m<BR/>";
+    s+="pixel_size_integrationdelta = "+floattostr(pixel_size_integrationdelta)+" &mu;m<BR/>";
     double psf_r0=1.0/sqrt(1.0/detpsf_r0/detpsf_r0+1.0/expsf_r0/expsf_r0);
-    s+="confocal_psf_system = sqrt(1/expsf_r0^2 + 1/detpsf_r0^2) = "+floattostr(psf_r0)+" microns\n";
+    s+="confocal_psf_system = sqrt(1/expsf_r0^2 + 1/detpsf_r0^2) = "+floattostr(psf_r0)+" &mu;m<BR/>";
     double Veff=pow(M_PI, 1.5)*(psf_r0*psf_r0*psf_r0*detpsf_z0/detpsf_r0);
     s+="confocal_focus_volume (Veff) = pi^(3/2) * psf_system^3 * detpsf_z0/detpsf_r0 = "+floattostr(Veff)+" femto litre\n";
 
@@ -2278,7 +2278,7 @@ std::string FCSMeasurement::report(){
     double Veff2=0;
     if (lambda_ex2>0) {
         psf_r02=1.0/sqrt(1.0/detpsf_r0/detpsf_r0+1.0/expsf_r02/expsf_r02);
-        s+="confocal_psf_system2 = sqrt(1/expsf_r02^2 + 1/detpsf_r0^2) = "+floattostr(psf_r02)+" microns\n";
+        s+="confocal_psf_system2 = sqrt(1/expsf_r02^2 + 1/detpsf_r0^2) = "+floattostr(psf_r02)+" &mu;m<BR/>";
         Veff2=pow(M_PI, 1.5)*(psf_r02*psf_r02*psf_r02*detpsf_z0/detpsf_r0);
         s+="confocal_focus_volume2 (Veff) = pi^(3/2) * psf_system^3 * detpsf_z0/detpsf_r0 = "+floattostr(Veff)+" femto litre\n";
     }
@@ -2434,7 +2434,139 @@ std::string FCSMeasurement::report(){
 
     return s;
 }
+std::string FCSMeasurement::dot_get_links(){
+    std::string s=FluorescenceMeasurement::dot_get_links();
 
+    if (fccs_partner.size()>0) s+="  "+fccs_partner+" -> "+get_group()+" [ label=\"FCCS-partner\" textcolor=green4 color=green4 ];\n";
+
+    return s;
+}
+
+std::string FCSMeasurement::dot_get_properties(){
+    std::string s=FluorescenceMeasurement::dot_get_properties();
+    s+="pos_laser     = ["+floattostr(ex_x0)+", "+floattostr(ex_y0)+", "+floattostr(ex_z0)+"] &mu;m<BR/>";
+    s+="distance_laser_detector = ["+floattostr(img_x0-ex_x0)+", "+floattostr(img_y0-ex_y0)+", "+floattostr(img_z0-ex_z0)+"] &mu;m<BR/>";
+    s+="                        = "+floattostr(sqrt(gsl_pow_2(img_x0-ex_x0)+gsl_pow_2(img_y0-ex_y0)+gsl_pow_2(img_z0-ex_z0)))+" &mu;m<BR/>";
+    s+="expsf_r0 = "+floattostr(expsf_r0)+" &mu;m<BR/>";
+    s+="expsf_z0 = "+floattostr(expsf_z0)+" &mu;m<BR/>";
+    if (lambda_ex2>0) {
+        s+="pos_laser2    = ["+floattostr(ex_x02)+", "+floattostr(ex_y02)+", "+floattostr(ex_z02)+"] &mu;m<BR/>";
+        s+="distance_laser2_detector = ["+floattostr(img_x0-ex_x02)+", "+floattostr(img_y0-ex_y02)+", "+floattostr(img_z0-ex_z02)+"] &mu;m<BR/>";
+        s+="                        = "+floattostr(sqrt(gsl_pow_2(img_x0-ex_x02)+gsl_pow_2(img_y0-ex_y02)+gsl_pow_2(img_z0-ex_z02)))+" &mu;m<BR/>";
+        s+="expsf_r02 = "+floattostr(expsf_r02)+" &mu;m<BR/>";
+        s+="expsf_z02 = "+floattostr(expsf_z02)+" &mu;m<BR/>";
+    }
+
+    s+="pos_detection = ["+floattostr(img_x0)+", "+floattostr(img_y0)+", "+floattostr(img_z0)+"] &mu;m<BR/>";
+    s+="detpsf_r0 = "+floattostr(detpsf_r0)+" &mu;m<BR/>";
+    s+="detpsf_z0 = "+floattostr(detpsf_z0)+" &mu;m<BR/>";
+    s+="pixel_size = "+floattostr(pixel_size)+" &mu;m<BR/>";
+    s+="pixel_size_integrationdelta = "+floattostr(pixel_size_integrationdelta)+" &mu;m<BR/>";
+    double psf_r0=1.0/sqrt(1.0/detpsf_r0/detpsf_r0+1.0/expsf_r0/expsf_r0);
+    s+="confocal_psf_system = sqrt(1/expsf_r0^2 + 1/detpsf_r0^2) = "+floattostr(psf_r0)+" &mu;m<BR/>";
+    double Veff=pow(M_PI, 1.5)*(psf_r0*psf_r0*psf_r0*detpsf_z0/detpsf_r0);
+    s+="confocal_focus_volume (Veff) = pi^(3/2) * psf_system^3 * detpsf_z0/detpsf_r0 = "+floattostr(Veff)+" femto litre<BR/>";
+
+    double psf_r02=0;
+    double Veff2=0;
+    if (lambda_ex2>0) {
+        psf_r02=1.0/sqrt(1.0/detpsf_r0/detpsf_r0+1.0/expsf_r02/expsf_r02);
+        s+="confocal_psf_system2 = sqrt(1/expsf_r02^2 + 1/detpsf_r0^2) = "+floattostr(psf_r02)+" &mu;m<BR/>";
+        Veff2=pow(M_PI, 1.5)*(psf_r02*psf_r02*psf_r02*detpsf_z0/detpsf_r0);
+        s+="confocal_focus_volume2 (Veff) = pi^(3/2) * psf_system^3 * detpsf_z0/detpsf_r0 = "+floattostr(Veff)+" femto litre<BR/>";
+    }
+
+    s+="illumination_distribution = "+ill_distribution_to_str(ill_distribution)+"<BR/>";
+    s+="detection_distribution = "+det_distribution_to_str(det_distribution)+"<BR/>";
+    s+="psf_rz_image_rwidth = "+inttostr(psf_rz_image_rwidth)+" pixels<BR/>";
+    s+="psf_rz_image_zwidth = "+inttostr(psf_rz_image_zwidth)+" pixels<BR/>";
+    s+="psf_rz_image_rresolution = "+floattostr(psf_rz_image_rresolution*1000.0)+" nm<BR/>";
+    s+="psf_rz_image_zresolution = "+floattostr(psf_rz_image_zresolution*1000.0)+" nm<BR/>";
+
+
+    double sum=0;
+    s+="psf_region_factor = "+floattostr(psf_region_factor)+"<BR/>";
+    if (polarised_excitation) {
+        s+="polarised excitation: pe = ["+floattostr(e_x)+", "+floattostr(e_y)+", "+floattostr(e_z)+"]<BR/>";
+        s+="polarised excitation: e_pol_fraction ="+floattostr(e_pol_fraction*100.0)+"% <BR/>";
+    } else {
+        s+="non-polarised excitation<BR/>";
+    }
+    if (polarised_detection) {
+        s+="polarised detection: pe = ["+floattostr(d_x)+", "+floattostr(d_y)+", "+floattostr(d_z)+"]<BR/>";
+    } else {
+        s+="non-polarised detection<BR/>";
+    }
+    s+="max_photons = "+inttostr(max_photons)+"<BR/>";
+    s+="min_photons = "+inttostr(min_photons)+"<BR/>";
+
+    if (detector_type==1) {
+        s+="detector_type = linear<BR/>";
+        s+="detector_resolution = "+inttostr(lindet_bits)+"bits  &rArr;  range = 0..."+inttostr(pow(2,lindet_bits))+"<BR/>";
+        s+="detector_gain = "+floattostr(lindet_gain)+"<BR/>";
+        s+="lindet_readnoise = "+floattostr(lindet_readnoise)+"<BR/>";
+        s+="detector_variance_factor = "+floattostr(lindet_var_factor)+"<BR/>";
+    } else {
+        s+="detector_type = photon_counting<BR/>";
+    }
+    s+="detection_efficiency = "+floattostr(q_det*100.0)+"%<BR/>";
+
+    s+="lambda_ex = "+floattostr(lambda_ex)+" nm<BR/>";
+    if (lambda_ex2>0) s+="lambda_ex2 = "+floattostr(lambda_ex2)+" nm<BR/>";
+    if (det_wavelength_min>0 && det_wavelength_max>0) {
+        s+="det_wavelength_min = "+floattostr(det_wavelength_min)+" nm<BR/>";
+        s+="det_wavelength_max = "+floattostr(det_wavelength_max)+" nm<BR/>";
+    } else {
+        s+="detecting all photons (no \"fluorescence filter\")<BR/>";
+    }
+    if (background_rate>0) s+="background_rate = "+floattostr(background_rate)+" Hz (poissonian distribution)<BR/>";
+    else s+="no background photons<BR/>";
+    if (offset_rate>0 && offset_std>0) {
+        s+="offset = "+floattostr(offset_rate/sim_timestep)+"Hz = "+floattostr(offset_rate)+"photons/detectionstep<BR/>";
+        s+="offset_std = "+floattostr(offset_std)+" photons   (gaussian distribution)<BR/>";
+    } else s+="no offset photons<BR/>";
+    if (offset_correction!=0) s+="offset_correction = "+floattostr(offset_correction)+" photons/detectionstep<BR/>";
+    else s+="no offset correction<BR/>";
+    if (stochastic_offset_correction!=0) s+="stochastic_offset_correction = "+floattostr(stochastic_offset_correction)+" photons/detectionstep<BR/>";
+    else s+="no stochastic offset correction<BR/>";
+    s+="EPhoton_ex = "+floattostr(Ephoton/1.602176487e-19/1e-3)+" meV<BR/>";
+    s+="EPhoton_ex2 = "+floattostr(Ephoton2/1.602176487e-19/1e-3)+" meV<BR/>";
+    s+="I0 = "+floattostr(I0)+" uW/m^2  =  "+floattostr(I0/1e12)+" uW/micron^2  =  "+floattostr(I0/1e6)+" uW/mm^2<BR/>";
+    s+="P0 [on focus, i.e. on A=pi*(2*expsf_r0)^2] = "+floattostr(I0*(M_PI*gsl_pow_2(2.0*expsf_r0*1e-6)))+" uW<BR/>";
+    if (use_saturation_intensity) {
+        s+="relative_saturation_intensity = "+floattostr(relative_saturation_intensity)+" * I0<BR/>";
+        s+="Isat = "+floattostr(relative_saturation_intensity*I0)+" uW/m^2  =  "+floattostr(relative_saturation_intensity*I0/1e12)+" uW/micron^2  =  "+floattostr(relative_saturation_intensity*I0/1e6)+" uW/mm^2<BR/>";
+    }
+    if (lambda_ex2>0) {
+        s+="I02 = "+floattostr(I02)+" uW/m^2  =  "+floattostr(I02/1e12)+" uW/micron^2  =  "+floattostr(I02/1e6)+" uW/mm^2<BR/>";
+        s+="P02 [on focus, i.e. on A=pi*(2*expsf_r02)^2] = "+floattostr(I02*(M_PI*gsl_pow_2(2.0*expsf_r02*1e-6)))+" uW<BR/>";
+        if (use_saturation_intensity) {
+            s+="relative_saturation_intensity2 = "+floattostr(relative_saturation_intensity2)+" * I0<BR/>";
+            s+="Isat2 = "+floattostr(relative_saturation_intensity2*I02)+" uW/m^2  =  "+floattostr(relative_saturation_intensity2*I02/1e12)+" uW/micron^2  =  "+floattostr(relative_saturation_intensity2*I02/1e6)+" uW/mm^2<BR/>";
+        }
+    }
+    if (!use_saturation_intensity) {
+        s+="NOT USING SATURATION INETSITY<BR/>";
+    }
+
+    s+="duration = "+floattostr(duration*1e3)+" msecs<BR/>";
+    s+="&rArr; timesteps = "+inttostr(timesteps)+"     with  timestep-duration = "+floattostr(sim_timestep*1e9)+" nsecs<BR/>";
+    s+="correlator:  S(#corr)="+inttostr(S)+"   P(#chan/dec)="+inttostr(P)+"    m(binRatio)="+inttostr(m)+"<BR/>";
+    s+="             corr_tau_min= "+floattostr_fmt(corr_taumin*1e9, "%lg")+" ns = "+floattostr(corr_taumin/sim_timestep)+" simulation timesteps<BR/>";
+    s+="             correlator_type= "+inttostr(correlator_type);
+    if (correlator_type==0) s+=" (corr_jk)";
+    if (correlator_type==1) s+=" (corr_jb)";
+    if (correlator_type==2) s+=" (corr_direct)";
+    if (correlator_type==3) s+=" (corr_directavg)";
+    s+="<BR/>";
+
+    if (save_arrivaltimes) {
+        s+="arrivaltimes_onlyonce = "+booltostr(arrivaltimes_onlyonce)+"<BR/>";
+        s+="registered_arrival_times = "+inttostr(arrival_times.size())+"<BR/>";
+    }
+
+    return s;
+}
  std::string FCSMeasurement::ill_distribution_to_str(int i) const {
     if (i==0) return "gaussian";
     if (i==1) return "gaussian_spim";

@@ -83,19 +83,15 @@ class BrownianDynamics: public FluorophorDynamics
     protected:
         /** \brief rotational diffusion coefficient [rad^2/s] */
         double diff_rot;
-        /** \brief diffusion coeffizient in [micron^2/s] */
-        double diff_coeff[DCOUNT];
-        /** \brief a second diffusion coeffizient in [micron^2/s] */
-        //double diff_coeff1;
+        /** \brief diffusion coefficient in [micron^2/s] */
+        double diff_coeff;
+        /** \brief flow elocity [micron/s] */
+        double velocity[3];
 
-        /** \brief there are two areas of diffusion coefficients. One is in the x<diffarea_x0 half space (diff_coeff) and
-         *         one in the x>=diffarea_x0 half space (diff_coeff1) */
-        double diffarea_x0[DCOUNT];
 
         /** \brief width of jump length distribution (standard deviation of gaussian!) in [micron] for diff_coeff */
-        double sigma_jump[DCOUNT];
-        /** \brief width of jump length distribution (standard deviation of gaussian!) in [micron] for diff_coeff1 */
-        //double sigma_jump1;
+        double sigma_jump;
+
         /** \brief width of a single angle jump for rotational diffusion */
         double sigma_rotjump;
         /** \brief if set (\c true ) this class also uses rotational diffusion */
@@ -140,23 +136,14 @@ class BrownianDynamics: public FluorophorDynamics
         virtual ~BrownianDynamics();
 
         /** \brief set the diffusion coefficients for the simulation */
-        inline virtual void set_diff_coeff(double value, double value1) {
-            diff_coeff[0]=value;
-            diff_coeff[1]=value1;
+        inline virtual void set_diff_coeff(double value) {
+            diff_coeff=value;
             for (int i=0; i<DCOUNT; i++) {
-                sigma_jump[i]=sqrt(2.0*diff_coeff[i]*sim_timestep);
+                sigma_jump=sqrt(2.0*diff_coeff*sim_timestep);
             }
             sigma_rotjump=sqrt(2.0*diff_rot*sim_timestep);
         };
 
-        /** \brief set the diffusion coefficients for the simulation */
-        inline virtual void set_diff_coeffi(int n, double value) {
-            diff_coeff[n]=value;
-            for (int i=0; i<DCOUNT; i++) {
-                sigma_jump[i]=sqrt(2.0*diff_coeff[i]*sim_timestep);
-            }
-            sigma_rotjump=sqrt(2.0*diff_rot*sim_timestep);
-        };
 
         /** \brief set the rotational diffusion coefficients for the simulation */
         inline virtual void set_diffrot_coeff(double value) {
@@ -167,9 +154,7 @@ class BrownianDynamics: public FluorophorDynamics
         /** \brief set the simulation timestep */
         inline virtual void set_sim_timestep(double value) {
             FluorophorDynamics::set_sim_timestep(value);
-            for (int i=0; i<DCOUNT; i++) {
-                sigma_jump[i]=sqrt(2.0*diff_coeff[i]*sim_timestep);
-            }
+            sigma_jump=sqrt(2.0*diff_coeff*sim_timestep);
             sigma_rotjump=sqrt(2.0*diff_rot*sim_timestep);
         };
 
@@ -218,11 +203,13 @@ class BrownianDynamics: public FluorophorDynamics
 
         /*GET_MACRO(double, diff_coeff);
         GET_MACRO(double, diff_coeff1);*/
-        inline double get_diff_coeff() { return diff_coeff[0]; };
-        inline double get_diff_coeff1() { return diff_coeff[1]; };
+        inline double get_diff_coeff() { return diff_coeff; };
         GET_MACRO(double, diff_rot);
         GET_SET_MACRO(bool,use_rotational_diffusion);
 
+        /*! \brief return DOT label-code (for GraphViz) that represents the nodes properties
+        */
+        virtual std::string dot_get_properties() ;
 };
 
 #endif // BROWNIANDYNAMICS_H

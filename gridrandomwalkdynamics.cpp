@@ -499,6 +499,22 @@ std::string GridRandomWalkDynamics::report() {
     return s;
 }
 
+std::string GridRandomWalkDynamics::dot_get_properties() {
+    std::string s=FluorophorDynamics::dot_get_properties();
+    s+="gridsize_X = "+inttostr(gridsize_X)+"<BR/>";
+    s+="gridsize_Y = "+inttostr(gridsize_Y)+"<BR/>";
+    s+="gridsize_Z = "+inttostr(gridsize_Z)+"<BR/>";
+    s+="diff_coeff = "+floattostr(diff_coeff)+" &mu;m&sup2;/s<BR/>";
+    //s+="jump_propability = "+floattostr(jump_propability)+"\n";
+    s+="grid_constant = "+floattostr(grid_constant)+" &mu;m<BR/>";
+    s+="  => diff_coeff_from_grid = "+floattostr(grid_constant*grid_constant/6.0/sim_timestep)+" &mu;m&sup2;/s<BR/>";
+    s+="set_obstacle_fraction = "+floattostr(obstacle_fraction)+"<BR/>";
+    s+="numobstacles = "+inttostr(numobstacles)+"<BR/>";
+    s+="real_obstacle_fraction = "+floattostr(double(numobstacles)/double(obstacle_size))+"<BR/>";
+
+    return s;
+}
+
 void GridRandomWalkDynamics::perform_boundary_check(unsigned long i) {
     register int32_t nx=walker_state[i].ix;
     register int32_t ny=walker_state[i].iy;

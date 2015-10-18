@@ -97,7 +97,10 @@ class ChildDynamics : public FluorophorDynamics
         virtual bool depends_on(const FluorophorDynamics* other) const;
 
         virtual void handle_parent_walker_count_changed(unsigned long N_walker, unsigned long N_fluorophores);
-
+        virtual std::string dot_get_properties() ;
+                /*! \brief return DOT-code (for GraphViz) that represents the links of the nodes returned by dot_get_node()
+        */
+        virtual std::string dot_get_links() ;
 };
 
 #endif // CHILDDYNAMICS_H

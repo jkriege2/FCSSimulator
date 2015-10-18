@@ -136,6 +136,21 @@ std::string ChildDynamics::report() {
 }
 
 
+std::string ChildDynamics::dot_get_properties() {
+    std::string s=FluorophorDynamics::dot_get_properties();
+    s+="initial_walker_visible = "+booltostr(initial_walker_visible)+"<BR/>";
+    s+="dont_copy_photophysics = "+booltostr(dont_copy_photophysics)+"<BR/>";
+    s+="copy_existstate = "+booltostr(copy_existstate)+"<BR/>";
+    s+="reset_qmstate_on_boundary = "+booltostr(reset_qmstate_on_boundary)+"<BR/>";
+    return s;
+}
+
+std::string ChildDynamics::dot_get_links() {
+    std::string s=FluorophorDynamics::dot_get_links();
+    s+="  "+parent+" -> "+get_group()+" [ shape=diamond label=\"parent-trajectories\" ]; \n";
+    return s;
+}
+
 FluorophorDynamics* ChildDynamics::get_parent() const {
     if (dynmap.count(parent)>0) return dynmap[parent];
     return NULL;

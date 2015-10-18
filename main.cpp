@@ -29,7 +29,6 @@
 #include "msdmeasurement.h"
 #include "childdynamics.h"
 #include "trajectoryplot.h"
-#include "fretdynamics.h"
 #include <gsl/gsl_matrix.h>
 
 
@@ -63,8 +62,8 @@ void do_sim(std::string inifilename, int argc, char* argv[]) {
 
         std::ofstream logfilestream;
         ScopedDelayedStreamDoubler2 stdredirect;
-		
-		
+
+
 
         std::cout<<"INITIALIZING LOG-file ...\n";
         try {
@@ -135,6 +134,7 @@ void do_sim(std::string inifilename, int argc, char* argv[]) {
             std::string oname=ini.getAsString(gname+".object_name", lgname);
             std::string supergroup="";
             FluorophorDynamics* d=NULL;
+            int object_number=extract_right_int(gname);
             //std::cout<<"** i="<<i<<"/"<<groups_in_ini.size()<<" gname="<<gname<<"  lgname="<<lgname<<"  oname="<<oname<<std::endl;
             if (lgname.find("brownian")==0 && lgname.size()>8) {
                 supergroup="brownian";
@@ -150,11 +150,9 @@ void do_sim(std::string inifilename, int argc, char* argv[]) {
             } else if (lgname.find("child")==0 && lgname.size()>5) {
                 supergroup="child";
                 d=new ChildDynamics(fluorophors, oname);
-            } else if (lgname.find("fret")==0 && lgname.size()>4) {
-                supergroup="fret";
-                d=new FRETDynamics(fluorophors, oname);
             }
             if (d!=NULL) {
+                d->set_object_number(object_number);
                 dyn.push_back(d);
                 dynmap[oname]=d;
                 dynmap[lgname]=d;
@@ -260,6 +258,7 @@ void do_sim(std::string inifilename, int argc, char* argv[]) {
         if (dyn.size()<=0)  throw std::runtime_error("you need at least one dynamics object!");
         if (meas.size()<=0)  throw std::runtime_error("you need at least one measurement object!");
 
+
         ofstream filestr;
         filestr.open ((basename+"config.txt").c_str(), fstream::out);
         for (size_t i=0; i<dyn.size(); i++) {
@@ -278,6 +277,68 @@ void do_sim(std::string inifilename, int argc, char* argv[]) {
             filestr<<meas[i]->report()<<endl;
         }
         filestr.close();
+
+
+
+
+
+        filestr.open ((basename+"config.gv").c_str(), fstream::out);
+        filestr<<"digraph hierarchy {\n";
+        filestr<<"  node[shape=box style=filled fillcolor=gray95 fontname=Arial fontsize=7]\n";
+        filestr<<"  edge[arrowtail=empty fontname=Arial fontsize=8 ]\n";
+        filestr<<"  size=\"10000,10000\";\n";
+        filestr<<"  dpi=120;\n";
+        filestr<<"  rankdir=LR;\n";
+        filestr<<"  fontsize=7;\n";
+        filestr<<"  fontname=Arial;\n";
+        filestr<<"  \n  \n";
+        for (size_t i=0; i<dyn.size(); i++) {
+            filestr<<dyn[i]->dot_get_node()<<endl;
+        }
+        for (size_t i=0; i<meas.size(); i++) {
+            filestr<<meas[i]->dot_get_node()<<endl;
+        }
+        filestr<<"\n\n";
+        for (size_t i=0; i<dyn.size(); i++) {
+            filestr<<dyn[i]->dot_get_links()<<endl;
+        }
+        for (size_t i=0; i<meas.size(); i++) {
+            filestr<<meas[i]->dot_get_links()<<endl;
+        }
+        filestr<<"  \n  \n";
+        filestr<<"}\n";
+        filestr.close();
+
+
+
+        filestr.open ((basename+"config.simple.gv").c_str(), fstream::out);
+        filestr<<"digraph hierarchy {\n";
+        filestr<<"  node[shape=box style=filled fillcolor=gray95 fontname=Arial fontsize=7]\n";
+        filestr<<"  edge[arrowtail=empty fontname=Arial fontsize=8 ]\n";
+        filestr<<"  size=\"10000,10000\";\n";
+        filestr<<"  dpi=120;\n";
+        filestr<<"  rankdir=LR;\n";
+        filestr<<"  fontsize=7;\n";
+        filestr<<"  fontname=Arial;\n";
+        filestr<<"  \n  \n";
+        for (size_t i=0; i<dyn.size(); i++) {
+            filestr<<dyn[i]->dot_get_node(true)<<endl;
+        }
+        for (size_t i=0; i<meas.size(); i++) {
+            filestr<<meas[i]->dot_get_node(true)<<endl;
+        }
+        filestr<<"\n\n";
+        for (size_t i=0; i<dyn.size(); i++) {
+            filestr<<dyn[i]->dot_get_links()<<endl;
+        }
+        for (size_t i=0; i<meas.size(); i++) {
+            filestr<<meas[i]->dot_get_links()<<endl;
+        }
+        filestr<<"  \n  \n";
+        filestr<<"}\n";
+        filestr.close();
+
+
 
 
         if (duration>0) {

@@ -81,9 +81,11 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, std::stri
     init_fluorophor="atto488";
     group="";
     supergroup="";
+    object_number=0;
 
     use_two_walkerstates=false;
     depletion_propability=0;
+    use_photophysics=false;
 
     endoftrajectory=false;
 
@@ -113,7 +115,7 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, std::stri
     for (int j=0; j<N_FLUORESCENT_STATES*N_FLUORESCENT_STATES; j++) init_photophysics_transition[j]=0;
 
     init_spectrum=-1;
-    use_photophysics=true;
+    use_photophysics=false;
     protocol_timestep_count=-1;
 
     additional_walker_photophysics=true;
@@ -152,6 +154,7 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, double si
     protocol_trajectories=0;
     endoftrajectory=false;
     sim_time=0;
+    object_number=0;
     sim_timestep=1e-6;
     use_two_walkerstates=false;
     init_fluorophor="atto488";
@@ -183,7 +186,7 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, double si
     for (int j=0; j<N_FLUORESCENT_STATES; j++) init_sigma_abs[j]=2.2e-20;
     for (int j=0; j<N_FLUORESCENT_STATES; j++) init_q_fluor[j]=0.1;
     for (int j=0; j<N_FLUORESCENT_STATES*N_FLUORESCENT_STATES; j++) init_photophysics_transition[j]=0;
-    use_photophysics=true;
+    use_photophysics=false;
     protocol_timestep_count=-1;
     additional_walker_photophysics=true;
     additional_walker_position_mode=SamePosition;
@@ -226,6 +229,7 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, double si
     group="";
     supergroup="";
     reset_qmstate_at_simboxborder=false;
+    object_number=0;
 
     absorbance_reader="";
     photophysics_absorbance_dependent=false;
@@ -255,7 +259,7 @@ FluorophorDynamics::FluorophorDynamics(FluorophorManager* fluorophors, double si
     for (int j=0; j<N_FLUORESCENT_STATES; j++) init_sigma_abs[j]=2.2e-20;
     for (int j=0; j<N_FLUORESCENT_STATES; j++) init_q_fluor[j]=0.1;
     for (int j=0; j<N_FLUORESCENT_STATES*N_FLUORESCENT_STATES; j++) init_photophysics_transition[j]=0;
-    use_photophysics=true;
+    use_photophysics=false;
     protocol_timestep_count=-1;
     additional_walker_photophysics=true;
     additional_walker_position_mode=SamePosition;
@@ -1521,4 +1525,101 @@ double FluorophorDynamics::get_visible_walker_sigma_times_qfl(unsigned long i) {
 
 FluorophorDynamics::walkerState* FluorophorDynamics::get_visible_walker_state() {
     return get_walker_state();
+}
+
+std::string FluorophorDynamics::dot_get_node(bool simple)  {
+    std::string s;
+    s+="     "+object_name+" [ label =<<FONT POINT-SIZE=\"12\"><B>"+object_name+"</B></FONT><BR/><BR/><FONT POINT-SIZE=\"7\">";
+    if (!simple) s+=dot_get_properties();
+    s+="</FONT><BR/>> color=blue4 fontcolor=blue4 fillcolor=gray75 ];\n";
+
+    if (!simple && use_photophysics) {
+        s+="  subgraph cluster_"+object_name+"_pps {\n";
+        s+="    color=blue4;\n";
+        s+="    fontcolor=blue4;\n";
+        s+="    fillcolor=gray75;\n";
+        s+="    node [style=filled];";
+        s+="    label=\"photophysics: "+object_name+"\";";
+        for (int i=0; i<N_FLUORESCENT_STATES; i++) {
+            bool used=false;
+            for (int j=0; j<N_FLUORESCENT_STATES; j++) {
+                if (i!=j) {
+                    used=used || (init_photophysics_transition[i*N_FLUORESCENT_STATES+j]!=0);
+                }
+            }
+            if (used) {
+                std::string on=object_name+"_pps"+inttostr(i);
+                std::string shape="circle";
+                if (i==init_qm_state) shape="doublecircle";
+                s+="     "+on+" [ label = <<FONT POINT-SIZE=\"12\"><B>"+inttostr(i)+"</B></FONT><BR/><BR/><FONT POINT-SIZE=\"6\">&sigma;="+floattostr(init_sigma_abs[i]*1e20, 3, true)+"&#8491;&sup2;<BR/>qfl="+floattostr(init_q_fluor[i], -1, true)+"</FONT>> shape = "+shape+" color=blue4 fontcolor=blue4 fillcolor=gray75 ];\n";
+            }
+        }
+        for (int i=0; i<N_FLUORESCENT_STATES; i++) {
+            for (int j=0; j<N_FLUORESCENT_STATES; j++) {
+                std::string oni=object_name+"_pps"+inttostr(i);
+                std::string onj=object_name+"_pps"+inttostr(j);
+                if (init_photophysics_transition[i*N_FLUORESCENT_STATES+j]>0 && (i!=j || init_photophysics_transition[i*N_FLUORESCENT_STATES+j]<1)) {
+                    s+=oni+" -> "+onj+" [ label = \""+floattostr(init_photophysics_transition[i*N_FLUORESCENT_STATES+j], -1, true)+"\" color=blue4 fontcolor=blue4 ];\n";
+
+                }
+            }
+        }
+        s+="  }\n\n";
+    }
+
+    s+="\n";
+    return s;
+}
+
+std::string FluorophorDynamics::dot_get_properties()  {
+    std::string s="";
+    s+="rng = "+std::string(gsl_rng_name(rng))+"<BR/>";
+    s+="sim_timestep = "+floattostr(sim_timestep/1e-6)+" microsec<BR/>";
+    if (volume_shape==0) {
+        s+="sim_volume = box: x=0.."+floattostr(sim_x)+" microns, y=0.."+floattostr(sim_y)+" microns, z=0.."+floattostr(sim_z)+" microns<BR/>";
+    } else if (volume_shape==1) {
+        s+="sim_volume = sphere, r="+floattostr(sim_radius)+" microns<BR/>";
+    }
+    s+="walker_count = "+inttostr(walker_count)+"<BR/>";
+    s+="visible_walker_count = "+inttostr(get_visible_walker_count())+"<BR/>";
+    s+="c_fluor = "+floattostr(c_fluor)+" nMolar<BR/>";
+    s+="n_fluorophores = "+inttostr(n_fluorophores)+"<BR/>";
+    s+="additional_walker_photophysics = "+booltostr(additional_walker_photophysics)+"<BR/>";
+    s+="additional_walker_off_if_main_off = "+booltostr(additional_walker_off_if_main_off)+"<BR/>";
+    if (additional_walker_position_mode==InSphere) {
+        s+="additional_walker_mode = in_sphere<BR/>";
+        s+="additional_walker_sphere_radius = "+floattostr(additional_walker_sphere_radius)+" micron<BR/>";
+    } else if (additional_walker_position_mode==SamePosition) {
+        s+="additional_walker_mode = same_position<BR/>";
+    }
+
+    s+="init_dipole_vec = ("+floattostr(init_p_x)+", "+floattostr(init_p_y)+", "+floattostr(init_p_z)+")<BR/>";
+    s+="init_spectrum = "+inttostr(init_spectrum);
+    if (init_spectrum==-1) s+=" [none]<BR/>";
+    else s+=" ["+extract_file_name(fluorophors->getSpectrumFilename(init_spectrum))+"]<BR/>";
+    s+="init_type = "+inttostr(init_type)+"<BR/>";
+    //double init_sigma_absnm2[N_FLUORESCENT_STATES];
+    //for (int i=0; i<N_FLUORESCENT_STATES; i++) init_sigma_absnm2[i]=init_sigma_abs[i]*1e18;
+    //s+="init_sigma_abs = "+doublevectortostr(init_sigma_abs, N_FLUORESCENT_STATES)+" meters^2<BR/>";
+    //s+="               = "+doublevectortostr(init_sigma_absnm2, N_FLUORESCENT_STATES)+" nanometers^2<BR/>";
+    if (!use_photophysics) {
+    } else {
+        s+="with photophysics:<BR/>";
+        s+="<BR/>";
+        //s+=doublearraytostr(init_photophysics_transition, N_FLUORESCENT_STATES,N_FLUORESCENT_STATES,false)+"<BR/>";
+        s+="  reset_qmstate_at_simboxborder = "+booltostr(reset_qmstate_at_simboxborder)+"<BR/>";
+        if (photophysics_absorbance_dependent) {
+            s+="  photophysics_absorbance_factor = "+floattostr(photophysics_absorbance_factor)+"<BR/><BR/>";
+        }
+    }
+    s+="depletion_propability = "+floattostr(depletion_propability)+"<BR/><BR/>";
+
+    return s;
+}
+std::string FluorophorDynamics::dot_get_links()  {
+    std::string s;
+    if (use_photophysics) {
+        s+="  "+object_name+" -> "+object_name+"_pps"+inttostr(init_qm_state)+" [ shape=diamond label=\"photophysics\" lhead=cluster_"+object_name+"_pps color=blue fontcolor=blue  ] \n";
+    }
+    return s;
 }

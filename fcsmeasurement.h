@@ -214,6 +214,10 @@ class FCSMeasurement: public FluorescenceMeasurement, public RelativeAbsorbanceR
 
         virtual bool depends_on(const FluorescenceMeasurement* other) const;
         FCSMeasurement* get_fccs_partner_object() const;
+
+        virtual std::string dot_get_properties() ;
+        virtual std::string dot_get_links() ;
+
     protected:
 
         /** \brief save the created data (time series and correlation function) into file

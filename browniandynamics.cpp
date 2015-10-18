@@ -25,19 +25,15 @@ BrownianDynamics::BrownianDynamics(FluorophorManager* fluorophors, std::string o
 {
     save_msd_every_n_timesteps=-1;
     msd=NULL;
+    velocity[0]=velocity[1]=velocity[2]=0;
     msd2=NULL;
     msd_count=NULL;
     msd_size=10000;
-    set_diff_coeff(10, 20);
+    set_diff_coeff(10);
     diff_rot=100;
     use_rotational_diffusion=false;
-    diffarea_x0[0]=0;
     n_fluorophores_local=1;
     heatup_steps=0;
-    for (int i=1; i<DCOUNT; i++) {
-        diffarea_x0[i]=100000;
-        diff_coeff[i]=20;
-    }
     init();
 }
 
@@ -46,19 +42,15 @@ BrownianDynamics::BrownianDynamics(FluorophorManager* fluorophors, double sim_x,
 {
     save_msd_every_n_timesteps=-1;
     msd=NULL;
+    velocity[0]=velocity[1]=velocity[2]=0;
     msd2=NULL;
     msd_size=10000;
     msd_count=NULL;
-    set_diff_coeff(10, 20);
-    diffarea_x0[0]=0;
+    set_diff_coeff(10);
     diff_rot=100;
     use_rotational_diffusion=false;
     n_fluorophores_local=1;
     heatup_steps=0;
-    for (int i=1; i<DCOUNT; i++) {
-        diffarea_x0[i]=100000;
-        diff_coeff[i]=20;
-    }
     init();
 }
 
@@ -67,17 +59,13 @@ BrownianDynamics::BrownianDynamics(FluorophorManager* fluorophors, double sim_ra
 {
     save_msd_every_n_timesteps=-1;
     msd=NULL;
+    velocity[0]=velocity[1]=velocity[2]=0;
     msd2=NULL;
     msd_size=10000;
     msd_count=NULL;
-    set_diff_coeff(10, 20);
-    diffarea_x0[0]=0;
+    set_diff_coeff(20);
     n_fluorophores_local=1;
     heatup_steps=0;
-    for (int i=1; i<DCOUNT; i++) {
-        diffarea_x0[i]=10000;
-        diff_coeff[i]=20;
-    }
     diff_rot=100;
     use_rotational_diffusion=false;
     init();
@@ -102,15 +90,15 @@ void BrownianDynamics::read_config_internal(jkINIParser2& parser) {
     FluorophorDynamics::read_config_internal(parser);
     //diffarea_x0=parser.getAsDouble("diffarea_x0", this->sim_x/2.0);
     //set_diff_coeff(parser.getAsDouble("diff_coeff", diff_coeff[0]), parser.getAsDouble("diff_coeff1", diff_coeff[1]));
-    set_diff_coeffi(0, parser.getSetAsDouble("diff_coeff", diff_coeff[0]));
-    for (int i=0; i<DCOUNT; i++) {
-        set_diff_coeffi(i, parser.getSetAsDouble("diff_coeff"+inttostr(i), diff_coeff[i]));
-        diffarea_x0[i]=parser.getSetAsDouble("diffarea_x"+inttostr(i), diffarea_x0[i]);
-    }
+    set_diff_coeff(parser.getSetAsDouble("diff_coeff", parser.getSetAsDouble("diff_coeff0", diff_coeff)));
+
     set_diffrot_coeff(parser.getSetAsDouble("diff_rot", diff_rot/M_PI/M_PI*180.0*180.0)/180.0/180.0*M_PI*M_PI);
     use_rotational_diffusion=parser.getSetAsBool("use_rotational_diffusion", use_rotational_diffusion);
     save_msd_every_n_timesteps=parser.getSetAsInt("save_msd_every_n_timesteps", save_msd_every_n_timesteps);
     msd_size=parser.getSetAsInt("msd_size", msd_size);
+    velocity[0]=parser.getSetAsDouble("vx", parser.getSetAsDouble("v0", velocity[0]));
+    velocity[1]=parser.getSetAsDouble("vy", parser.getSetAsDouble("v1", velocity[1]));
+    velocity[2]=parser.getSetAsDouble("vz", parser.getSetAsDouble("v2", velocity[2]));
     init();
 }
 
@@ -151,14 +139,12 @@ void BrownianDynamics::propagate(bool boundary_check){
                 register double nx,ny,nz;
 
                 //double s=(x0>=diffarea_x0)?sigma_jump1:sigma_jump;
-                register double s=sigma_jump[0];
-                for (int j=1; j<DCOUNT; j++) {
-                    if (x0>=diffarea_x0[j-1]) s=sigma_jump[j];
-                }
+                register double s=sigma_jump;
+
                 //if (x0>=diffarea_x0) s=sigma_jump1;
-                nx=x0+gsl_ran_gaussian_ziggurat(rng, s);
-                ny=y0+gsl_ran_gaussian_ziggurat(rng, s);
-                nz=z0+gsl_ran_gaussian_ziggurat(rng, s);
+                nx=x0+gsl_ran_gaussian_ziggurat(rng, s)+velocity[0]*sim_timestep;
+                ny=y0+gsl_ran_gaussian_ziggurat(rng, s)+velocity[1]*sim_timestep;
+                nz=z0+gsl_ran_gaussian_ziggurat(rng, s)+velocity[2]*sim_timestep;
 
                 // update walker position
                 walker_state[i].x=nx;
@@ -311,7 +297,7 @@ void BrownianDynamics::propagate(bool boundary_check){
         fprintf(f, "unset multiplot\n");
         fprintf(f, "reset\n");
         fprintf(f, "msd_fit(tau) = 6 * Diff * tau\n");
-        fprintf(f, "Diff=%lf;\n", diff_coeff[0]);
+        fprintf(f, "Diff=%lf;\n", diff_coeff);
         fprintf(f, "fit msd_fit(x) \"%s\" using 1:2 via Diff\n", extract_file_name(basename+object_name+"msd.dat").c_str());
         for (int plt=0; plt<2; plt++) {
             if (plt==0) {
@@ -324,7 +310,7 @@ void BrownianDynamics::propagate(bool boundary_check){
             fprintf(f, "set title \"sigma_translation^2 against time\"\n");
             fprintf(f, "set xlabel \"time t [s]\"\n");
             fprintf(f, "set ylabel \"sigma^2 [microns^2]\"\n");
-            fprintf(f, "msd(tau)=6 * %lf * tau\n", diff_coeff[0]);
+            fprintf(f, "msd(tau)=6 * %lf * tau\n", diff_coeff);
             fprintf(f, "set style fill transparent solid 0.5 noborder\n");
             fprintf(f, "plot \"%s\" using 1:(($2)-($3)):(($2)+($3)) notitle with filledcurves, \"%s\" using 1:2 title \"simulation result\" with points, msd(x) title \"theory\" with lines, msd_fit(x) title sprintf(\"fit D=%%.2f\",Diff) with lines\n", extract_file_name(basename+object_name+"msd.dat").c_str(), extract_file_name(basename+object_name+"msd.dat").c_str());
             fprintf(f, "\n");
@@ -333,7 +319,7 @@ void BrownianDynamics::propagate(bool boundary_check){
             fprintf(f, "set title \"sigma_translation^2 against time\"\n");
             fprintf(f, "set xlabel \"time t [s]\"\n");
             fprintf(f, "set ylabel \"sigma^2 [microns^2]\"\n");
-            fprintf(f, "msd(tau)=6 * %lf * tau\n", diff_coeff[0]);
+            fprintf(f, "msd(tau)=6 * %lf * tau\n", diff_coeff);
             fprintf(f, "set style fill transparent solid 0.5 noborder\n");
             fprintf(f, "plot \"%s\" using 1:(($2)-($3)):(($2)+($3)) notitle with filledcurves, \"%s\" using 1:2 title \"simulation result\" with points, msd(x) title \"theory\" with lines, msd_fit(x) title sprintf(\"fit D=%%.2f\",Diff) with lines\n", extract_file_name(basename+object_name+"msd.dat").c_str(), extract_file_name(basename+object_name+"msd.dat").c_str());
             fprintf(f, "\n");
@@ -354,21 +340,13 @@ void BrownianDynamics::propagate(bool boundary_check){
 std::string BrownianDynamics::report() {
     std::string s=FluorophorDynamics::report();
     s+="n_fluorophores_local = "+inttostr(n_fluorophores_local)+" fluorophore(s) per particle/walker\n";
-    s+="diff_coeff = "+doublevectortostr(diff_coeff, DCOUNT)+" micron^2/s\n";
-    s+="diffarea_x0 = "+doublevectortostr(diffarea_x0, DCOUNT)+" micron\n";
-    //s+="sigma_jump1 = MSD(sim_timestep) = "+floattostr(sigma_jump1/1e-3)+" nanometers\n";
-    s+="sigma_jump = MSD(sim_timestep) = "+doublevectortostr(sigma_jump, DCOUNT)+" microns\n";
-    double m0[DCOUNT], m1[DCOUNT], m2[DCOUNT], m3[DCOUNT];
-    for (int i=0; i<DCOUNT; i++) {
-        m0[i]=sqrt(6*diff_coeff[i]*0.1e-3);
-        m1[i]=sqrt(6*diff_coeff[i]*1e-3);
-        m2[i]=sqrt(6*diff_coeff[i]*5e-3);
-        m3[i]=sqrt(6*diff_coeff[i]*10e-3);
-    }
-    s+="MSD(0.1 msec) = "+doublevectortostr(m0, DCOUNT)+" microns\n";
-    s+="MSD(1 msec)   = "+doublevectortostr(m1, DCOUNT)+" microns\n";
-    s+="MSD(5 msec)   = "+doublevectortostr(m2, DCOUNT)+" microns\n";
-    s+="MSD(10 msec)  = "+doublevectortostr(m3, DCOUNT)+" microns\n";
+    s+="diff_coeff = "+floattostr(diff_coeff)+" micron^2/s\n";
+    s+="sigma_jump = MSD(sim_timestep) = "+floattostr(sigma_jump)+" microns\n";
+    s+="MSD(0.1 msec) = "+floattostr(sqrt(6.0*diff_coeff*0.1e-3))+" microns\n";
+    s+="MSD(1 msec)   = "+floattostr(sqrt(6.0*diff_coeff*1e-3))+" microns\n";
+    s+="MSD(5 msec)   = "+floattostr(sqrt(6.0*diff_coeff*5e-3))+" microns\n";
+    s+="MSD(10 msec)  = "+floattostr(sqrt(6.0*diff_coeff*10e-3))+" microns\n";
+    s+="velocity = ( "+floattostr(velocity[0])+", "+floattostr(velocity[1])+", "+floattostr(velocity[2])+" ) micron/s\n";
     if (use_rotational_diffusion) {
         s+="diff_rot = "+floattostr(diff_rot/M_PI*180.0/M_PI*180.0)+" deg^2/s\n";
         s+="sigma_rotjump = "+floattostr(sigma_rotjump/M_PI*180.0)+" deg\n";
@@ -377,6 +355,20 @@ std::string BrownianDynamics::report() {
     }
     if (save_msd_every_n_timesteps>0) s+="saving MSD every "+inttostr(save_msd_every_n_timesteps)+" timesteps with "+inttostr(msd_size)+" items\n";
 
+    return s;
+}
+
+std::string BrownianDynamics::dot_get_properties() {
+    std::string s=FluorophorDynamics::dot_get_properties();
+    s+="n_fluorophores_local = "+inttostr(n_fluorophores_local)+" fl./walker<BR/>";
+    s+="diff_coeff = "+floattostr(diff_coeff)+" &mu;m&sup2;/s<BR/>";
+    s+="velocity = ( "+floattostr(velocity[0])+", "+floattostr(velocity[1])+", "+floattostr(velocity[2])+" ) &mu;m/s<BR/>";
+    if (use_rotational_diffusion) {
+        s+="diff_rot = "+floattostr(diff_rot/M_PI*180.0/M_PI*180.0)+" deg^2/s<BR/>";
+    } else {
+        s+="no rotation<BR/>";
+    }
+    s+="<BR/>";
     return s;
 }
 
@@ -423,7 +415,7 @@ void BrownianDynamics::test(unsigned int steps, unsigned int walkers) {
             xs=xs+gsl_pow_2(walker_state[w].x)+gsl_pow_2(walker_state[w].y)+gsl_pow_2(walker_state[w].z);
             dalpha=dalpha+gsl_pow_2(acos(walker_state[w].p_z));
         }
-        fprintf(f, "%20.10lf,      %20.10lf,  %20.10lf,      %20.10lf,  %20.10lf\n", (double)(i+1)*sim_timestep*1e6, xs/(double)nw, 6.0*diff_coeff[0]*(double)((double)(i+1)*sim_timestep), dalpha/(double)nw/M_PI/M_PI*180.0*180.0, 2.0*diff_rot*(double)((double)(i+1)*sim_timestep)/M_PI/M_PI*180.0*180.0);
+        fprintf(f, "%20.10lf,      %20.10lf,  %20.10lf,      %20.10lf,  %20.10lf\n", (double)(i+1)*sim_timestep*1e6, xs/(double)nw, 6.0*diff_coeff*(double)((double)(i+1)*sim_timestep), dalpha/(double)nw/M_PI/M_PI*180.0*180.0, 2.0*diff_rot*(double)((double)(i+1)*sim_timestep)/M_PI/M_PI*180.0*180.0);
         fprintf(f1, "%20.10lf,   %20.10lf,  %20.10lf,     %20.10lf,   %20.10lf,  %20.10lf\n", walker_state[0].x, walker_state[0].y, walker_state[0].z, walker_state[0].p_x, walker_state[0].p_y, walker_state[0].p_z);
         if (i%100==0) std::cout<<".";
     }
@@ -505,3 +497,4 @@ void BrownianDynamics::test(unsigned int steps, unsigned int walkers) {
     fclose(f);
     std::cout<<"test DONE!"<<std::endl;
 }
+

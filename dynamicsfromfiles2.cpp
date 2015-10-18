@@ -148,7 +148,7 @@ void DynamicsFromFiles2::read_config_internal(jkINIParser2& parser) {
             }
         }
     }
-    
+
     repeat_files=parser.getSetAsInt("repeat_files", repeat_files);
     if (repeat_files>1){
         int oldtcount=trajectory_count;
@@ -182,7 +182,7 @@ void DynamicsFromFiles2::read_config_internal(jkINIParser2& parser) {
     qfluor_factor=parser.getSetAsDouble("qfluor_factor", qfluor_factor);
     max_columns=parser.getSetAsInt("max_columns", max_columns);
     max_lines=parser.getSetAsInt("max_lines", max_lines);
-    
+
     rotate_trajectories=parser.getSetAsBool("rotate_trajectories", rotate_trajectories);
 
 
@@ -236,21 +236,21 @@ std::vector<double> DynamicsFromFiles2::dataFileReadLine(FILE* f) {
                 free(buf);
             } break;
 
-            
+
             case 2: {
                 int16_t* buf=(int16_t*)malloc(binI.entries*sizeof(int16_t));
                 fread(buf, binI.entries*sizeof(int16_t), 1, f);
                 for (int i=0; i<binI.entries; i++) res.push_back(buf[i]);
                 free(buf);
             } break;
-            
+
             case 4: {
                 int32_t* buf=(int32_t*)malloc(binI.entries*sizeof(int32_t));
                 fread(buf, binI.entries*sizeof(int32_t), 1, f);
                 for (int i=0; i<binI.entries; i++) res.push_back(buf[i]);
                 free(buf);
             } break;
-            
+
             case 8: {
                 int64_t* buf=(int64_t*)malloc(binI.entries*sizeof(int64_t));
                 fread(buf, binI.entries*sizeof(int64_t), 1, f);
@@ -278,7 +278,7 @@ FILE* DynamicsFromFiles2::dataFileOpen(const std::string& filename) {
         binI.intSize=t16;
         binI.records=t64;
         binI.entries=3;
-        binFileInfo[f]=binI; 
+        binFileInfo[f]=binI;
         std::cout<<"  file: "<<f<<":   intsize="<<binFileInfo[f].intSize<<"   records="<<binFileInfo[f].records<<"   entries="<<binFileInfo[f].entries<<"\n";
         return f;
     } else {
@@ -302,7 +302,7 @@ unsigned long long DynamicsFromFiles2::dataFileCountLines(const std::string& fil
         fread(&t16, 2, 1, f);
         fread(&t64, 8, 1, f);
         fclose(f);
-        return t64;        
+        return t64;
     } else {
         return count_lines(filename, comment_char);
     }
@@ -419,7 +419,7 @@ void DynamicsFromFiles2::init() {
     tim.tock();
     timing_loadall=tim.get_duration();
     timing_load1=timing_load1/(double)trajectory_count;
-    
+
     alpha1.clear();
     alpha2.clear();
     alpha3.clear();
@@ -512,9 +512,9 @@ void DynamicsFromFiles2::propagate(bool boundary_check) {
         if ((cc>col_qmstate) && (col_qmstate>=0) && (max_columns>col_qmstate)) {
             walker_state[file_counter].qm_state=(int)round(data[col_qmstate]);
         }
-        
+
         rotateTrajectory(file_counter,  alpha1[file_counter],  alpha2[file_counter],  alpha3[file_counter]);
-        
+
         //std::cout<<line_counter<<": x="<<walker_state[0].x<<" y="<<walker_state[0].y<<" z="<<walker_state[0].z<<" p_x="<<walker_state[0].p_x<<" p_y="<<walker_state[0].p_y<<" p_z="<<walker_state[0].p_z<<" q_fluor="<<walker_state[0].q_fluor<<" sigma_abs="<<walker_state[0].sigma_abs<<std::endl;
         line_counter++;
         if (line_counter>=lc) {
@@ -660,7 +660,7 @@ void DynamicsFromFiles2::propagate(bool boundary_check) {
         else endoftrajectory=true; // if there is no more data, signal this with     endoftrajectory=true!
     }
 }
- 
+
  void DynamicsFromFiles2::rotateTrajectory(int i, double alpha1, double alpha2, double alpha3) {
     if (rotate_trajectories) {
         //for (int i=0; i<trajectory_count; i++) {
@@ -673,14 +673,14 @@ void DynamicsFromFiles2::propagate(bool boundary_check) {
             const double R[3][3]= {{c2,      -c3*s2,           s2*s3},
                                   {c1*s2,    c1*c2*c2-s1*s3,   -c3*s1-c1*c2*s3},
                                   {s1*s2,    c1*s3+c2*c3*s1,   c1*c3-c2*s1*s3}};
-            
+
             const double x=walker_state[i].x;
             const double y=walker_state[i].y;
             const double z=walker_state[i].z;
             walker_state[i].x=R[0][0]*x+R[0][1]*y+R[0][2]*z;
             walker_state[i].y=R[1][0]*x+R[1][1]*y+R[1][2]*z;
             walker_state[i].z=R[2][0]*x+R[2][1]*y+R[2][2]*z;
-            
+
         //}
     }
 }
@@ -747,7 +747,75 @@ std::string DynamicsFromFiles2::report() {
     s+="estimated_runtime = "+floattostr(estimate_runtime())+" secs\n";
     return s;
 }
+std::string DynamicsFromFiles2::dot_get_links() {
+    std::string s=FluorophorDynamics::dot_get_links();
 
+    s+="  "+object_name+"_file [ shape=note label=\""+inttostr(trajectory_count)+" file\" ];\n";
+    s+="  "+object_name+"_file -> "+object_name+" [ label=\"inputfile\" ];\n";
+
+    return s;
+}
+
+std::string DynamicsFromFiles2::dot_get_properties() {
+    std::string s=FluorophorDynamics::dot_get_properties();
+    s+="trajectory_count = "+inttostr(trajectory_count)+"<BR/>";
+    s+="trajectory_files = ";
+    for (int i=0; i<trajectory_count; i++) {
+        if (i>0) s+=",\n                   ";
+        s+=trajectory_files[i]+"  [ lines="+inttostr(linecount[i])+" columns="+inttostr(columncount[i])+"shift_x="+floattostr(shift_x[i])+" shift_y="+floattostr(shift_y[i])+" shift_z="+floattostr(shift_z[i])+" ] &mu;m<BR/>";
+    }
+    s+="file_format = "+fileFormatToString(fileformat)+"<BR/>";
+    if (fileformat==ffCSV) {
+        s+="separator_char = "+chartoprintablestr(separator_char)+"<BR/>";
+        s+="comment_char = "+chartoprintablestr(comment_char)+"<BR/>";
+    }
+    if (shiftmode==Mean) s+="shift_mode = mean (center-of-mass)<BR/>";
+    if (shiftmode==RandomDisplacedMean) {
+        s+="shift_mode = mean_random (randomly displaced center-of-mass)<BR/>";
+        s+="mean_shift_range_x = "+floattostr(randomdisplace_x_min)+" ... "+floattostr(randomdisplace_x_max)+" &mu;m<BR/>";
+        s+="mean_shift_range_y = "+floattostr(randomdisplace_y_min)+" ... "+floattostr(randomdisplace_y_max)+" &mu;m<BR/>";
+        s+="mean_shift_range_z = "+floattostr(randomdisplace_z_min)+" ... "+floattostr(randomdisplace_z_max)+" &mu;m<BR/>";
+    }
+    if (shiftmode==EndEndDistanceCenter) {
+        s+="shift_mode = end_end_center (shift center of end-to-end line to 0)<BR/>";
+    }
+    if (shiftmode==EndEndDistanceCenterRandom) {
+        s+="shift_mode = end_end_center_random (shift center of end-to-end line to random position)<BR/>";
+        s+="mean_shift_range_x = "+floattostr(randomdisplace_x_min)+" ... "+floattostr(randomdisplace_x_max)+" &mu;m<BR/>";
+        s+="mean_shift_range_y = "+floattostr(randomdisplace_y_min)+" ... "+floattostr(randomdisplace_y_max)+" &mu;m<BR/>";
+        s+="mean_shift_range_z = "+floattostr(randomdisplace_z_min)+" ... "+floattostr(randomdisplace_z_max)+" &mu;m<BR/>";
+    }
+    if (shiftmode==HalfTime) s+="shift_mode = halftime (to position at file_duration/2)<BR/>";
+    if (shiftmode==NthTime) s+="shift_mode = nth_time (to position at (fileno+1)*file_duration/(trajectory_count+2))<BR/>";
+    s+="rotate_trajectories = "+booltostr(rotate_trajectories)+"<BR/>";
+    s+="repeat_files = "+inttostr(repeat_files)+"<BR/>";
+    s+="timing_loadall = "+floattostr(timing_loadall)+" secs<BR/>";
+    s+="timing_load1 = "+floattostr(timing_load1)+" secs<BR/>";
+    s+="max_files = "+inttostr(max_files)+"<BR/>";
+    s+="max_columns = "+inttostr(max_columns)+"<BR/>";
+    if (max_lines<=0) {
+        s+="max_lines = [all lines]<BR/>";
+    } else {
+        s+="max_lines = "+inttostr(max_lines)+"<BR/>";
+    }
+    s+="col_time = "+inttostr(col_time)+"<BR/>";
+    s+="col_posx, col_posy, col_posz = "+inttostr(col_posx)+", "+inttostr(col_posy)+", "+inttostr(col_posz)+"<BR/>";
+    s+="col_px, col_py, col_pz = "+inttostr(col_px)+", "+inttostr(col_py)+", "+inttostr(col_pz)+"<BR/>";
+    s+="col_px1, col_py1, col_pz1 = "+inttostr(col_px1)+", "+inttostr(col_py1)+", "+inttostr(col_pz1)+"<BR/>";
+    s+="p_fraction = "+floattostr(p_fraction)+"<BR/>";
+    s+="col_abs = "+inttostr(col_abs)+"<BR/>";
+    s+="col_qmstate = "+inttostr(col_qmstate)+"<BR/>";
+    s+="col_qfluor = "+inttostr(col_qfluor)+"<BR/>";
+    if (tmode==Sequential) s+="play_mode = sequential<BR/>";
+    if (tmode==SequentialParallel) s+="play_mode = sequential_parallel\nparallel_trajectories = "+inttostr(parallelTrajectories)+"<BR/>";
+    if (tmode==Parallel) s+="play_mode = parallel<BR/>";
+    //s+="max_columns = "+inttostr(max_columns)+"\n";
+    //s+="time_factor = "+floattostr(time_factor)+"\n";
+    s+="position_factor = "+floattostr(position_factor)+"<BR/>";
+    s+="abs_factor = "+floattostr(abs_factor)+"<BR/>";
+    s+="qfluor_factor = "+floattostr(qfluor_factor)+"<BR/>";
+    return s;
+}
 void DynamicsFromFiles2::clear() {
    if (file.size()>0) {
         for (size_t i=0; i<file.size(); i++) {

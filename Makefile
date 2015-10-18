@@ -10,7 +10,7 @@ BITS=64
 CFLAGS =  -Wall -DQF_DONT_USE_ALIGNED_MALLOC -DNO_LIBTIFF -DJKIMAGE_USES_TINYTIFF -m$(BITS) -I. -I./extlibs/TinyTIFF/ -I./extlibs/StatisticsTools/  -fexceptions
 #--enable-auto-import
 LDFLAGS = -lm
-CFLAGS += -I../../extlibs/gsl/include/ -I./extlibs/gsl/include/ 
+CFLAGS += -I../../extlibs/gsl/include/ -I./extlibs/gsl/include/
 LDFLAGS += -L../../extlibs/gsl/lib/ -L./extlibs/gsl/lib/ -lgsl -lgslcblas
 
 
@@ -31,7 +31,6 @@ SRC_FILE= browniandynamics.cpp \
           msdmeasurement.cpp \
           childdynamics.cpp \
           trajectoryplot.cpp \
-          fretdynamics.cpp \
           datatable.cpp \
           highrestimer.cpp \
           jkiniparser2.cpp \

@@ -137,6 +137,10 @@ class GridRandomWalkDynamics : public FluorophorDynamics
 
         /** \brief report the state of the object */
         virtual std::string report();
+
+        /*! \brief return DOT label-code (for GraphViz) that represents the nodes properties
+        */
+        virtual std::string dot_get_properties() ;
     protected:
     private:
 };

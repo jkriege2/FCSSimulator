@@ -108,6 +108,16 @@ std::string MSDMeasurement::report() {
     return s;
 }
 
+std::string MSDMeasurement::dot_get_properties() {
+    std::string s=FluorescenceMeasurement::dot_get_properties();
+    s+="msd_for_trajectories = "+inttostr(msd_for_trajectories)+"<BR/>";
+    s+="msd_s                = "+inttostr(msd_s)+"<BR/>";
+    s+="msd_p                = "+inttostr(msd_p)+"<BR/>";
+    s+="msd_m                = "+inttostr(msd_m)+"<BR/>";
+
+    return s;
+}
+
 void MSDMeasurement::save() {
     FILE* f;
     char fn[255];

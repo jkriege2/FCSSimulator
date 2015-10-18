@@ -27,7 +27,8 @@ FluorescenceMeasurement::FluorescenceMeasurement(FluorophorManager* fluorophors,
     sim_timestep=1e-6;
     description=objectname;
     object_number=0;
-
+    group="";
+    supergroup="";
      // init GSL random number generator
     gsl_rng_env_setup();
     rng_type = gsl_rng_taus;
@@ -45,6 +46,8 @@ void FluorescenceMeasurement::read_config_internal(jkINIParser2& parser) {
 }
 
 void FluorescenceMeasurement::read_config(jkINIParser2& parser, std::string group, std::string supergroup) {
+    this->group=group;
+    this->supergroup=supergroup;
     basename=parser.getSetAsString("simulation.basename", "");
     std::string rng=tolower(parser.getSetAsString("simulation.rng", "taus"));
     duration=parser.getAsDouble("simulation.duration", 1.0);
@@ -169,4 +172,27 @@ void FluorescenceMeasurement::save_results() {
 
 bool FluorescenceMeasurement::depends_on(const FluorescenceMeasurement* other) const {
     return false;
+}
+
+std::string FluorescenceMeasurement::dot_get_properties()  {
+    std::string s="";
+    s+="description = "+description+"<BR/>";
+    s+="rng = "+std::string(gsl_rng_name(rng))+"<BR/>";
+    return s;
+}
+
+std::string FluorescenceMeasurement::dot_get_node(bool simple)  {
+    std::string s;
+    s+="     "+get_group()+" [ label =<<FONT POINT-SIZE=\"10\"><B>"+get_group()+": "+object_name+"</B></FONT><BR/><BR/><FONT POINT-SIZE=\"7\">";
+    if (!simple) s+=dot_get_properties();
+    s+="</FONT><BR/><BR/>> color=red4 fontcolor=red4 fillcolor=gray75 ];\n";
+    return s;
+}
+std::string FluorescenceMeasurement::dot_get_links()  {
+    std::string s;
+    for (size_t i=0; i<dyn.size(); i++) {
+        s+="     "+dyn[i]->get_group()+" -> "+get_group()+"  [ color=red4 fontcolor = \"red\" label = \"trajectories\" ];\n";
+    }
+    s+="\n";
+    return s;
 }

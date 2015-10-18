@@ -31,6 +31,9 @@ class TrajectoryPlotMeasurement : public FluorescenceMeasurement {
 
         /** \brief report the object state */
         virtual std::string report();
+        /*! \brief return DOT label-code (for GraphViz) that represents the nodes properties
+        */
+        virtual std::string dot_get_properties() ;
 
     protected:
 
@@ -46,10 +49,10 @@ class TrajectoryPlotMeasurement : public FluorescenceMeasurement {
 
         /** \brief average over this many steps for each datapoint */
         int avg_steps;
-        
+
         /** \brief read at most this number of steps from a walker */
         int max_steps;
-        
+
         struct trajectory_info {
             float t;
             float x;
@@ -59,7 +62,7 @@ class TrajectoryPlotMeasurement : public FluorescenceMeasurement {
         std::vector<std::vector<trajectory_info> > trajectories;
         std::map<int, trajectory_info> currentT;
         int avgCount;
-        
+
     private:
 };
 

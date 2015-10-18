@@ -385,7 +385,8 @@ class FluorophorDynamics
         std::string group;
         /** \brief supergroup name of this object */
         std::string supergroup;
-
+        /** \brief number of the object */
+        int object_number;
         /** \brief trajectory store */
         std::vector<std::vector<walkerState> > trajectories;
 
@@ -614,6 +615,8 @@ class FluorophorDynamics
         GET_SET_MACRO(bool, use_photophysics);
         GET_SET_MACRO(std::string, basename);
         GET_SET_MACRO(std::string, object_name);
+        GET_SET_MACRO(int, object_number);
+
         GET_MACRO(std::string, group);
         GET_MACRO(std::string, supergroup);
         GET_MACRO(bool, use_two_walkerstates);
@@ -702,6 +705,16 @@ class FluorophorDynamics
         virtual bool depends_on(const FluorophorDynamics* other) const;
 
         void ensure_dynamics_is_hooked(FluorophorDynamics* other);
+
+        /*! \brief return DOT-code (for GraphViz) that represents the node without links (these are returned by dot_get_links() ).
+        */
+        virtual std::string dot_get_node(bool simple=false) ;
+        /*! \brief return DOT-code (for GraphViz) that represents the links of the nodes returned by dot_get_node()
+        */
+        virtual std::string dot_get_links() ;
+                /*! \brief return DOT label-code (for GraphViz) that represents the nodes properties
+        */
+        virtual std::string dot_get_properties() ;
 };
 
 #endif // FLUOROPHORDYNAMICS_H

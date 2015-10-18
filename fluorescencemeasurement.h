@@ -107,9 +107,23 @@ class FluorescenceMeasurement: public TickTock
         GET_SET_MACRO(std::string, basename);
         GET_SET_MACRO(std::string, object_name);
         GET_SET_MACRO(std::string, description);
+        GET_MACRO(std::string, group);
+        GET_MACRO(std::string, supergroup);
         GET_SET_MACRO(int, object_number);
 
+
         virtual bool depends_on(const FluorescenceMeasurement* other) const;
+
+
+        /*! \brief return DOT-code (for GraphViz) that represents the node without links (these are returned by dot_get_links() ).
+        */
+        virtual std::string dot_get_node(bool simple=false) ;
+        /*! \brief return DOT label-code (for GraphViz) that represents the nodes properties
+        */
+        virtual std::string dot_get_properties() ;
+        /*! \brief return DOT-code (for GraphViz) that represents the links of the nodes returned by dot_get_node()
+        */
+        virtual std::string dot_get_links() ;
 
     protected:
 
@@ -147,7 +161,10 @@ class FluorescenceMeasurement: public TickTock
 
         /** \brief number of the object */
         int object_number;
-
+        /** \brief group name of this object */
+        std::string group;
+        /** \brief supergroup name of this object */
+        std::string supergroup;
         /** \brief a pointer to a vector of FluorophorDynamics::walkerState arrays.
          *
          * The vector actually contains tuples where the first element contains the number of
