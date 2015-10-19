@@ -48,7 +48,7 @@ FluorophorManager::~FluorophorManager() {
 }
 
 void FluorophorManager::init_fluorophor_database() {
-    std::string dirname=include_trailing_backslash(database_path)+"spectra"+std::string(PATHSEPARATOR_STRING);
+    std::string dirname=include_trailing_backslash(database_path)+std::string(PATHSEPARATOR_STRING);
     jkINIParser2 ini(dirname+"fluorophors.ini");
     fluorophor_database.clear();
     for (int i=0; i<ini.getGroupCount(); i++) {

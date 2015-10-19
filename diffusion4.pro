@@ -24,8 +24,7 @@ SOURCES += main.cpp \
     tools.cpp \
     trajectoryplot.cpp
 
-include(deployment.pri)
-qtcAddDeployment()
+
 
 HEADERS += \
     alvtools.h \

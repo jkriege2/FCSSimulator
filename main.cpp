@@ -421,6 +421,7 @@ int main(int argc, char* argv[])
 {
     bool test_spectra=false;
     bool do_execute=true;
+    std::string spectradir=extract_file_path(replace_to_system_pathseparator(argv[0]))+std::string(PATHSEPARATOR_STRING)+std::string("spectra")+std::string(PATHSEPARATOR_STRING);
     if (argc>1) {
         for (int i=1; i<argc; i++) {
             std::string fn=argv[i];
@@ -430,6 +431,11 @@ int main(int argc, char* argv[])
                 test_spectra=true;
                 do_execute=false;
             }
+            if (tolower(fn)=="--spectra" && i+1<argc)  {
+                spectradir=argv[i+1];
+                std::cout<<"reading spectra from "<<spectradir<<"\n";
+                std::cout<<"\n";
+            }
             if (tolower(fn)=="--help")  {
                 std::cout<<"diffusion 4 -- FCS simulator\n";
                 std::cout<<"   (c)2008-2015 bz J.W.Krieger <j.krieger@dkfz.de>\n";
@@ -438,6 +444,8 @@ int main(int argc, char* argv[])
                 std::cout<<"\noptions:\n";
                 std::cout<<"    --help: this online help message\n";
                 std::cout<<"    --testspectra: output test infor for fl. and abs. spectra in database\n";
+                std::cout<<"    --spectra SPECTRADIRECTORY: directory for the spectra database\n";
+                std::cout<<"                   if undefined it is     WORKINGDIR/spectra/\n";
                 std::cout<<"\nfiles:\n";
                 std::cout<<"    give a list of files to process. It is possible to use wildcards in\n";
                 std::cout<<"    filenames: * matches at least one character and ? matches exactly one\n";
@@ -448,9 +456,18 @@ int main(int argc, char* argv[])
         }
     }
     //std::cout<<"test spectra: "<<booltostr(test_spectra)<<std::endl;
-    std::cout<<replace_to_system_pathseparator(argv[0])<<"\n";
-    std::cout<<extract_file_path(argv[0])<<"\n";
-    fluorophors=new FluorophorManager(extract_file_path(replace_to_system_pathseparator(argv[0])), test_spectra);
+    std::cout<<"Diffusion4 FCS Simulator ...\n\n";
+    std::cout<<"   exe-file: "<<replace_to_system_pathseparator(argv[0])<<"\n";
+    std::cout<<"   exe-path: "<<extract_file_path(argv[0])<<"\n";
+    char cwd[4096];
+    getcwd(cwd, 4096);
+    std::cout<<"   working directory: "<<cwd<<"\n";
+    std::cout<<"   arguments: "<<argc-1<<"\n";
+    for (int i=1; i<argc; i++) {
+        std::cout<<"                -> "<<argv[i]<<"\n";
+    }
+    std::cout<<"   spectra database directory: "<<spectradir<<"\n   READING SPECTRA DATABSE NOW ...\n";
+    fluorophors=new FluorophorManager(spectradir, test_spectra);
 
     std::cout<<"INITIALIZATION FINISHED ... READING SIMULATION FILES!\n\n\n";
     if (do_execute) {
@@ -458,51 +475,62 @@ int main(int argc, char* argv[])
             std::vector<std::string> files;
             for (int i=1; i<argc; i++) {
                 std::string fn=argv[i];
-                if (fn.size()<1 || fn[0]!='-') {
-                    std::vector<std::string> files1=listfiles_wildcard(argv[i]);
-                    std::string fn=argv[i];
-                    if (fn.find('*')!=std::string::npos || fn.find('?')!=std::string::npos) {
-                        files1=listfiles_wildcard(argv[i]);
-                    } else {
-                        files1.clear();
-                        files1.push_back(fn);
-                    }
+                if (tolower(fn)=="--spectra") {
+                    i++; // ignore next parameter
+                } else {
+                    std::cout<<"checking argument "<<fn<<std::endl;
+                    if (fn.size()<1 || fn[0]!='-') {
+                        std::vector<std::string> files1=listfiles_wildcard(argv[i]);
+                        std::string fn=argv[i];
+                        if (fn.find('*')!=std::string::npos || fn.find('?')!=std::string::npos) {
+                            files1=listfiles_wildcard(argv[i]);
+                        } else {
+                            files1.clear();
+                            files1.push_back(fn);
+                        }
 
-                     for (size_t j=0; j<files1.size(); j++) {
-                        files.push_back(files1[j]);
-                        std::cout<<"   will simluate '"<<files1[j]<<"' ...\n";
+                         for (size_t j=0; j<files1.size(); j++) {
+                            files.push_back(files1[j]);
+                            std::cout<<"   will simluate '"<<files1[j]<<"' ...\n";
+                        }
+                    } else if (fn.size()>2 && fn[0]=='-' && fn[1]=='R') {
+                        std::string num;
+                        for (int jj=2; jj<fn.size(); jj++) {
+                            num=num+fn[jj];
+                        }
+                        preset_ini_params["runid"]=num;
+                    } else if (fn.size()>2 && fn[0]=='-' && fn[1]=='D') {
+                        std::string name, value;
+                        int jj;
+                        for (jj=2; jj<fn.size(); jj++) {
+                            if (fn[jj]=='=') break;
+                            name=name+fn[jj];
+                        }
+                        jj++;
+                        if (jj<fn.size()) {
+                            for (; jj<fn.size(); jj++) {
+                                value=value+fn[jj];
+                            }
+                        }
+                        if (name.size()>0 && value.size()>0) preset_ini_params[name]=value;
                     }
-                } else if (fn.size()>2 && fn[0]=='-' && fn[1]=='R') {
-				    std::string num;
-					for (int jj=2; jj<fn.size(); jj++) {
-					    num=num+fn[jj];
-					}
-					preset_ini_params["runid"]=num;
-                } else if (fn.size()>2 && fn[0]=='-' && fn[1]=='D') {
-				    std::string name, value;
-					int jj;
-					for (jj=2; jj<fn.size(); jj++) {
-					    if (fn[jj]=='=') break;
-					    name=name+fn[jj];
-					}
-					jj++;
-					if (jj<fn.size()) {
-					    for (; jj<fn.size(); jj++) {
-					        value=value+fn[jj];
-					    }
-				    }
-					if (name.size()>0 && value.size()>0) preset_ini_params[name]=value;
-				}
+                }
             }
-            for (unsigned int i=0; i<files.size(); i++) {
-                std::cout<<"---------------------------------------------------------------------------------------------------------"<<std::endl<<std::endl;
-                std::cout<<"--  simulating for "<<files[i]<<"   "<<i+1<<"/"<<files.size()<<std::endl;
-                std::cout<<"---------------------------------------------------------------------------------------------------------"<<std::endl<<std::endl;
-                do_sim(files[i], argc, argv);
+            if (files.size()<=0) {
+                std::cout<<"no simulation configuration files found ...\n";
+            } else {
+                for (unsigned int i=0; i<files.size(); i++) {
+                    std::cout<<"---------------------------------------------------------------------------------------------------------"<<std::endl<<std::endl;
+                    std::cout<<"--  simulating for "<<files[i]<<"   "<<i+1<<"/"<<files.size()<<std::endl;
+                    std::cout<<"---------------------------------------------------------------------------------------------------------"<<std::endl<<std::endl;
+                    do_sim(files[i], argc, argv);
+                }
             }
         } else {
             do_sim("diffusion4.ini", argc, argv);
         }
+    } else {
+        std::cout<<"no simulation started ...\n";
     }
 
     //dyn.save_trajectories();
