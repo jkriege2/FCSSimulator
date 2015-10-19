@@ -1,6 +1,6 @@
 all: Release
-debug: Debug
-release: Release
+#debug: Debug
+#release: Release
 
 LIB=../../../LIB/trunk
 CC=g++
