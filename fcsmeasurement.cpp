@@ -1871,6 +1871,29 @@ void FCSMeasurement::save() {
         fclose(f);
         std::cout<<" done!\n";
     }
+
+    sprintf(fn, "%s%s.qf3acorr", basename.c_str(), object_name.c_str());
+    std::cout<<"writing '"<<fn<<"' ...";
+    f=fopen(fn, "w");
+    bool isFCCS=false;
+    corr2=NULL;
+    double* corr12=NULL;
+    int ncorr=1;
+    int nchann=1;
+    if (partner && timesteps==partner->timesteps && corr_taumin==partner->corr_taumin && S==partner->S && P==partner->P && m==partner->m) {
+        isFCCS=true;
+        corr2=partner->corr;
+        corr12=corr_fccs;
+        nchann=2;
+        ncorr=3;
+    }
+    qf3acorrWriteHeader(f, description, duration, lambda_ex, ncorr, nchann, isFCCS);
+    qf3acorrWriteCorrelation(f, istart, slots, corr_tau, corr, corr2, corr12);
+    qf3acorrWriteCountrate(f, bts_N, bts_time, bts_1, bts_2, true);
+    fclose(f);
+    std::cout<<" done!\n";
+
+
     if (free_btstime && bts_time) {
         free(bts_time);
         bts_time=NULL;
