@@ -496,7 +496,7 @@ void FCSMeasurement::estimate_psf_integrals() {
     psf_rz_image_detection_integral_max=1;
     for (uint32_t z=0; z<psf_rz_image_detection.height(); z++) {
         double sum=0;
-        double zz=(double(z)-double(psf_rz_image_detection.height()/2))*psf_rz_image_zresolution;
+        //double zz=(double(z)-double(psf_rz_image_detection.height()/2))*psf_rz_image_zresolution;
         for (uint32_t r=0; r<psf_rz_image_detection.width(); r++) {
             double rr=M_PI*gsl_pow_2(double(r+1)*psf_rz_image_rresolution)-M_PI*gsl_pow_2(double(r)*psf_rz_image_rresolution);
             sum=sum+rr*psf_rz_image_detection.get(r, z);
