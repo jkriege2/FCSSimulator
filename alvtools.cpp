@@ -112,11 +112,13 @@ void alv5000WriteCountrate(FILE* f, int bts_N, double* bts_time, double* bts_1, 
 
 void qf3acorrWriteHeader(FILE *f, std::string object_name, double duration, double wavelength, int correlations, int channels, bool isFCCS)
 {
+    fprintf(f, "[Properties]\ncodec = ISO-8859-1\nfileformat_name = QF3ASCIICorrelationData\nfileformat_version = \"1.0\"\n");
     fprintf(f, "Samplename=\"%s\"\n", object_name.c_str());
     fprintf(f, "Wavelength_nm=%lf\n", wavelength);
     fprintf(f, "duration_seconds=%lf\n", duration);
     fprintf(f, "duration_ms=%lf\n", duration*1e3);
     fprintf(f, "runs=1\n");
+    fprintf(f, "rateRuns=1\n");
     fprintf(f, "correlations=%d\n", correlations);
     fprintf(f, "channels=%d\n", channels);
 
@@ -151,11 +153,11 @@ void qf3acorrWriteCorrelation(FILE *f, int istart, int slots, double *corr_tau, 
     fprintf(f, "[CorrelationData]\n");
     for (int i=istart; i<slots; i++) {
         if (corr_2 && corr_12) {
-            if (isfinite(corr_tau[i])&&isfinite(corr_1[i])&&isfinite(corr_2[i])&&isfinite(corr_12[i])) fprintf(f, "%14.5lg, %14.5lg, %14.5lg, %14.5lg\n", corr_tau[i]*1e3, corr_1[i]-subtractFromCF, corr_2[i]-subtractFromCF, corr_12[i]-subtractFromCF);
+            if (isfinite(corr_tau[i])&&isfinite(corr_1[i])&&isfinite(corr_2[i])&&isfinite(corr_12[i])) fprintf(f, "%14.5lg, %14.5lg, %14.5lg, %14.5lg\n", corr_tau[i], corr_1[i]-subtractFromCF, corr_2[i]-subtractFromCF, corr_12[i]-subtractFromCF);
         } else if (corr_2) {
-            if (isfinite(corr_tau[i])&&isfinite(corr_1[i])&&isfinite(corr_2[i])) fprintf(f, "%14.5lg, %14.5lg, %14.5lg\n", corr_tau[i]*1e3, corr_1[i]-subtractFromCF, corr_2[i]-subtractFromCF);
+            if (isfinite(corr_tau[i])&&isfinite(corr_1[i])&&isfinite(corr_2[i])) fprintf(f, "%14.5lg, %14.5lg, %14.5lg\n", corr_tau[i], corr_1[i]-subtractFromCF, corr_2[i]-subtractFromCF);
         } else {
-            if ( isfinite(corr_tau[i]) && isfinite(corr_1[i]) ) fprintf(f, "%14.5lg, %14.5lg\n", corr_tau[i]*1e3, corr_1[i]-subtractFromCF);
+            if ( isfinite(corr_tau[i]) && isfinite(corr_1[i]) ) fprintf(f, "%14.5lg, %14.5lg\n", corr_tau[i], corr_1[i]-subtractFromCF);
         }
     }
 

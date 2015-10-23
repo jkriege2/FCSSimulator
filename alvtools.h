@@ -24,15 +24,15 @@
 #include <cstdio>
 #include <string>
 
-void alv5000WriteHeader(FILE* f, std::string object_name, double duration, const char* mode, double wavelength, double cr0=0, double cr1=0);
+void alv5000WriteHeader(FILE* f, std::string object_name, double duration_seconds, const char* mode, double wavelength_nanometers, double cr0=0, double cr1=0);
 
-void alv5000WriteCorrelation(FILE* f, int istart, int slots, double* corr_tau, double* corr_1, double* corr_2=NULL, double subtractFromCF=0.0);
-void alv5000WriteCountrate(FILE* f, int bts_N, double* bts_time, double* bts_1, double* bts_2, bool bts_is_photoncounts);
+void alv5000WriteCorrelation(FILE* f, int istart, int slots, double* corr_tau_seconds, double* corr_1, double* corr_2=NULL, double subtractFromCF=0.0);
+void alv5000WriteCountrate(FILE* f, int bts_N, double* bts_time_seconds, double* bts_1, double* bts_2, bool bts_is_photoncounts);
 
 void qf3acorrWriteHeader(FILE* f, std::string object_name, double duration, double wavelength, int ncorrelations, int channels, bool isFCCS=false);
 
-void qf3acorrWriteCorrelation(FILE* f, int istart, int slots, double* corr_tau, double* corr_1, double* corr_2=NULL, double* corr_12=NULL, double subtractFromCF=0.0);
-void qf3acorrWriteCountrate(FILE* f, int bts_N, double* bts_time, double* bts_1, double* bts_2, bool bts_is_photoncounts);
+void qf3acorrWriteCorrelation(FILE* f, int istart, int slots, double* corr_tau_seconds, double* corr_1, double* corr_2=NULL, double* corr_12=NULL, double subtractFromCF=0.0);
+void qf3acorrWriteCountrate(FILE* f, int bts_N, double* bts_time_seconds, double* bts_1, double* bts_2, bool bts_is_photoncounts);
 
 
 #endif // ALVTOOLS_H

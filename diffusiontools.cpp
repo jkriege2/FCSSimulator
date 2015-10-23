@@ -195,7 +195,8 @@ void FluorophorManager::init_spectra() {
     }
     spectra.clear();
     spectra_map.clear();
-    std::string dirname=include_trailing_backslash("."+std::string(PATHSEPARATOR_STRING)+"spectra");
+    std::string dirname=include_trailing_backslash(database_path)+std::string(PATHSEPARATOR_STRING);
+    //std::string dirname=include_trailing_backslash("."+std::string(PATHSEPARATOR_STRING)+"spectra");
     dp = opendir (dirname.c_str());
     if (dp != NULL) {
         while ((ep = readdir(dp))) {
