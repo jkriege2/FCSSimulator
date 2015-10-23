@@ -1,0 +1,241 @@
+\documentclass[a4paper,twoside,10pt]{report}
+
+%% Language %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage[USenglish]{babel} %francais, polish, spanish, ...
+\usepackage[T1]{fontenc}
+\usepackage[ansinew]{inputenc}
+
+\usepackage{lmodern} %Type1-font for non-english texts and characters
+\usepackage{graphicx} %%For loading graphic files
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amsfonts}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{times}
+\usepackage{couriers}
+\usepackage[textwidth=160mm,textheight=230mm]{geometry}
+\usepackage{xspace}
+
+\lstset{frame=trBL}
+
+\newcommand{\cmd}[1]{\begin{lstlisting}[language=bash] #1 \end{lstlisting}}
+\newcommand{\df}{\textsc{diffusion4}\xspace}
+\newcommand{\qf}{\textsc{QuickFit 3.0}\xspace}
+\newcommand{\bash}{\textsc{bash}\xspace}
+\newcommand{\gsl}{\textsc{GSL}\xspace}
+\newcommand{\msys}{\textsc{MSys}\xspace}
+\begin{document}
+
+\pagestyle{empty} %No headings for the first pages.
+
+\title{Manual for the FCS/FCCS simulator software (\texttt{diffusion4})}
+\author{Dr. Jan W. Krieger <jan@jkrieger.de>}
+\date{\today} %%If commented, the current date is used.
+\maketitle
+
+\tableofcontents %Table of contents
+\cleardoublepage %The first chapter should start on an odd page.
+
+\pagestyle{plain} %Now display headings: headings / fancy / ...
+
+\chapter{Availability and Compilation}
+\label{sec:availability_compilation}
+\section{Availability}
+\label{sec:Availability}
+
+This software is available on GitHub:
+\begin{center}
+	\url{https://github.com/jkriege2/FCSSimulator}
+\end{center}
+In addition this simulator is also a part (based on the same repository) of the FCS/FCCS data evaluation software \qf (\url{https://github.com/jkriege2/QuickFit3} and \url{http://www.dkfz.de/Macromol/quickfit/}), which also offers an integrated editor-GUI for the simulator configuration scripts.
+
+\section{Download and Setup}
+\label{sec:DownloadAndSetup}
+\df is a C++ program, so you will need a working C++ compiler (e.g. the \textsc{GCC} in version $\geq$4.7, for Windows you can use \textsc{MinGW-Builds} from \url{http://sourceforge.net/projects/mingwbuilds/}). The program only relies on the GNU scientific library (GSL), available from \url{http://www.gnu.org/software/gsl/}, but also integrated in the repository (see below). In addition you will need a working \bash-shell (on Windows use \msys available from \url{http://www.mingw.org/wiki/msys}) and \textsc{Git} to access the repository (if you don't want to download the code manually). In general this program should compile on \textsc{Windows}, \textsc{Linux} and \textsc{MacOS X}.\\[10mm]
+
+\noindent In order to install \df, follow these steps:
+\begin{enumerate}
+	\item check out the git repository: 
+	  \begin{lstlisting}[language=bash] 
+$ git clone --recursive "https://github.com/jkriege2/FCSSimulator.git"
+		\end{lstlisting}
+	\item ensure that all submodules are checked out: 
+	  \begin{lstlisting}[language=bash] 
+$ cd FCSSimulator
+$ git submodule update --init --remote --recursive --force
+		\end{lstlisting}
+	\item if GSL is not available on your system, we'll have to build it now. The repository contains a \bash-script for this purpose: 
+	  \begin{lstlisting}[language=bash] 
+$ cd extlibs
+$ . build_dependencies.sh
+$ cd..
+		\end{lstlisting}
+		This script will build a \underline{local version} of GSL. It is not installed in the system, but only in the directory \texttt{./extlibs/gsl/}. It will ask several questions: Generally you should not keep the build-directories (\texttt{n}), use as many processor, as you like (e.g. \texttt{2} for a dual-core, or \texttt{4} for a quad-core machine), you the best optimizations for your local machine, if the programm will only be used locally (twice \texttt{y}, or for safe-settings \texttt{y} and then \texttt{n}). Finally answer \texttt{y} when asked whether GSL should be compiled.
+\end{enumerate}
+
+\section{Compilation}
+\label{sec:Compilation}
+the rest of the compilation is done using a \texttt{Makefile} in the base directory:
+\begin{lstlisting}[language=bash] 
+$ make 
+\end{lstlisting}
+
+\section{Running the Software \df}
+\label{sec:RunningTheSoftware}
+After the compilation, an command-line based executable \texttt{diffusion4} is created in the base directory. This is the simulator, which can then be started as follows:
+\begin{lstlisting}[language=bash] 
+$ diffusion4 [--spectra SPECTRADIRECTORY] CONFIG_SCRIPT.ini 
+\end{lstlisting}
+Here \texttt{CONFIG\_SCRIPT.ini} is a configuration file that tells the simulator what to do and the optional \texttt{--spectra SPECTRADIRECTORY} can be used to provide another directory with absorption and emission spectra. A version of this directory is available in the repository under \verb!./spectra/!, which is also loaded automatically, if the option \verb!--spectra! is not given. \df reads absorption and emission spectra for its simulation from this directory. Note that \df will not work, if a \texttt{spectra}-directory is not provided!
+
+\section{Running \df from a Makefile}
+\label{sec:RunningDfFromAMakefile}
+Often it is useful to run \df from a Makefile, if several simulations should be done (in parallel) on a computer. here is an example Makefile for this task (see the repository directory \texttt{./example\_configs/} for further examples:
+\begin{lstlisting}[language=make] 
+SCRIPTS= gyuri_isat_multigfp0.ini\
+	       gyuri_isat_multigfp1.ini 
+
+SHELL = sh
+
+SCRIPTS_TARGET = $(subst .ini,.target,$(SCRIPTS))
+
+TERMINAL_COMMAND=		
+
+ifeq ($(findstring Msys,$(OS)),Msys)
+EXE_SUFFIX=.exe
+TERMINAL_COMMAND=
+else
+EXE_SUFFIX=
+#TERMINAL_COMMAND=konsole -e 
+#TERMINAL_COMMAND=x-terminal-emulator -e 
+endif		
+		 
+all: ${SCRIPTS_TARGET}
+
+%.target: %.ini
+	@echo -e "random wait before starting $< ..."
+	@bash random_sleep.sh
+	@bash -c "sleep $$[ ( $$RANDOM % 10 )  + 1 ]s"
+	@echo -e "starting on $< ..."
+	${TERMINAL_COMMAND} ./diffusion4${EXE_SUFFIX} $< > $<.log
+	@echo -e "work on $< DONE!"
+\end{lstlisting}
+You can run such a Makefile with the command:
+\begin{lstlisting}[language=bash] 
+$ make -f Makefile -j4
+\end{lstlisting}
+where \texttt{4} specifies the number of processors to use. This makefile also uses the \bash-script \texttt{random\_sleep.sh}, which waits a random number of seconds (up to 10 or 20) before running  the simulation. This ensures that the random number generator of each simulation is initialized with a different seed (the seed is taken from the system time!).
+
+
+\chapter{Introduction to \df}
+\label{sec:IntroductionToDf}
+
+
+\chapter{Reference of the \df-Modules}
+\label{sec:ReferenceOfTheDfModules}
+\section{Fluorophore Dynamics Modules}
+\label{sec:TrajectoryModules}
+\subsection{Fluorescence Detection Modules}
+\label{sec:DetectionModules}
+
+\chapter{Extending \df}
+\label{sec:ExtendingDf}
+\section{Introduction and Registration}
+\label{sec:IntroductionAndRegistration}
+
+You can extend \df with your own modules by implementing classes of the type \texttt{FluorophorDynamics} for fluorophore dynamics modules, or \texttt{FluorescenceMeasurement} for fluorescence detection modules. these virtual base-classes each provide virtual functions that you have to implement in order to give you class a function. Finally you will have to register your new class in \texttt{main.cpp}:
+\begin{itemize}
+	\item \texttt{FluorophorDynamics}-classes have to be added near the text
+		\begin{lstlisting}[language=c++] 
+///////////////////////////////////////////////////
+// add you custom dynamics classes here
+///////////////////////////////////////////////////
+		\end{lstlisting}	
+		e.g.:
+		\begin{lstlisting}[language=c++] 
+///////////////////////////////////////////////////
+// add you custom dynamics classes here
+///////////////////////////////////////////////////
+} else if (lgname.find("mydyn")==0 && lgname.size()>5) {
+	supergroup="mydyn";
+	d=new MyDynamics(fluorophors, oname);
+		\end{lstlisting}	
+		Here you custom class is called \texttt{MyDynamics} and in the configration files it will have the prefix \texttt{mydyn}.
+	\item \texttt{FluorescenceMeasurement}-classes have to be added near the text
+		\begin{lstlisting}[language=c++] 
+///////////////////////////////////////////////////
+// add you custom detection classes here
+///////////////////////////////////////////////////
+		\end{lstlisting}	
+		e.g.:
+		\begin{lstlisting}[language=c++] 
+///////////////////////////////////////////////////
+// add you custom detection classes here
+///////////////////////////////////////////////////
+} else if (lgname.find("mydetection")==0 && lgname.size()>14) {
+	supergroup="mydetection";
+	m=new MyDetection(fluorophors, oname);
+		\end{lstlisting}	
+		Here you custom class is called \texttt{MyDetection} and in the configration files it will have the prefix \texttt{mydetection}.
+		
+\end{itemize}
+
+\section{Implementing \texttt{FluorophorDynamics}-Classes}
+\label{sec:ImplementingTextttFluorophorDynamicsClasses}
+\begin{lstlisting}[language=c++] 
+	virtual void init();
+\end{lstlisting}
+This function is called before the simulation and is used to initialize the simulation object.
+
+
+\begin{lstlisting}[language=c++] 
+	virtual void propagate(bool boundary_check=true);
+\end{lstlisting}	
+This function implements the main functionality. It is called in every step and propagates the walkers that are stored in the array \texttt{walker\_state}. If the parameter \texttt{boundary\_check} is set \texttt{true}, the function body should perform a boundary-check at the borders of the sim-box. Otherwise the sim-box is assumed to be infinite (used for testing).
+
+\begin{lstlisting}[language=c++] 
+	virtual std::string report();
+\end{lstlisting}	
+This function reports the object-state in human-readable form.
+
+
+\begin{lstlisting}[language=c++] 
+	virtual void read_config_internal(jkINIParser2& parser);
+\end{lstlisting}	
+This function reads the object-configuration from the given parser, which is already cd'ed to the group to be read. This function is called twice for each object: Once for the super-group and once for the actual object-group.
+
+Note that there are additional functions that can be used in special cases. See the implemented classes in the repository for details.
+
+\section{Implementing \texttt{FluorescenceMeasurement}-Classes}
+\label{sec:ImplementingTextttFluorescenceMeasurementClasses}
+\begin{lstlisting}[language=c++] 
+	virtual void init();
+\end{lstlisting}
+This function is called before the simulation and is used to initialize the simulation object.
+
+
+\begin{lstlisting}[language=c++] 
+	virtual void propagate();
+\end{lstlisting}	
+This function implements the main functionality. It is called in every step and propagates the walkers that can be obtained from the dynamics-objects in the array \texttt{dyn}. 
+
+\begin{lstlisting}[language=c++] 
+	virtual std::string report();
+\end{lstlisting}	
+This function reports the object-state in human-readable form.
+
+\begin{lstlisting}[language=c++] 
+	virtual void save();
+\end{lstlisting}	
+This function stores the simulation results.
+
+
+\begin{lstlisting}[language=c++] 
+	virtual void read_config_internal(jkINIParser2& parser);
+\end{lstlisting}	
+This function reads the object-configuration from the given parser, which is already cd'ed to the group to be read. This function is called twice for each object: Once for the super-group and once for the actual object-group.
+
+Note that there are additional functions that can be used in special cases. See the implemented classes in the repository for details.
+\end{document}
+

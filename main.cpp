@@ -150,6 +150,9 @@ void do_sim(std::string inifilename, int argc, char* argv[]) {
             } else if (lgname.find("child")==0 && lgname.size()>5) {
                 supergroup="child";
                 d=new ChildDynamics(fluorophors, oname);
+                ///////////////////////////////////////////////////
+                // add you custom dynamics classes here
+                ///////////////////////////////////////////////////
             }
             if (d!=NULL) {
                 d->set_object_number(object_number);
@@ -226,6 +229,9 @@ void do_sim(std::string inifilename, int argc, char* argv[]) {
                 } else if (lgname.find("trajectoryplot")==0 && lgname.size()>14) {
                     supergroup="trajectoryplot";
                     m=new TrajectoryPlotMeasurement(fluorophors, oname);
+                    ///////////////////////////////////////////////////
+                    // add you custom detection classes here
+                    ///////////////////////////////////////////////////
                 }
                 if (m!=NULL) {
                     m->set_object_number(object_number);

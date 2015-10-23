@@ -34,3 +34,11 @@
 /diffusion4_test
 /*.layout
 /*.user
+/doc
+/manual/*.aux
+/manual/*.lof
+/manual/*.log
+/manual/*.lot
+/manual/*.synctex
+/manual/*.toc
+/manual/*.tps

@@ -496,7 +496,7 @@ void FCSMeasurement::estimate_psf_integrals() {
     psf_rz_image_detection_integral_max=1;
     for (uint32_t z=0; z<psf_rz_image_detection.height(); z++) {
         double sum=0;
-        double zz=(double(z)-double(psf_rz_image_detection.height()/2))*psf_rz_image_zresolution;
+        //double zz=(double(z)-double(psf_rz_image_detection.height()/2))*psf_rz_image_zresolution;
         for (uint32_t r=0; r<psf_rz_image_detection.width(); r++) {
             double rr=M_PI*gsl_pow_2(double(r+1)*psf_rz_image_rresolution)-M_PI*gsl_pow_2(double(r)*psf_rz_image_rresolution);
             sum=sum+rr*psf_rz_image_detection.get(r, z);
@@ -1871,6 +1871,29 @@ void FCSMeasurement::save() {
         fclose(f);
         std::cout<<" done!\n";
     }
+
+    sprintf(fn, "%s%s.qf3acorr", basename.c_str(), object_name.c_str());
+    std::cout<<"writing '"<<fn<<"' ...";
+    f=fopen(fn, "w");
+    bool isFCCS=false;
+    corr2=NULL;
+    double* corr12=NULL;
+    int ncorr=1;
+    int nchann=1;
+    if (partner && timesteps==partner->timesteps && corr_taumin==partner->corr_taumin && S==partner->S && P==partner->P && m==partner->m) {
+        isFCCS=true;
+        corr2=partner->corr;
+        corr12=corr_fccs;
+        nchann=2;
+        ncorr=3;
+    }
+    qf3acorrWriteHeader(f, description, duration, lambda_ex, ncorr, nchann, isFCCS);
+    qf3acorrWriteCorrelation(f, istart, slots, corr_tau, corr, corr2, corr12);
+    qf3acorrWriteCountrate(f, bts_N, bts_time, bts_1, bts_2, true);
+    fclose(f);
+    std::cout<<" done!\n";
+
+
     if (free_btstime && bts_time) {
         free(bts_time);
         bts_time=NULL;
