@@ -5,9 +5,7 @@ all: Release
 LIB=../../../LIB/trunk
 CC=g++
 
-BITS=64
-
-CFLAGS =  -Wall -DQF_DONT_USE_ALIGNED_MALLOC -DNO_LIBTIFF -DJKIMAGE_USES_TINYTIFF -m$(BITS) -I. -I./extlibs/TinyTIFF/ -I./extlibs/StatisticsTools/  -fexceptions
+CFLAGS =  -Wall -DQF_DONT_USE_ALIGNED_MALLOC -DNO_LIBTIFF -DJKIMAGE_USES_TINYTIFF -I. -I./extlibs/TinyTIFF/ -I./extlibs/StatisticsTools/  -fexceptions
 #--enable-auto-import
 LDFLAGS = -lm
 CFLAGS += -I../../extlibs/gsl/include/ -I./extlibs/gsl/include/
