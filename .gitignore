@@ -42,3 +42,8 @@
 /manual/*.synctex
 /manual/*.toc
 /manual/*.tps
+/manual/*.bbl
+/manual/*.blg
+/manual/*.idx
+/manual/*.ilg
+/manual/*.ind

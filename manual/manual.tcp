@@ -4,8 +4,8 @@ Version=4
 
 [ProjectInfo]
 MainFile=manual.tex
-UseBibTeX=0
-UseMakeIndex=0
+UseBibTeX=1
+UseMakeIndex=1
 ActiveProfile=LaTeX ⇨ PDF
 ProjectLanguage=en
 ProjectDialect=US
