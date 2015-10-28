@@ -16,12 +16,23 @@
 \usepackage{couriers}
 \usepackage[textwidth=160mm,textheight=230mm]{geometry}
 \usepackage{xspace}
+% optischer Randausgleich
+\usepackage{microtype}
+
+% additional citations
+\usepackage{doi}
+\usepackage[square,numbers,sort&compress]{natbib}
+\bibliographystyle{unsrtnat}%{jkdissertation}%{plainnat}%{plainnat}
+
 \usepackage{makeidx}
 \makeindex
 
 \lstset{frame=trBL}
 
+% Befehle für Listings
 \newcommand{\cmd}[1]{\begin{lstlisting}[language=bash] #1 \end{lstlisting}}
+
+% Befehle fuer Abkürzungen
 \newcommand{\df}{\textsc{diffusion4}\xspace}
 \newcommand{\qf}{\textsc{QuickFit 3.0}\xspace}
 \newcommand{\bash}{\textsc{bash}\xspace}
@@ -31,7 +42,7 @@
 
 
 % Befehle für Index-Erstellung
-\newcommand{\itindex}[1]{{{\index{#1}}#1}\xpsace} % Index-Eintrag im Fließtext. Es wird der Eintrag selbe auch ausgegeben.
+\newcommand{\itindex}[1]{{{\index{#1}}#1}\xspace} % Index-Eintrag im Fließtext. Es wird der Eintrag selbe auch ausgegeben.
 \newcommand{\itindexbf}[1]{{\textbf{{\index{#1@\textbf{#1}}}#1}}\xspace}
 \newcommand{\itindextt}[1]{{\texttt{{\index{#1@\texttt{#1}}}#1}}\xspace}
 \newcommand{\itindexit}[1]{{\textit{{\index{#1@\textit{#1}}}#1}}\xspace}
@@ -41,6 +52,224 @@
 \newcommand{\indexbfs}[2]{\index{#1!#2@\textbf{#1}!\textbf{#2}}}
 \newcommand{\indextts}[2]{\index{#1!#2@\texttt{#1}!\texttt{#2}}}
 \newcommand{\indexits}[2]{\index{#1!#2@\textit{#1!#2}}}
+
+% Extra Mathematische befehle
+\newcommand{\dd}{\mathrm{d}}
+\newcommand{\vr}{\vec{r}}
+\newcommand{\vp}{\vec{p}}
+\newcommand{\txt}[1]{\text{#1}}
+\newcommand{\mean}[1]{\left\langle #1\right\rangle}
+\newcommand{\avg}[1]{\mean{#1}}
+\newcommand{\smean}[1]{\langle #1\rangle}
+\newcommand{\snorm}[1]{|#1|}
+\newcommand{\fullvolint}{\iiint\limits_{-\infty\ \ }^{\ \ \infty}}
+\newcommand{\fullareaint}{\iint\limits_{-\infty\ \ }^{\ \ \infty}}
+\newcommand{\clight}{c_0}
+\newcommand{\NAvogadro}{N_\text{A}}
+\newcommand{\Rh}{R_\txt{h}}
+\newcommand{\kboltz}{k_\txt{B}}
+\newcommand{\kboltzT}{\kboltz T}
+\newcommand{\kbT}{\kboltzT}
+\newcommand{\fObj}{f_\txt{Obj}}
+\newcommand{\fDO}{f_\txt{DO}}
+\newcommand{\fDet}{\fDO}
+\newcommand{\fLo}{f_\txt{L1}}
+\newcommand{\fLt}{f_\txt{L2}}
+\newcommand{\fCL}{f_\txt{CL}}
+\newcommand{\fPO}{f_\txt{PO}}
+\newcommand{\fProj}{\fPO}
+\newcommand{\fTL}{f_\txt{TL}}
+\newcommand{\wLS}{w_\txt{LS}}
+\newcommand{\wLaser}{w_\txt{Laser}}
+\newcommand{\dLS}{d_\txt{LS}}
+\newcommand{\hLS}{h_\txt{LS}}
+\newcommand{\dObj}{d_\txt{Obj}}
+\newcommand{\dTL}{d_\txt{TL}}
+\newcommand{\dDet}{d_\txt{Det}}
+\newcommand{\dProj}{d_\txt{Proj}}
+\newcommand{\dinfty}{d_\infty}
+\newcommand{\Mlateral}{M_\txt{xy}}
+\newcommand{\Mlong}{M_\txt{z}}
+\newcommand{\Lp}{L_\txt{p}}
+\newcommand{\sensorpitch}{a_\txt{sensor}}
+\newcommand{\pixelsize}{a}
+\newcommand{\dSPAD}{d_\txt{SPAD}}
+\newcommand{\FillFactor}{\mbox{FF}}
+\newcommand{\lambdaeff}{\lambda_\txt{eff}}
+\newcommand{\lambdaill}{\lambda_\txt{ill}}
+\newcommand{\lambdafl}{\lambda_\txt{fl}}
+\newcommand{\taumin}{\tau_\text{min}}
+\providecommand{\pAB}{p_\text{AB}}
+\providecommand{\qGR}{q_\text{gr}}
+
+\newcommand{\viscosity}{\eta_\text{visc}}
+\newcommand{\viscositym}[1]{\eta_{\text{visc},#1}}
+\newcommand{\visc}{\viscosity}
+\newcommand{\viscm}[1]{\viscositym{#1}}
+\newcommand{\mtau}{multi-\ensuremath{\tau}\xspace}
+\newcommand{\qfluor}{q_\txt{fluor}}
+\newcommand{\qfluorm}[1]{q_{\txt{fluor},#1}}
+\newcommand{\extinction}{\varepsilon_\txt{abs}}
+\newcommand{\extinctionm}[1]{\varepsilon_{\txt{abs},#1}}
+\newcommand{\stokefriction}{\varsigma}
+\newcommand{\Texp}{\Delta t_\txt{exp}}
+\newcommand{\Tframe}{\Delta t_\txt{frame}}
+\newcommand{\tread}{\Delta t_\txt{read}}
+\newcommand{\excessnoise}{\mathcal{F}^2}
+\newcommand{\ADCfactor}{\mathcal{A}_\text{ADC}}
+\newcommand{\RADC}{\mathcal{R}_\text{ADC}}
+\newcommand{\Ephoton}{E_\txt{photon}}
+\newcommand{\Nphoton}{N_\txt{photon}}
+\newcommand{\Nphotondet}{N_{\txt{photon},\txt{det}}}
+\newcommand{\lionization}{l_\txt{ionization}}
+\newcommand{\Vbreakdown}{U_\txt{break}}
+\newcommand{\Vbias}{U_\txt{bias}}
+\newcommand{\Vex}{U_\txt{excess}}
+\newcommand{\Iphot}{I_\txt{phot}}
+\newcommand{\Iback}{I_\txt{back}}
+\newcommand{\Nback}{N_\txt{back}}
+\newcommand{\Idark}{I_\txt{dark}}
+\newcommand{\sigmadark}{\sigma_\txt{dark}}
+\newcommand{\sigmaback}{\sigma_\txt{back}}
+\newcommand{\sigmaread}{\sigma_\txt{read}}
+\newcommand{\sigmacic}{\sigma_\txt{cic}}
+\newcommand{\sigmaPhot}{\sigma_\txt{photon}}
+\newcommand{\sigmaADC}{\sigma_\txt{ADC}}
+\newcommand{\Ndotdark}{\dot{N}_\txt{dark}}
+\newcommand{\Ndark}{N_\txt{dark}}
+\newcommand{\Fback}{F_\txt{back}}
+\newcommand{\Fbackm}[1]{F_{\txt{back},#1}}
+\newcommand{\wxy}{w_\txt{xy}}
+\newcommand{\wz}{w_\txt{z}}
+\newcommand{\wm}[1]{w_\txt{{#1}}}
+\newcommand{\wxym}[1]{w_\txt{{#1},xy}}
+\newcommand{\wzm}[1]{w_\txt{{#1},z}}
+\newcommand{\Veff}{V_\txt{eff}}
+\newcommand{\Veffm}[1]{V_{\txt{eff},#1}}
+\newcommand{\Aeff}{A_\txt{eff}}
+\newcommand{\Aeffm}[1]{A_{\txt{eff},#1}}
+\newcommand{\phifl}{\phi_\txt{fluor}}
+\newcommand{\phifls}{\phi_{\txt{fluor},s}}
+\newcommand{\phiflj}{\phi_{\txt{fluor},j}}
+\newcommand{\phifli}{\phi_{\txt{fluor},i}}
+
+\newcommand{\MeanDisplace}{\smean{\Delta r}}
+\newcommand{\dimfrac}{f_\txt{f}}
+\newcommand{\dimspec}{f_\txt{s}}
+
+\newcommand{\etabrightness}[2]{\eta_{#1,#2}}
+\newcommand{\etam}[2]{\etabrightness{#1}{#2}}
+\newcommand{\etagammachi}{\eta_{\gamma,\chi}}
+\newcommand{\etarhochi}{\eta_{\rho,\chi}}
+\newcommand{\etagchi}{\etabrightness{\txtg}{\chi}}
+\newcommand{\etarchi}{\etabrightness{\txtr}{\chi}}
+\newcommand{\etagA}{\etabrightness{\txtg}{\txtA}}
+\newcommand{\etarA}{\etabrightness{\txtr}{\txtA}}
+\newcommand{\etagB}{\etabrightness{\txtg}{\txtB}}
+\newcommand{\etarB}{\etabrightness{\txtr}{\txtB}}
+\newcommand{\etagAB}{\etabrightness{\txtg}{\txtAB}}
+\newcommand{\etarAB}{\etabrightness{\txtr}{\txtAB}}
+\newcommand{\etag}{\eta_{\txtg}}
+\newcommand{\etar}{\eta_{\txtr}}
+\newcommand{\ctalk}[1]{\kappa_{#1}}
+\newcommand{\ctalkgr}{\kappa_{\txtgr}}
+\newcommand{\ctalkrg}{\kappa_{\txtrg}}
+
+\newcommand{\sigmaabsm}[1]{\sigma_{\txt{abs},#1}}
+\newcommand{\sigmaabsgammachi}{\sigmaabsm{\gamma,\chi}}
+\newcommand{\qfluorgammachi}{q_{\txt{fluor},\gamma,\chi}}
+\newcommand{\etadetgamma}{\eta_{\txt{det},\gamma}}
+\newcommand{\etadet}{\eta_\txt{det}}
+\newcommand{\Nsample}{N_\txt{sample}}
+\newcommand{\Nsamplechi}{N_{\txt{sample},\chi}}
+\newcommand{\Vsample}{V_\txt{sample}}
+\newcommand{\Vobs}{V_\txt{obs}}
+\newcommand{\wobs}{w_\txt{obs}}
+\newcommand{\sigmaabs}{\sigma_\txt{abs}}
+\newcommand{\sigmadet}{\sigma_\txt{det}}
+\newcommand{\sigmaB}{\sigmaback}
+%\newcommand{\structfac}{\kappa}
+\newcommand{\tauD}{\tau_\txt{D}}
+\newcommand{\tauDm}[1]{\tau_{\txt{D},#1}}
+\newcommand{\tauTm}[1]{\tau_{\txt{T},#1}}
+\newcommand{\thetaTm}[1]{\theta_{\txt{T},#1}}
+\newcommand{\tauT}{\tau_\txt{T}}
+\newcommand{\thetaT}{\theta_\txt{T}}
+\newcommand{\taudecay}{\tau_\txt{decay}}
+\newcommand{\tauF}{\tau_\txt{F}}
+\newcommand{\tauFX}{\tau_{\txt{F}\times}}
+\newcommand{\tauBm}[1]{\tau_{\txt{B},#1}}
+\newcommand{\tauB}{\tau_\txt{B}}
+\newcommand{\taufl}{\tau_\txt{fl}}
+\newcommand{\qelec}{q_\txt{e}}
+\newcommand{\FWHMxy}[1]{\mbox{FWHM}_{\txt{{#1},xy}}}
+\newcommand{\FWHMz}[1]{\mbox{FWHM}_{\txt{{#1},z}}}
+\newcommand{\tand}{\text{and}}
+\newcommand{\with}{\text{with}}
+\newcommand{\ddelta}{\pmb{\delta}}
+\newcommand{\txtrg}{\text{rg}}
+\newcommand{\txtl}{\text{l}}
+\newcommand{\txtr}{\text{r}}
+\newcommand{\txtg}{\text{g}}
+\newcommand{\txtgr}{\text{gr}}
+\newcommand{\txtgg}{\text{gg}}
+\newcommand{\txtrr}{\text{rr}}
+\newcommand{\txtA}{\text{A}}
+\newcommand{\txtB}{\text{B}}
+\newcommand{\txtAB}{\text{AB}}
+\newcommand{\DAB}{D_\txtAB}
+\newcommand{\DA}{D_\txtA}
+\newcommand{\DB}{D_\txtB}
+\newcommand{\cAB}{\smean{c_\txtAB}}
+\newcommand{\cA}{\smean{c_\txtA}}
+\newcommand{\cB}{\smean{c_\txtB}}
+\newcommand{\wg}{w_\txtg}
+\renewcommand{\wr}{w_\txtr}
+\newcommand{\zg}{z_\txtg}
+\newcommand{\zr}{z_\txtr}
+\newcommand{\diameter}{\varnothing}
+\newcommand{\Dtw}{D_{20\degC,\txt{W}}}
+\newcommand{\Dtwm}[1]{D_{20\degC,\txt{W},#1}}
+\newcommand{\lpers}{l_{p}}
+\newcommand{\ddim}{d}
+
+\newcommand{\appr}{\sim\!}
+\newcommand{\afterprob}{p_\txt{AP}}
+
+\newcommand{\hgggtau}{\hat{g}_\txtgg(\tau)}
+\newcommand{\hgrrtau}{\hat{g}_\txtrr(\tau)}
+\newcommand{\hggrtau}{\hat{g}_\txtgr(\tau)}
+\newcommand{\gggtau}{{g}_\txtgg(\tau)}
+\newcommand{\grrtau}{{g}_\txtrr(\tau)}
+\newcommand{\ggrtau}{{g}_\txtgr(\tau)}
+\newcommand{\gggntau}{{g}_\txtgg}
+\newcommand{\grrntau}{{g}_\txtrr}
+\newcommand{\ggrntau}{{g}_\txtgr}
+
+
+\newcommand{\meanN}{\mean{N}}
+\newcommand{\volint}{\iiint\limits_V}
+\newcommand{\volsint}{\iiint\limits_{V'}}
+\newcommand{\software}[1]{\textsc{#1}\xspace}
+%\newcommand{\qf}{\software{\mbox{QuickFit~3.0}}}
+\newcommand{\quickfit}{\qf}
+\newcommand{\cpp}{\software{\mbox{C++}}}
+\newcommand{\Qt}{\software{\mbox{Qt}}}
+\newcommand{\Matlab}{\software{\mbox{Matlab}}}
+\newcommand{\Fiji}{\software{\mbox{Fiji}}}
+%\DeclareMathOperator{\OD}{OD}
+\DeclareMathOperator{\MSD}{MSD}
+\DeclareMathOperator{\PSF}{PSF}
+\DeclareMathOperator{\MDF}{MDE}
+\DeclareMathOperator{\MDE}{MDE}
+\DeclareMathOperator{\CEF}{CEF}
+\DeclareMathOperator{\SigNoiseR}{SNR}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\newcommand{\PSFill}{\PSF_\txt{ill}}
+\newcommand{\PSFdet}{\PSF_\txt{det}}
+\newcommand{\PSFm}[1]{\PSF_\txt{#1}}
+\newcommand{\MDEm}[1]{\MDE_\txt{#1}}
 
 \begin{document}
 
@@ -56,228 +285,14 @@
 
 \pagestyle{plain} %Now display headings: headings / fancy / ...
 
-\chapter{Availability and Compilation}
-\label{sec:availability_compilation}
-\section{Availability}
-\label{sec:Availability}
-\index{repository}\index{availability}
-This software is available on GitHub:
-\begin{center}
-	\url{https://github.com/jkriege2/FCSSimulator}
-\end{center}
-In addition this simulator is also a part (based on the same repository) of the FCS/FCCS data evaluation software \qf (\url{https://github.com/jkriege2/QuickFit3} and \url{http://www.dkfz.de/Macromol/quickfit/}), which also offers an integrated editor-GUI for the simulator configuration scripts.
+\input{availability}
+\input{introduction}
+\input{reference}
+\input{extending}
 
-\section{Download and Setup}
-\label{sec:DownloadAndSetup}
-\index{Download}\index{build environment}\index{build}
-\df is a C++ program, so you will need a working C++ compiler (e.g. the \textsc{GCC} in version $\geq$4.7, for Windows you can use \textsc{MinGW-Builds} from \url{http://sourceforge.net/projects/mingwbuilds/}). The program only relies on the GNU scientific library (GSL), available from \url{http://www.gnu.org/software/gsl/}, but also integrated in the repository (see below). In addition you will need a working \bash-shell (on Windows use \msys available from \url{http://www.mingw.org/wiki/msys}) and \textsc{Git} to access the repository (if you don't want to download the code manually). In general this program should compile on \textsc{Windows}, \textsc{Linux} and \textsc{MacOS X}.\\[10mm]
-
-\noindent In order to install \df, follow these steps:
-\begin{enumerate}
-	\item check out the git repository: 
-	  \begin{lstlisting}[language=bash] 
-$ git clone --recursive "https://github.com/jkriege2/FCSSimulator.git"
-		\end{lstlisting}
-	\item ensure that all submodules are checked out: 
-	  \begin{lstlisting}[language=bash] 
-$ cd FCSSimulator
-$ git submodule update --init --remote --recursive --force
-		\end{lstlisting}
-	\item if GSL is not available on your system, we'll have to build it now. The repository contains a \bash-script for this purpose: 
-	  \begin{lstlisting}[language=bash] 
-$ cd extlibs
-$ . build_dependencies.sh
-$ cd..
-		\end{lstlisting}
-		This script will build a \underline{local version} of \GSL. It is not installed in the system, but only in the directory \texttt{./extlibs/gsl/}. It will ask several questions: Generally you should not keep the build-directories (\texttt{n}), use as many processor, as you like (e.g. \texttt{2} for a dual-core, or \texttt{4} for a quad-core machine), you the best optimizations for your local machine, if the programm will only be used locally (twice \texttt{y}, or for safe-settings \texttt{y} and then \texttt{n}). Finally answer \texttt{y} when asked whether GSL should be compiled.
-\end{enumerate}
-
-\section{Compilation}
-\label{sec:Compilation}
-\index{compilation}
-the rest of the compilation is done using a \texttt{Makefile} in the base directory:
-\begin{lstlisting}[language=bash] 
-$ make 
-\end{lstlisting}
-
-\section{Running the Software \df}
-\label{sec:RunningTheSoftware}
-\index{running}
-After the compilation, an command-line based executable \texttt{diffusion4} is created in the base directory. This is the simulator, which can then be started as follows:
-\begin{lstlisting}[language=bash] 
-$ diffusion4 [--spectra SPECTRADIRECTORY] CONFIG_SCRIPT.ini 
-\end{lstlisting}
-Here \texttt{CONFIG\_SCRIPT.ini} is a configuration file that tells the simulator what to do and the optional \texttt{--spectra SPECTRADIRECTORY} can be used to provide another directory with absorption and emission spectra. A version of this directory is available in the repository under \verb!./spectra/!, which is also loaded automatically, if the option \verb!--spectra! is not given. \df reads absorption and emission spectra for its simulation from this directory. Note that \df will not work, if a \texttt{spectra}-directory is not provided!
-
-\section{Running \df from a Makefile}
-\label{sec:RunningDfFromAMakefile}
-\index{running!Makefile}
-Often it is useful to run \df from a Makefile, if several simulations should be done (in parallel) on a computer. here is an example Makefile for this task (see the repository directory \texttt{./example\_configs/} for further examples:
-\begin{lstlisting}[language=make] 
-SCRIPTS= gyuri_isat_multigfp0.ini\
-	       gyuri_isat_multigfp1.ini 
-
-SHELL = sh
-
-SCRIPTS_TARGET = $(subst .ini,.target,$(SCRIPTS))
-
-TERMINAL_COMMAND=		
-
-ifeq ($(findstring Msys,$(OS)),Msys)
-EXE_SUFFIX=.exe
-TERMINAL_COMMAND=
-else
-EXE_SUFFIX=
-#TERMINAL_COMMAND=konsole -e 
-#TERMINAL_COMMAND=x-terminal-emulator -e 
-endif		
-		 
-all: ${SCRIPTS_TARGET}
-
-%.target: %.ini
-	@echo -e "random wait before starting $< ..."
-	@bash random_sleep.sh
-	@bash -c "sleep $$[ ( $$RANDOM % 10 )  + 1 ]s"
-	@echo -e "starting on $< ..."
-	${TERMINAL_COMMAND} ./diffusion4${EXE_SUFFIX} $< > $<.log
-	@echo -e "work on $< DONE!"
-\end{lstlisting}
-You can run such a Makefile with the command:
-\begin{lstlisting}[language=bash] 
-$ make -f Makefile -j4
-\end{lstlisting}
-where \texttt{4} specifies the number of processors to use. This makefile also uses the \bash-script \texttt{random\_sleep.sh}, which waits a random number of seconds (up to 10 or 20) before running  the simulation. This ensures that the random number generator of each simulation is initialized with a different seed (the seed is taken from the system time!).
-
-
-\chapter{Introduction to \df}
-\label{sec:IntroductionToDf}
-
-
-
-\chapter{Reference of the \df-Modules}
-\label{sec:ReferenceOfTheDfModules}
-\section{Fluorophore Dynamics Modules}
-\label{sec:TrajectoryModules}
-\index{fluorophore dynamics}
-\index{particle dynamics}
-
-\subsection{Fluorescence Detection Modules}
-\label{sec:DetectionModules}
-\index{fluorescence detection}
-
-\chapter{Extending \df}
-\label{sec:ExtendingDf}
-\section{Introduction and Registration}
-\label{sec:IntroductionAndRegistration}
-
-You can extend \df with your own modules by implementing classes of the type \texttt{FluorophorDynamics} for fluorophore dynamics modules, or \texttt{FluorescenceMeasurement} for fluorescence detection modules. these virtual base-classes each provide virtual functions that you have to implement in order to give you class a function. Finally you will have to register your new class in \texttt{main.cpp}:
-\begin{itemize}
-	\item \itindextt{FluorophorDynamics}-classes have to be added near the text
-		\begin{lstlisting}[language=c++] 
-///////////////////////////////////////////////////
-// add you custom dynamics classes here
-///////////////////////////////////////////////////
-		\end{lstlisting}	
-		e.g.:
-		\begin{lstlisting}[language=c++] 
-///////////////////////////////////////////////////
-// add you custom dynamics classes here
-///////////////////////////////////////////////////
-} else if (lgname.find("mydyn")==0 && lgname.size()>5) {
-	supergroup="mydyn";
-	d=new MyDynamics(fluorophors, oname);
-		\end{lstlisting}	
-		Here you custom class is called \texttt{MyDynamics} and in the configration files it will have the prefix \texttt{mydyn}.
-	\item \itindextt{FluorescenceMeasurement}-classes have to be added near the text
-		\begin{lstlisting}[language=c++] 
-///////////////////////////////////////////////////
-// add you custom detection classes here
-///////////////////////////////////////////////////
-		\end{lstlisting}	
-		e.g.:
-		\begin{lstlisting}[language=c++] 
-///////////////////////////////////////////////////
-// add you custom detection classes here
-///////////////////////////////////////////////////
-} else if (lgname.find("mydetection")==0 && lgname.size()>14) {
-	supergroup="mydetection";
-	m=new MyDetection(fluorophors, oname);
-		\end{lstlisting}	
-		Here you custom class is called \texttt{MyDetection} and in the configuration files it will have the prefix \texttt{mydetection}.
-		
-\end{itemize}
-
-\section{Implementing \texttt{FluorophorDynamics}-Classes}
-\label{sec:ImplementingTextttFluorophorDynamicsClasses}
-\indextt{FluorophorDynamics}
-\indextt{FluorophorDynamics::init()}
-\index{fluorophore dynamics}
-\index{particle dynamics}
-
-\begin{lstlisting}[language=c++] 
-	virtual void init();
-\end{lstlisting}
-This function is called before the simulation and is used to initialize the simulation object.
-
-
-\indextt{FluorophorDynamics::propagate()}
-\begin{lstlisting}[language=c++] 
-	virtual void propagate(bool boundary_check=true);
-\end{lstlisting}	
-This function implements the main functionality. It is called in every step and propagates the walkers that are stored in the array \texttt{walker\_state}. If the parameter \texttt{boundary\_check} is set \texttt{true}, the function body should perform a boundary-check at the borders of the sim-box. Otherwise the sim-box is assumed to be infinite (used for testing).
-
-\indextt{FluorophorDynamics::report()}
-\begin{lstlisting}[language=c++] 
-	virtual std::string report();
-\end{lstlisting}	
-This function reports the object-state in human-readable form.
-
-
-\indextt{FluorophorDynamics::read\_config\_internal()}
-\begin{lstlisting}[language=c++] 
-	virtual void read_config_internal(jkINIParser2& parser);
-\end{lstlisting}	
-This function reads the object-configuration from the given parser, which is already cd'ed to the group to be read. This function is called twice for each object: Once for the super-group and once for the actual object-group.
-
-Note that there are additional functions that can be used in special cases. See the implemented classes in the repository for details.
-
-\section{Implementing \texttt{FluorescenceMeasurement}-Classes}
-\label{sec:ImplementingTextttFluorescenceMeasurementClasses}
-\indextt{FluorescenceMeasurement}
-\indextt{FluorescenceMeasurement::init()}
-\index{fluorescence detection}
-\begin{lstlisting}[language=c++] 
-	virtual void init();
-\end{lstlisting}
-This function is called before the simulation and is used to initialize the simulation object.
-
-\indextt{FluorescenceMeasurement::propagate()}
-\begin{lstlisting}[language=c++] 
-	virtual void propagate();
-\end{lstlisting}	
-This function implements the main functionality. It is called in every step and propagates the walkers that can be obtained from the dynamics-objects in the array \texttt{dyn}. 
-
-\indextt{FluorescenceMeasurement::report()}
-\begin{lstlisting}[language=c++] 
-	virtual std::string report();
-\end{lstlisting}	
-This function reports the object-state in human-readable form.
-
-\indextt{FluorescenceMeasurement::save()}
-\begin{lstlisting}[language=c++] 
-	virtual void save();
-\end{lstlisting}	
-This function stores the simulation results.
-
-
-\indextt{FluorescenceMeasurement::read\_config\_internal()}
-\begin{lstlisting}[language=c++] 
-	virtual void read_config_internal(jkINIParser2& parser);
-\end{lstlisting}	
-This function reads the object-configuration from the given parser, which is already cd'ed to the group to be read. This function is called twice for each object: Once for the super-group and once for the actual object-group.
-
-Note that there are additional functions that can be used in special cases. See the implemented classes in the repository for details.
 
 \printindex
+\bibliography{manual}
+
 \end{document}
 

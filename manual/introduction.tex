@@ -1,0 +1,62 @@
+\chapter{Introduction to \df}
+\label{sec:IntroductionToDf}
+This software has been developed to simulate \itindex{fluorescence correlation spectroscopy} (\itindex{FCS}) and \itindex{fluorescence cross-correlation spectroscopy} (\itindex{FCCS}) measurements, based on particle trajectories.
+
+
+
+\section{Summary of \df}
+\label{sec:SummaryOfDf}
+\begin{center}
+  \itshape \underline{Note:} This section is a copy from the appendix of my PhD thesis!
+\end{center}
+
+This software can simulate FCS and FCCS correlation curves for different focus geometries and is closely related to the FCS/FCCS theory as presented in chapter~\ref{sec:FluorescenceFluctuationTechniques} and especially the modeling of fluorescence detection described in section~\ref{sec:FCSModelingTheOpticalSystem}. It starts from a set of $N$ particle trajectories $\{\vr_i(t)\}$, where $i$ numbers the particles and $t=1,2,...$ numbers the equidistant timepoints with resolution $\Delta t_\txt{im}$. The trajectories are either read from an external data file or are created internally by a configurable random walk. First $N_i\geq 1$ fluorophores are assigned to each particle, leading to an overall number of fluorophores \[  F=\sum\limits_{i=1}^NN_i  \] fluorophores $f$, which are each  characterized by the following set of properties (the functions $i(f)$ is the trajectory ID for every fluorophore $f$):
+\begin{enumerate}
+	\item a position $\vr_f(t)=\vr_{i(f)}(t)+\Delta\vr_{f}$, where $\vr_{i(f)}(t)$ is the position of the particle and $\Delta\vr_f$ is an arbitrary, but constant shift from this position. In the simplest case there is only one fluorophore per particle and $\Delta\vr_f=0$. Using $\Delta\vr_f\neq0$, moving finite-sized objects may be simulated that are e.g. labeled with a set of fluorophores on their surface or in their interior.
+  \item each fluorophore may be in one of $S_f$ states. Each state may have different spectroscopic properties. The current state at time $t$ is denoted by $s_f(t)$. 
+  \item a wavelength-dependent absorption crosssection spectrum $\sigmaabsm{i}(\lambda)$.
+  \item a normalized fluorescence spectrum $\eta_{\txt{fl},f}(\lambda)$ and a fluorescence quantum yield $\qfluorm{f,s_f(t)}$
+  \item a dipole orientation vector $\vp_f(t)$ with $\snorm{\vp_f(t)}=1$.
+\end{enumerate}
+The state trajectory $s_f(t)$ for each fluorophore either does not change (the default case), is read from an external file, or is simulated using a matrix of transition rates and a random decision in each simulation step. In this way photophysical blinking transitions may be simulated, if e.g. $s_f(t)\equiv1$ is a bright state and $s_f(t)\equiv2$ is a dark state with $\qfluorm{f,2}=0$. Also a simple bleaching process is implemented, by switching off (but never on again) a fluorophore with a certain low probability.
+
+The simulation proceeds in steps of $\Delta t_\txt{sim}$. For each time step and each focus in the simulation, first the expected number of fluorescence photons is calculated:
+\begin{equation}\label{eq:app_sim_fcs_nphoton}
+  \overline{N}_\txt{phot}(t)=\sum\limits_{f=1}^F\qfluorm{f,s_f(t)}\cdot\sigmaabsm{i}(\lambda_\txt{ex})\cdot q_\txt{det}\cdot \frac{\Delta t_\txt{sim}\cdot I(\vr_f(t))}{h\clight/\lambda_\txt{ex}}\cdot \Omega(\vr_f(t))\cdot h_\txt{pol}(\vp_f(t)),
+\end{equation}
+where $h$ is Planck's constant, $\clight$ is the velocity of light in vacuum and $\lambda_\txt{ex}$ is the excitation wavelength. 
+
+The shape of the illumination profile is described by the function $I(\vr)$ and the respective shape of photon collection efficiency by $\Omega(\vr)$. Several models are implemented for them:
+\begin{enumerate}
+	\item \textbf{Gaussian}: The shapes of $I(\vr)$ and $\Omega(\vr)$ are cigar-like Gaussian functions with equal $x$- and $y$-width $w_0$ and $z$-width $z_0$:
+					\begin{equation}\label{eq:sim3} I(\vr),\Omega(\vr)\propto\exp\left(-2\cdot\frac{x^2+y^2}{w_0^2}-2\cdot\frac{z^2}{z_0^2}\right) \end{equation}
+	\item \textbf{Gaussian beam}: The illumination/detection focus is described by a Gaussian beam, which has a lateral width $w(z)$ increasing with distance $z$ from the focus and a Laurentzian shape in $z$-direction:  
+					\begin{equation}\label{eq:sim4} I(\vr),\Omega(\vr)\propto\left(\frac{w_0}{w(z)}\right)^2\cdot\exp\left(-2\cdot\frac{x^2+y^2}{w^2(z)}\right),\ \ \ \ \text{with}\ \ \ w(z)=w_0\cdot\sqrt{1+\left(\frac{z}{z_0}\right)^2} \end{equation}
+	\item \textbf{Gaussian light sheet}: A simple model for a lightsheet is a Gaussian in $z$-direction, which does not depend on $x$ or $y$:
+					\begin{equation}\label{eq:sim5} I(\vr)\propto\exp\left(-2\cdot\frac{z^2}{z_0^2}\right) \end{equation}
+	\item \textbf{Slit pattern light sheet}: To model the sidelobes observed in typical light sheets a slit function can be used:
+					\begin{equation}\label{eq:sim6} I(\vr)\propto\left(\frac{\sin(\pi\cdot z/z_0)}{\pi\cdot z/z_0}\right)^2 \end{equation}
+\end{enumerate}
+The first two patterns can be used for both, the illumination and detection foci, whereas the last two are designed to model the light sheet illumination.
+
+The remaining influence of the detection process (signal loss at optical interfaces and filters, detector quantum efficiency, ...) is described by the factor
+\begin{equation}\label{eq:app_sim_fcs_qdet}
+  q_\txt{det}=q_{\txt{det},0}\cdot\frac{\int\limits_{\lambda_\txt{det,min}}^{\lambda_\txt{det,max}}\eta_{\txt{fl},f}(\lambda)\;\dd\lambda}{\int\limits_{0}^{\infty}\eta_{\txt{fl},f}(\lambda)\;\dd\lambda},
+\end{equation}
+summarizing the loss of light due to optics and detector quantum efficiency $q_{\txt{det},0}$, as well as the spectral width of the fluorescence detection window $\lambda_\txt{det,min}...\lambda_\txt{det,max}$. This detection window allows to also take into account crosstalk between two detection channels. The influence of the dipole direction $\vp_f(t)$ and a possible laser polarization is modeled by the factor
+\begin{equation}\label{eq:app_sim_fcs_hpol}
+  h_\txt{pol}(\vp_f(t))=(1-\theta_\txt{pol})+\theta_\txt{Pol}\cdot\left(\vec{\epsilon}_\txt{ex}\bullet\vp_f(t)\right)^2,
+\end{equation}
+where $\bullet$ is a scalar product, $\theta_\txt{Pol}\in[0,1]$ is the fraction of linear polarization of the excitation light source and $\vec{\epsilon}_\txt{ex}$ (with $\snorm{\vec{\epsilon}_\txt{ex}}=1$) is the linear polarization direction of this light source.
+
+From the average number of detected photons, the measured number of photons ${N}_\txt{det}(t)$ is calculated, taking the detector statistics into account. In the simplest case of a photon counting detector, ${N}_\txt{det}(t)$ is drawn from a Poissonian distribution with mean (and variance) $\overline{N}_\txt{phot}(t)$. Other detection statistics are possible, such as a linear detector, where ${N}_\txt{det}(t)$ is drawn from a Gaussian distribution with mean $\avg{G}\cdot\overline{N}_\txt{phot}(t)$ and a variance comparable to \eqref{eq:photondet_counting_snr}:
+\begin{equation}\label{eq:app_sim_fcs_lindetnoise}
+  \sigma_\txt{det}^2=\avg{G}^2\cdot\excessnoise\cdot{N}_\txt{det}(t)+\sigmaread^2,
+\end{equation}
+where $\avg{G}$ is the average detector gain, $\excessnoise$ the excess noise factor and $\sigmaread^2$ the read noise variance, summarizing all contributions, not depending on the number of incident photons. Also artifacts, such as a background intensity offset may be included in the detector simulation. Although intermediate results may be floating-point numbers, the finally detected number of photons (or ADU counts in a linear detector) is always an integer number.
+
+Finally the time series  ${N}_\txt{det}(t)$ is post processed to yield count rate traces with arbitrary binning, auto- and cross-correlation functions (between different foci on the simulation) and other statistical properties. Also several test data sets are saved by the simulation program, such as particle \index{mean squared displacement}mean squared displacements (\index{MSD}MSDs), the raw detector statistics etc.
+
+The complete program is split into modules that may be combined in different ways for a simulation. All these modules are either trajectory sources or sinks. In each time step first all sources generate a new set of fluorophore properties, e.g. by reading a new data set from a file or advancing a random walk simulation. The these new particle properties are forwarded to the sink objects, which simulate the actual detection process, as described above, or generate MSDs and other trajectory statistics. Every sink may be connected to several sources, and one source can feed several sinks. This can be used e.g. for simulations of fluorophore reservoir depletion, as in section~\ref{sec:FluorophoreDepletion}, where a single trajectory source is fed into intermediate objects that simulate different bleaching rates on the same particle positions and finally detected by a set of identical sinks, which simulate FCS detection.
+
+This software was initiated in the first year of the thesis and extended and improved in the following years. It was used to simulate different aspects of FCS/FCCS in several publications \cite{WOCJAN2009,BUCHHO2012,SINGHKRIEGER2013,KRIEGE2014}.

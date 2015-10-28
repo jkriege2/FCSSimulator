@@ -1,0 +1,112 @@
+ter{Extending \df}
+\label{sec:ExtendingDf}
+\section{Introduction and Registration}
+\label{sec:IntroductionAndRegistration}
+
+You can extend \df with your own modules by implementing classes of the type \texttt{FluorophorDynamics} for fluorophore dynamics modules, or \texttt{FluorescenceMeasurement} for fluorescence detection modules. these virtual base-classes each provide virtual functions that you have to implement in order to give you class a function. Finally you will have to register your new class in \texttt{main.cpp}:
+\begin{itemize}
+	\item \itindextt{FluorophorDynamics}-classes have to be added near the text
+		\begin{lstlisting}[language=c++] 
+///////////////////////////////////////////////////
+// add you custom dynamics classes here
+///////////////////////////////////////////////////
+		\end{lstlisting}	
+		e.g.:
+		\begin{lstlisting}[language=c++] 
+///////////////////////////////////////////////////
+// add you custom dynamics classes here
+///////////////////////////////////////////////////
+} else if (lgname.find("mydyn")==0 && lgname.size()>5) {
+	supergroup="mydyn";
+	d=new MyDynamics(fluorophors, oname);
+		\end{lstlisting}	
+		Here you custom class is called \texttt{MyDynamics} and in the configration files it will have the prefix \texttt{mydyn}.
+	\item \itindextt{FluorescenceMeasurement}-classes have to be added near the text
+		\begin{lstlisting}[language=c++] 
+///////////////////////////////////////////////////
+// add you custom detection classes here
+///////////////////////////////////////////////////
+		\end{lstlisting}	
+		e.g.:
+		\begin{lstlisting}[language=c++] 
+///////////////////////////////////////////////////
+// add you custom detection classes here
+///////////////////////////////////////////////////
+} else if (lgname.find("mydetection")==0 && lgname.size()>14) {
+	supergroup="mydetection";
+	m=new MyDetection(fluorophors, oname);
+		\end{lstlisting}	
+		Here you custom class is called \texttt{MyDetection} and in the configuration files it will have the prefix \texttt{mydetection}.
+		
+\end{itemize}
+
+\section{Implementing \texttt{FluorophorDynamics}-Classes}
+\label{sec:ImplementingTextttFluorophorDynamicsClasses}
+\indextt{FluorophorDynamics}
+\indextt{FluorophorDynamics::init()}
+\index{fluorophore dynamics}
+\index{particle dynamics}
+
+\begin{lstlisting}[language=c++] 
+	virtual void init();
+\end{lstlisting}
+This function is called before the simulation and is used to initialize the simulation object.
+
+
+\indextt{FluorophorDynamics::propagate()}
+\begin{lstlisting}[language=c++] 
+	virtual void propagate(bool boundary_check=true);
+\end{lstlisting}	
+This function implements the main functionality. It is called in every step and propagates the walkers that are stored in the array \texttt{walker\_state}. If the parameter \texttt{boundary\_check} is set \texttt{true}, the function body should perform a boundary-check at the borders of the sim-box. Otherwise the sim-box is assumed to be infinite (used for testing).
+
+\indextt{FluorophorDynamics::report()}
+\begin{lstlisting}[language=c++] 
+	virtual std::string report();
+\end{lstlisting}	
+This function reports the object-state in human-readable form.
+
+
+\indextt{FluorophorDynamics::read\_config\_internal()}
+\begin{lstlisting}[language=c++] 
+	virtual void read_config_internal(jkINIParser2& parser);
+\end{lstlisting}	
+This function reads the object-configuration from the given parser, which is already cd'ed to the group to be read. This function is called twice for each object: Once for the super-group and once for the actual object-group.
+
+Note that there are additional functions that can be used in special cases. See the implemented classes in the repository for details.
+
+\section{Implementing \texttt{FluorescenceMeasurement}-Classes}
+\label{sec:ImplementingTextttFluorescenceMeasurementClasses}
+\indextt{FluorescenceMeasurement}
+\indextt{FluorescenceMeasurement::init()}
+\index{fluorescence detection}
+\begin{lstlisting}[language=c++] 
+	virtual void init();
+\end{lstlisting}
+This function is called before the simulation and is used to initialize the simulation object.
+
+\indextt{FluorescenceMeasurement::propagate()}
+\begin{lstlisting}[language=c++] 
+	virtual void propagate();
+\end{lstlisting}	
+This function implements the main functionality. It is called in every step and propagates the walkers that can be obtained from the dynamics-objects in the array \texttt{dyn}. 
+
+\indextt{FluorescenceMeasurement::report()}
+\begin{lstlisting}[language=c++] 
+	virtual std::string report();
+\end{lstlisting}	
+This function reports the object-state in human-readable form.
+
+\indextt{FluorescenceMeasurement::save()}
+\begin{lstlisting}[language=c++] 
+	virtual void save();
+\end{lstlisting}	
+This function stores the simulation results.
+
+
+\indextt{FluorescenceMeasurement::read\_config\_internal()}
+\begin{lstlisting}[language=c++] 
+	virtual void read_config_internal(jkINIParser2& parser);
+\end{lstlisting}	
+This function reads the object-configuration from the given parser, which is already cd'ed to the group to be read. This function is called twice for each object: Once for the super-group and once for the actual object-group.
+
+Note that there are additional functions that can be used in special cases. See the implemented classes in the repository for details.
