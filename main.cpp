@@ -29,6 +29,7 @@
 #include "msdmeasurement.h"
 #include "childdynamics.h"
 #include "trajectoryplot.h"
+#include "nulldynamics.h"
 #include <gsl/gsl_matrix.h>
 
 
@@ -127,6 +128,7 @@ void do_sim(std::string inifilename, int argc, char* argv[]) {
 
         double estimated_max_runtime=0;
 
+
         // create all dynamics objects
         for (unsigned long i=0; i<groups_in_ini.size(); i++) {
             std::string gname=groups_in_ini[i];
@@ -147,6 +149,9 @@ void do_sim(std::string inifilename, int argc, char* argv[]) {
             } else if (lgname.find("dynfile")==0 && lgname.size()>7) {
                 supergroup="dynfile";
                 d=new DynamicsFromFiles2(fluorophors, oname);
+            } else if (lgname.find("null")==0 && lgname.size()>4) {
+                supergroup="null";
+                d=new NullDynamics(fluorophors, oname);
             } else if (lgname.find("child")==0 && lgname.size()>5) {
                 supergroup="child";
                 d=new ChildDynamics(fluorophors, oname);
@@ -163,21 +168,21 @@ void do_sim(std::string inifilename, int argc, char* argv[]) {
                 bool dotest;
                 int test_steps=0;
                 int test_walkers=0;
-                dotest=ini.groupExists(supergroup+".test_dynamics") || ini.getAsBool(supergroup+".test_dynamics", false);
-                dotest=dotest || ini.groupExists(gname+".test_dynamics") || ini.getAsBool(gname+".test_dynamics", false);
+                dotest=(ini.groupExists(supergroup+".test_dynamics") && ini.getAsBool(supergroup+".test_dynamics", false));
+                dotest=dotest || (ini.groupExists(gname+".test_dynamics") && ini.getAsBool(gname+".test_dynamics", false));
                 test_steps=ini.getSetAsInt(gname+".test_dynamics.sim_steps", ini.getSetAsInt(supergroup+".test_dynamics.sim_steps", 10000));
                 test_walkers=ini.getSetAsInt(gname+".test_dynamics.walkers", ini.getSetAsInt(supergroup+".test_dynamics.walkers", 200));
                 if (dotest) {
-                    d->read_config(ini, gname/*+".test_dynamics"*/, supergroup);
+                    d->read_config(ini, gname, supergroup);
                     d->test(test_steps, test_walkers);
                 }
-                dotest=ini.groupExists(supergroup+".test_photophysics") || ini.getAsBool(supergroup+".test_photophysics", false);
-                dotest=dotest || ini.groupExists(gname+".test_photophysics") || ini.getAsBool(gname+".test_photophysics", false);
+                dotest=(ini.groupExists(supergroup+".test_photophysics") && ini.getAsBool(supergroup+".test_photophysics", false));
+                dotest=dotest || (ini.groupExists(gname+".test_photophysics") && ini.getAsBool(gname+".test_photophysics", false));
                 test_steps=ini.getSetAsInt(gname+".test_photophysics.sim_steps", ini.getSetAsInt(supergroup+".test_photophysics.sim_steps", 10000));
                 test_walkers=ini.getSetAsInt(gname+".test_photophysics.walkers", ini.getSetAsInt(supergroup+".test_photophysics.walkers", 200));
                 d->set_basename(basename);
                 if (dotest) {
-                    d->read_config(ini, gname/*+".test_photophysics"*/, supergroup);
+                    d->read_config(ini, gname, supergroup);
                     d->test_photophysics(test_steps, test_walkers);
                 }
                 d->read_config(ini, gname, supergroup);
@@ -193,6 +198,7 @@ void do_sim(std::string inifilename, int argc, char* argv[]) {
         for (size_t i=0; i<dyn.size(); i++) {
             std::cout<<"    initializing "<< dyn[i]->get_supergroup() <<" dynamics object '"<<dyn[i]->get_object_name()<<"' ("<<dyn[i]->get_group()<<") ... \n";
             dyn[i]->init();
+            dyn[i]->run_heatup();
             double rt=dyn[i]->estimate_runtime();
             if (rt>estimated_max_runtime) estimated_max_runtime=rt;
             std::cout<<"    initialized "<< dyn[i]->get_supergroup() <<" dynamics object '"<<dyn[i]->get_object_name()<<"' ("<<dyn[i]->get_group()<<")     est. runtime="<<rt<<"s,   est. max. runtime="<<estimated_max_runtime<<"s\n";
@@ -249,6 +255,7 @@ void do_sim(std::string inifilename, int argc, char* argv[]) {
                         std::cout<<dynmap[tolower(strstrip(sources[s]))]->get_object_name();
                     }
                     m->init();
+                    //m->run_heatup();
                     std::cout<<"created "<<supergroup<<" measurement object '"<<oname<<"' connected to: ";
                     std::cout<<std::endl;
                 }

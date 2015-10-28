@@ -30,6 +30,7 @@ SRC_FILE= browniandynamics.cpp \
           gridrandomwalkdynamics.cpp \
           msdmeasurement.cpp \
           childdynamics.cpp \
+          nulldynamics.cpp \
           trajectoryplot.cpp \
           datatable.cpp \
           highrestimer.cpp \

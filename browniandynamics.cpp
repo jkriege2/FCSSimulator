@@ -33,7 +33,6 @@ BrownianDynamics::BrownianDynamics(FluorophorManager* fluorophors, std::string o
     diff_rot=100;
     use_rotational_diffusion=false;
     n_fluorophores_local=1;
-    heatup_steps=0;
     init();
 }
 
@@ -50,7 +49,6 @@ BrownianDynamics::BrownianDynamics(FluorophorManager* fluorophors, double sim_x,
     diff_rot=100;
     use_rotational_diffusion=false;
     n_fluorophores_local=1;
-    heatup_steps=0;
     init();
 }
 
@@ -65,7 +63,6 @@ BrownianDynamics::BrownianDynamics(FluorophorManager* fluorophors, double sim_ra
     msd_count=NULL;
     set_diff_coeff(20);
     n_fluorophores_local=1;
-    heatup_steps=0;
     diff_rot=100;
     use_rotational_diffusion=false;
     init();
@@ -124,6 +121,7 @@ void BrownianDynamics::init(){
 
 void BrownianDynamics::propagate(bool boundary_check){
     FluorophorDynamics::propagate(boundary_check);
+    sigma_jump=sqrt(2.0*diff_coeff*sim_timestep);
     //static walkerState oldstate;
     // now wepropagate every walker
     for (register unsigned long i=0; i<walker_count; i++) {
@@ -151,7 +149,7 @@ void BrownianDynamics::propagate(bool boundary_check){
                 walker_state[i].y=ny;
                 walker_state[i].z=nz;
 
-                if ((save_msd_every_n_timesteps>0)&&msd&&((walker_state[i].time%save_msd_every_n_timesteps)==(save_msd_every_n_timesteps-1))) {
+                if ((save_msd_every_n_timesteps>0)&&msd&&msd2&&msd_count&&((walker_state[i].time%save_msd_every_n_timesteps)==(save_msd_every_n_timesteps-1))) {
                     double m=gsl_pow_2(nx-walker_state[i].x0)+gsl_pow_2(ny-walker_state[i].y0)+gsl_pow_2(nz-walker_state[i].z0);
                     int idx=walker_state[i].time/save_msd_every_n_timesteps;
                     //std::cout<<save_msd_every_n_timesteps<<", "<<msd<<", "<<msd_size<<", "<<idx<<"\n";
@@ -276,11 +274,11 @@ void BrownianDynamics::propagate(bool boundary_check){
     }
     store_step_protocol();
 
-    if ((save_msd_every_n_timesteps>0) && (sim_time>duration-sim_timestep)) {
+    if (!heating_up && (save_msd_every_n_timesteps>0) && (sim_time>duration-sim_timestep) && msd_count && msd && msd2 && msd_size>0) {
         // store MSD curve
         char fn[1024];
         sprintf(fn, "%s%smsd.dat", basename.c_str(), object_name.c_str());
-        std::cout<<"writing MSD file '"<<fn<<"' ... ";
+        std::cout<<"writing MSD file '"<<fn<<"' ... msd_size="<<msd_size<<" ... ";
         FILE* f=fopen(fn, "w");
         for (int i=0; i<msd_size; i++) {
             double tau=(double)(i)*(double)sim_timestep*(double)save_msd_every_n_timesteps;
@@ -374,12 +372,14 @@ std::string BrownianDynamics::dot_get_properties() {
 
 void BrownianDynamics::test(unsigned int steps, unsigned int walkers) {
     FluorophorDynamics::test(steps, walkers);
-    std::cout<<"init test ... ";
+    std::cout<<"TEST: init test ... ";
     unsigned int nw=walkers;
     use_rotational_diffusion=true;
     init();
     change_walker_count(nw, 1);
-    std::cout<<"setup test ... \n";
+    std::cout<<"TEST: heating up ... \n";
+    run_heatup();
+    std::cout<<"TEST: setup test ... \n";
     for (unsigned int i=0; i<nw; i++) {
         walker_state[i].x=0;
         walker_state[i].y=0;
@@ -389,7 +389,7 @@ void BrownianDynamics::test(unsigned int steps, unsigned int walkers) {
         walker_state[i].p_z=1;
     }
     //sim_time=0;
-    std::cout<<"opening output file ... \n";
+    std::cout<<"TEST: opening output file ... \n";
     FILE* f=fopen((basename+object_name+"test_x2.dat").c_str(), "w");
     FILE* f1=fopen((basename+object_name+"test_traj.dat").c_str(), "w");
     int nhist=100;
@@ -397,7 +397,7 @@ void BrownianDynamics::test(unsigned int steps, unsigned int walkers) {
     gsl_histogram_set_ranges_uniform (h_theta, 0, 180);
     gsl_histogram * h_phi = gsl_histogram_alloc(nhist+1);
     gsl_histogram_set_ranges_uniform(h_phi, 0, 360);
-    std::cout<<"starting test propagation ";
+    std::cout<<"TEST: starting test propagation ";
     for (unsigned int i=0; i<steps; i++) {
         propagate(false);
         double xs=0;
@@ -420,7 +420,7 @@ void BrownianDynamics::test(unsigned int steps, unsigned int walkers) {
         if (i%100==0) std::cout<<".";
     }
     std::cout<<" ready!"<<std::endl;
-    std::cout<<"writing test results ... "<<std::endl;
+    std::cout<<"TEST: writing test results ... "<<std::endl;
     fclose(f);
     fclose(f1);
     FILE* f2=fopen((basename+object_name+"test_hist_rot.dat").c_str(), "w");
@@ -495,6 +495,6 @@ void BrownianDynamics::test(unsigned int steps, unsigned int walkers) {
     f=fopen((basename+object_name+"test_config.txt").c_str(), "w");
     fprintf(f, "%s\n", report().c_str());
     fclose(f);
-    std::cout<<"test DONE!"<<std::endl;
+    std::cout<<"TEST: test DONE!"<<std::endl;
 }
 

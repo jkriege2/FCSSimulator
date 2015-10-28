@@ -285,6 +285,7 @@ void FCSMeasurement::read_config_internal(jkINIParser2& parser) {
     std::string dt=tolower(parser.getAsString("detector_type", "photon_counting"));
     if (dt=="0" || dt=="photon" || dt=="photon_counting") detector_type=0;
     if (dt=="1" || dt=="linear" || dt=="emccd" || dt=="ccd" || dt=="camera") detector_type=1;
+    if (dt=="2" || dt=="photon_nonrandom" || dt=="photon_counting_nonrandom") detector_type=2;
     lindet_bits=parser.getSetAsInt("lindet_bits", lindet_bits);
     lindet_gain=parser.getSetAsDouble("lindet_gain", lindet_gain);
     lindet_var_factor=parser.getSetAsDouble("lindet_var_factor", lindet_var_factor);
@@ -584,7 +585,7 @@ double FCSMeasurement::illuminationEfficiency(double dx, double dy, double dz, d
 double FCSMeasurement::get_relative_absorbance_for(FluorophorDynamics* dyn, int i, double x0, double y0, double z0) {
     const FluorophorDynamics::walkerState* dynn=dyn->get_visible_walker_state();
     if (i<0 || i>=dyn->get_visible_walker_count()) {
-        std::cout<<i<<"/"<<dyn->get_visible_walker_count()<<" FAILED!\n";
+        //std::cout<<i<<"/"<<dyn->get_visible_walker_count()<<" FAILED!\n";
         return 0;
     }
     const FluorophorDynamics::walkerState* walker=&(dynn[i]);
@@ -788,6 +789,8 @@ int32_t FCSMeasurement::getDetectedPhotons(double nphot_sum) const {
     }
     if (detector_type==0) {
         N=(double)gsl_ran_poisson(rng, nphot_sum)+offset_rate+on;
+    } else if (detector_type==2) {
+        N=round(nphot_sum+offset_rate+on);
     } else {
         double d=gsl_ran_gaussian_ziggurat(rng, sqrt(nphot_sum*lindet_gain*lindet_gain*lindet_var_factor+lindet_readnoise*lindet_readnoise))+nphot_sum*lindet_gain+offset_rate+on;
         N=round(d);
@@ -2350,8 +2353,10 @@ std::string FCSMeasurement::report(){
         s+="detector_gain = "+floattostr(lindet_gain)+"\n";
         s+="lindet_readnoise = "+floattostr(lindet_readnoise)+"\n";
         s+="detector_variance_factor = "+floattostr(lindet_var_factor)+"\n";
+    } else if (detector_type==0){
+        s+="detector_type = photon_counting (non-random)\n";
     } else {
-        s+="detector_type = photon_counting\n";
+        s+="detector_type = photon_counting (Poisson)\n";
     }
     s+="detection_efficiency = "+floattostr(q_det*100.0)+"%\n";
 
@@ -2529,8 +2534,10 @@ std::string FCSMeasurement::dot_get_properties(){
         s+="detector_gain = "+floattostr(lindet_gain)+"<BR/>";
         s+="lindet_readnoise = "+floattostr(lindet_readnoise)+"<BR/>";
         s+="detector_variance_factor = "+floattostr(lindet_var_factor)+"<BR/>";
+    } else if (detector_type==2) {
+        s+="detector_type = photon_counting (non-random)<BR/>";
     } else {
-        s+="detector_type = photon_counting<BR/>";
+        s+="detector_type = photon_counting (Poisson)<BR/>";
     }
     s+="detection_efficiency = "+floattostr(q_det*100.0)+"%<BR/>";
 

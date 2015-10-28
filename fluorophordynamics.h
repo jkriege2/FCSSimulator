@@ -325,6 +325,9 @@ class FluorophorDynamics
         /** \brief initial fluorophor name */
         std::string init_fluorophor;
 
+        /** \brief set \c true, while simulation is heating up */
+        bool heating_up;
+
 
         /** \brief this string may be used to identify the object */
         std::string object_name;
@@ -434,7 +437,7 @@ class FluorophorDynamics
         double walker_statistics_nextsavetime;
 
         /** \brief number if simulation steps to heat up the simulation ... */
-        int heatup_steps;
+        int64_t heatup_steps;
 
         /** \brief struct for the walker statistics */
         struct walker_statistics_entry {
@@ -448,11 +451,13 @@ class FluorophorDynamics
                 average_brightness=0;
                 average_steps=0;
                 posx=posy=posz=0;
+                count_existing_reallyinside=0;
                 for (int i=0; i<N_FLUORESCENT_STATES; i++) state_distribution[i]=0;
             }
             double time;
             uint64_t count_all;
             uint64_t count_existing;
+            uint64_t count_existing_reallyinside;
             double average_brightness;
             double state_distribution[N_FLUORESCENT_STATES];
             uint64_t average_steps;
@@ -506,6 +511,8 @@ class FluorophorDynamics
 
         /** \brief initialize the simulation environment (random walker positions ... */
         virtual void init();
+        /** \brief heats up the simulation */
+        void run_heatup();
 
         /** \brief propagate all walkers in the simulation one timestep further
          *
@@ -549,7 +556,7 @@ class FluorophorDynamics
         unsigned long get_walker_count() ;
 
         /** \brief get pointer to array with all walker states */
-        inline walkerState* get_walker_state() { return walker_state_other; };
+        inline walkerState* get_walker_state() { return walker_state_other; }
 
 
         /*! \brief return the number of visible walkers in the simulational box
@@ -574,6 +581,9 @@ class FluorophorDynamics
         /** \brief perform a boundary check for the i-th walker and reset it to a random border position, if it left the sim box */
         virtual void perform_boundary_check(unsigned long i);
 
+        /** \brief returns true, if the given particle is inside the simulation box and not in its outer laiwer with width (rel_margin * diameter in each direction) */
+        bool reallyInsideVolume(double x, double y, double z, double rel_margin=0.01) const;
+
 
 
         /** \brief returns \c true if the end of the possible trajectories is reached, i.e. as long as this object may
@@ -597,11 +607,11 @@ class FluorophorDynamics
         GET_MACRO(double, sim_radius);
         GET_MACRO(double, c_fluor);
         GET_SET_MACRO(int, init_qm_state);
-        double get_init_sigma_abs(int i) {
+        inline double get_init_sigma_abs(int i) {
             if ((i>=0)&&(i<N_FLUORESCENT_STATES)) return init_sigma_abs[i];
             return 0;
         };
-        double get_init_q_fluor(int i) {
+        inline double get_init_q_fluor(int i) {
             if ((i>=0)&&(i<N_FLUORESCENT_STATES)) return init_q_fluor[i];
             return 0;
         };
@@ -612,6 +622,7 @@ class FluorophorDynamics
         GET_SET_MACRO(int, init_type);
         GET_SET_MACRO(int, init_spectrum);
         //GET_SET_MACRO(bool, test_spectra);
+        GET_SET_MACRO(bool, heating_up);
         GET_SET_MACRO(bool, use_photophysics);
         GET_SET_MACRO(std::string, basename);
         GET_SET_MACRO(std::string, object_name);
@@ -629,7 +640,7 @@ class FluorophorDynamics
         GET_SET_MACRO_I(double, additional_walker_sphere_radius, init_walkers())
 
 
-        void set_use_two_walkerstates(bool v) {
+        inline void set_use_two_walkerstates(bool v) {
             use_two_walkerstates=v;
             change_walker_count(calc_walker_count(), n_fluorophores);
         };
@@ -677,7 +688,7 @@ class FluorophorDynamics
 
         /** \brief tests the dynamics simulation by computing some walker steps and theroy results
          */
-        virtual void test(unsigned int steps=1000, unsigned int walkers=100) {};
+        virtual void test(unsigned int steps=1000, unsigned int walkers=100);
 
         /** \brief tests the photophysics simulation
          *

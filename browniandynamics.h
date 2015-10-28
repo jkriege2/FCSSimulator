@@ -138,9 +138,9 @@ class BrownianDynamics: public FluorophorDynamics
         /** \brief set the diffusion coefficients for the simulation */
         inline virtual void set_diff_coeff(double value) {
             diff_coeff=value;
-            for (int i=0; i<DCOUNT; i++) {
+            //for (int i=0; i<DCOUNT; i++) {
                 sigma_jump=sqrt(2.0*diff_coeff*sim_timestep);
-            }
+            //}
             sigma_rotjump=sqrt(2.0*diff_rot*sim_timestep);
         };
 

@@ -22,7 +22,8 @@ SOURCES += main.cpp \
     jkmathparser.cpp \
     msdmeasurement.cpp \
     tools.cpp \
-    trajectoryplot.cpp
+    trajectoryplot.cpp \
+    nulldynamics.cpp
 
 
 
@@ -51,7 +52,8 @@ HEADERS += \
     textcolor.h \
     ticktock.h \
     tools.h \
-    trajectoryplot.h
+    trajectoryplot.h \
+    nulldynamics.h
 
 DISTFILES += \
     Makefile
