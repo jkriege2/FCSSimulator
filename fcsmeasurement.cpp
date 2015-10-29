@@ -584,7 +584,7 @@ double FCSMeasurement::illuminationEfficiency(double dx, double dy, double dz, d
 
 double FCSMeasurement::get_relative_absorbance_for(FluorophorDynamics* dyn, int i, double x0, double y0, double z0) {
     const FluorophorDynamics::walkerState* dynn=dyn->get_visible_walker_state();
-    if (i<0 || i>=dyn->get_visible_walker_count()) {
+    if (i<0 || i>=(int64_t)dyn->get_visible_walker_count()) {
         //std::cout<<i<<"/"<<dyn->get_visible_walker_count()<<" FAILED!\n";
         return 0;
     }
@@ -709,7 +709,7 @@ void FCSMeasurement::run_fcs_simulation(){
     // if the current integration step ended, we may add a new value to the correlator
     //std::cout<<"sim_time="<<sim_time<<"   endCurrentStep="<<endCurrentStep<<"\n";
     if (sim_time>=endCurrentStep) {
-        endCurrentStep=sim_time+corr_taumin;
+        endCurrentStep=endCurrentStep+corr_taumin;
         register int32_t N=getDetectedPhotons(nphot_sum);
 
         photoncounter=photoncounter+N;
@@ -825,7 +825,7 @@ int32_t FCSMeasurement::getDetectedPhotons(double nphot_sum) const {
 
 void FCSMeasurement::save() {
     FILE* f;
-    char fn[255], fno[255];
+    char fn[255];//, fno[255];
 
 
     sprintf(fn, "%s%scorr.dat", basename.c_str(), object_name.c_str());
@@ -1984,11 +1984,11 @@ void FCSMeasurement::save() {
         }
     }
 
-    for (int iip=0; iip<plot_withs.size(); iip++) {
+    for (size_t iip=0; iip<plot_withs.size(); iip++) {
         std::vector<std::string> plot_with=plot_withs[iip];
         if (plot_with.size()>0) {
 
-            sprintf(fn, "%s%scorrplotwith%d_simple.plt", basename.c_str(), object_name.c_str(), iip);
+            sprintf(fn, "%s%scorrplotwith%d_simple.plt", basename.c_str(), object_name.c_str(), (int)iip);
             std::cout<<"writing '"<<fn<<"' ...";
             f=fopen(fn, "w");
             for (int plt=0; plt<2; plt++) {
@@ -2023,7 +2023,7 @@ void FCSMeasurement::save() {
 
 
 
-            sprintf(fn, "%s%spsfplotwith%d.plt", basename.c_str(), object_name.c_str(), iip);
+            sprintf(fn, "%s%spsfplotwith%d.plt", basename.c_str(), object_name.c_str(), (int)iip);
             std::cout<<"writing '"<<fn<<"' ...";
             f=fopen(fn, "w");
             fprintf(f, "npoints=%s\n", inttostr(npointsi).c_str());
@@ -2137,7 +2137,7 @@ void FCSMeasurement::save() {
                     sprintf(fn, "%s%sarrivals.dat", basename.c_str(), object_name.c_str());
                     std::string atfn=fn;
                     std::cout<<" done!\n";
-                    sprintf(fn, "%s%sarrivalsplotwith%d.plt", basename.c_str(), object_name.c_str(), iip);
+                    sprintf(fn, "%s%sarrivalsplotwith%d.plt", basename.c_str(), object_name.c_str(), (int)iip);
                     std::cout<<"writing '"<<fn<<"' ...";
                     f=fopen(fn, "w");
                     for (int plt=0; plt<2; plt++) {
@@ -2158,7 +2158,7 @@ void FCSMeasurement::save() {
                             if (measmap.count(pw)>0) {
                                 FCSMeasurement* fcspw=dynamic_cast<FCSMeasurement*>(measmap[pw]);
                                 char fn2[1024];
-                                char plt[8192];
+                                //char plt[8192];
                                 pw=measmap[pw]->get_object_name();
                                 sprintf(fn2, "%s%sarrivals.dat", basename.c_str(), pw.c_str());
                                 std::string atfn2=fn2;
@@ -2191,7 +2191,7 @@ void FCSMeasurement::save() {
                     std::cout<<"writing '"<<fn<<"' ...";
                     std::string tsfn=fn;
                     std::cout<<" done!\n";
-                    sprintf(fn, "%s%sbtsplotwith%d.plt", basename.c_str(), object_name.c_str(), iip);
+                    sprintf(fn, "%s%sbtsplotwith%d.plt", basename.c_str(), object_name.c_str(), (int)iip);
                     std::cout<<"writing '"<<fn<<"' ...";
                     f=fopen(fn, "w");
                     fprintf(f, "dt_corr=%15.10lf\n", corr_taumin);
@@ -2213,7 +2213,7 @@ void FCSMeasurement::save() {
                             if (measmap.count(pw)>0) {
                                 FCSMeasurement* fcspw=dynamic_cast<FCSMeasurement*>(measmap[pw]);
                                 char fn2[1024];
-                                char plt[8192];
+                                //char plt[8192];
                                 pw=measmap[pw]->get_object_name();
                                 sprintf(fn2, "%s%sbts.dat", basename.c_str(), pw.c_str());
                                 std::string atfn2=fn2;
@@ -2233,7 +2233,7 @@ void FCSMeasurement::save() {
                             if (measmap.count(pw)>0) {
                                 FCSMeasurement* fcspw=dynamic_cast<FCSMeasurement*>(measmap[pw]);
                                 char fn2[1024];
-                                char plt[8192];
+                                //char plt[8192];
                                 sprintf(fn2, "%s%sbts.dat", basename.c_str(), pw.c_str());
                                 std::string atfn2=fn2;
                                 if (fcspw) {
@@ -2245,14 +2245,14 @@ void FCSMeasurement::save() {
                         if (plt==1) fprintf(f, "pause -1\n");
                         fprintf(f, "set xlabel \"time [seconds]\"\n");
                         fprintf(f, "set ylabel \"photon count [kcps]\"\n");
-                        fprintf(f, "set title \"counts, object description: %s\"\n", description.c_str(), get_object_name().c_str());
+                        fprintf(f, "set title \"counts, object description: %s\"\n", description.c_str());
                         fprintf(f, "plot \"%s\" using 1:(($2)/%lf/1000.0) title \"%s\" with steps", extract_file_name(tsfn).c_str(), corr_taumin*b, get_object_name().c_str());
                                                 for (int i=0; i<int(plot_with.size()); i++) {
                             std::string pw=strstrip(plot_with[i]);
                             if (measmap.count(pw)>0) {
                                 FCSMeasurement* fcspw=dynamic_cast<FCSMeasurement*>(measmap[pw]);
                                 char fn2[1024];
-                                char plt[8192];
+                                //char plt[8192];
                                 sprintf(fn2, "%s%sbts.dat", basename.c_str(), pw.c_str());
                                 std::string atfn2=fn2;
                                 if (fcspw) {
@@ -2280,23 +2280,23 @@ std::string FCSMeasurement::report(){
     s+="pos_laser     = ["+floattostr(ex_x0)+", "+floattostr(ex_y0)+", "+floattostr(ex_z0)+"] um\n";
     s+="distance_laser_detector = ["+floattostr(img_x0-ex_x0)+", "+floattostr(img_y0-ex_y0)+", "+floattostr(img_z0-ex_z0)+"] um\n";
     s+="                        = "+floattostr(sqrt(gsl_pow_2(img_x0-ex_x0)+gsl_pow_2(img_y0-ex_y0)+gsl_pow_2(img_z0-ex_z0)))+" um\n";
-    s+="expsf_r0 = "+floattostr(expsf_r0)+" &mu;m<BR/>";
-    s+="expsf_z0 = "+floattostr(expsf_z0)+" &mu;m<BR/>";
+    s+="expsf_r0 = "+floattostr(expsf_r0)+" &mu;m\n";
+    s+="expsf_z0 = "+floattostr(expsf_z0)+" &mu;m\n";
     if (lambda_ex2>0) {
         s+="pos_laser2    = ["+floattostr(ex_x02)+", "+floattostr(ex_y02)+", "+floattostr(ex_z02)+"] um\n";
         s+="distance_laser2_detector = ["+floattostr(img_x0-ex_x02)+", "+floattostr(img_y0-ex_y02)+", "+floattostr(img_z0-ex_z02)+"] um\n";
         s+="                        = "+floattostr(sqrt(gsl_pow_2(img_x0-ex_x02)+gsl_pow_2(img_y0-ex_y02)+gsl_pow_2(img_z0-ex_z02)))+" um\n";
-        s+="expsf_r02 = "+floattostr(expsf_r02)+" &mu;m<BR/>";
-        s+="expsf_z02 = "+floattostr(expsf_z02)+" &mu;m<BR/>";
+        s+="expsf_r02 = "+floattostr(expsf_r02)+" &mu;m\n";
+        s+="expsf_z02 = "+floattostr(expsf_z02)+" &mu;m\n";
     }
 
     s+="pos_detection = ["+floattostr(img_x0)+", "+floattostr(img_y0)+", "+floattostr(img_z0)+"] um\n";
-    s+="detpsf_r0 = "+floattostr(detpsf_r0)+" &mu;m<BR/>";
-    s+="detpsf_z0 = "+floattostr(detpsf_z0)+" &mu;m<BR/>";
-    s+="pixel_size = "+floattostr(pixel_size)+" &mu;m<BR/>";
-    s+="pixel_size_integrationdelta = "+floattostr(pixel_size_integrationdelta)+" &mu;m<BR/>";
+    s+="detpsf_r0 = "+floattostr(detpsf_r0)+" &mu;m\n";
+    s+="detpsf_z0 = "+floattostr(detpsf_z0)+" &mu;m\n";
+    s+="pixel_size = "+floattostr(pixel_size)+" &mu;m\n";
+    s+="pixel_size_integrationdelta = "+floattostr(pixel_size_integrationdelta)+" &mu;m\n";
     double psf_r0=1.0/sqrt(1.0/detpsf_r0/detpsf_r0+1.0/expsf_r0/expsf_r0);
-    s+="confocal_psf_system = sqrt(1/expsf_r0^2 + 1/detpsf_r0^2) = "+floattostr(psf_r0)+" &mu;m<BR/>";
+    s+="confocal_psf_system = sqrt(1/expsf_r0^2 + 1/detpsf_r0^2) = "+floattostr(psf_r0)+" &mu;m\n";
     double Veff=pow(M_PI, 1.5)*(psf_r0*psf_r0*psf_r0*detpsf_z0/detpsf_r0);
     s+="confocal_focus_volume (Veff) = pi^(3/2) * psf_system^3 * detpsf_z0/detpsf_r0 = "+floattostr(Veff)+" femto litre\n";
 
@@ -2304,7 +2304,7 @@ std::string FCSMeasurement::report(){
     double Veff2=0;
     if (lambda_ex2>0) {
         psf_r02=1.0/sqrt(1.0/detpsf_r0/detpsf_r0+1.0/expsf_r02/expsf_r02);
-        s+="confocal_psf_system2 = sqrt(1/expsf_r02^2 + 1/detpsf_r0^2) = "+floattostr(psf_r02)+" &mu;m<BR/>";
+        s+="confocal_psf_system2 = sqrt(1/expsf_r02^2 + 1/detpsf_r0^2) = "+floattostr(psf_r02)+" &mu;m\n";
         Veff2=pow(M_PI, 1.5)*(psf_r02*psf_r02*psf_r02*detpsf_z0/detpsf_r0);
         s+="confocal_focus_volume2 (Veff) = pi^(3/2) * psf_system^3 * detpsf_z0/detpsf_r0 = "+floattostr(Veff)+" femto litre\n";
     }
@@ -2472,7 +2472,7 @@ std::string FCSMeasurement::dot_get_links(){
 
 std::string FCSMeasurement::dot_get_properties(){
     std::string s=FluorescenceMeasurement::dot_get_properties();
-    s+="pos_laser     = ["+floattostr(ex_x0)+", "+floattostr(ex_y0)+", "+floattostr(ex_z0)+"] &mu;m<BR/>";
+    s+="pos_laser     = ["+floattostr(ex_x0)+", "+floattostr(ex_y0)+", "+floattostr(ex_z0)+"] &mu;m\n";
     s+="distance_laser_detector = ["+floattostr(img_x0-ex_x0)+", "+floattostr(img_y0-ex_y0)+", "+floattostr(img_z0-ex_z0)+"] &mu;m<BR/>";
     s+="                        = "+floattostr(sqrt(gsl_pow_2(img_x0-ex_x0)+gsl_pow_2(img_y0-ex_y0)+gsl_pow_2(img_z0-ex_z0)))+" &mu;m<BR/>";
     s+="expsf_r0 = "+floattostr(expsf_r0)+" &mu;m<BR/>";
@@ -2501,7 +2501,7 @@ std::string FCSMeasurement::dot_get_properties(){
         psf_r02=1.0/sqrt(1.0/detpsf_r0/detpsf_r0+1.0/expsf_r02/expsf_r02);
         s+="confocal_psf_system2 = sqrt(1/expsf_r02^2 + 1/detpsf_r0^2) = "+floattostr(psf_r02)+" &mu;m<BR/>";
         Veff2=pow(M_PI, 1.5)*(psf_r02*psf_r02*psf_r02*detpsf_z0/detpsf_r0);
-        s+="confocal_focus_volume2 (Veff) = pi^(3/2) * psf_system^3 * detpsf_z0/detpsf_r0 = "+floattostr(Veff)+" femto litre<BR/>";
+        s+="confocal_focus_volume2 (Veff) = pi^(3/2) * psf_system^3 * detpsf_z0/detpsf_r0 = "+floattostr(Veff2)+" femto litre<BR/>";
     }
 
     s+="illumination_distribution = "+ill_distribution_to_str(ill_distribution)+"<BR/>";
@@ -2512,7 +2512,7 @@ std::string FCSMeasurement::dot_get_properties(){
     s+="psf_rz_image_zresolution = "+floattostr(psf_rz_image_zresolution*1000.0)+" nm<BR/>";
 
 
-    double sum=0;
+    //double sum=0;
     s+="psf_region_factor = "+floattostr(psf_region_factor)+"<BR/>";
     if (polarised_excitation) {
         s+="polarised excitation: pe = ["+floattostr(e_x)+", "+floattostr(e_y)+", "+floattostr(e_z)+"]<BR/>";

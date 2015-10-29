@@ -59,7 +59,7 @@ void MSDMeasurement::propagate() {
     FluorescenceMeasurement::propagate();
     int t=0;
     for (size_t d=0; d<dyn.size(); d++) { // go through all dynamics objects that provide data for this measurement object
-        FluorophorDynamics::walkerState* dynn=dyn[d]->get_walker_state();
+        const FluorophorDynamics::walkerState* dynn=dyn[d]->get_walker_state();
         unsigned long wc=dyn[d]->get_walker_count();
         if (!dyn[d]->end_of_trajectory_reached()) for (unsigned long i=0; i<wc; i++) { // iterate through all walkers in the d-th dynamics object
             if (dynn[i].exists) {

@@ -24,8 +24,8 @@
 void alv5000WriteHeader(FILE* f, std::string object_name, double duration, const char* mode, double wavelength, double cr0, double cr1) {
     time_t rawtime;
     time (&rawtime);
-    struct tm * timeinfo = localtime (&rawtime);;
-    char timebuffer[256];
+    //struct tm * timeinfo = localtime (&rawtime);;
+    //char timebuffer[256];
 
     fprintf(f, "ALV-5000/E-WIN Data\n");
 

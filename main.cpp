@@ -122,7 +122,7 @@ void do_sim(std::string inifilename, int argc, char* argv[]) {
         // first we read all groups in the ini file into a list, as the inifile may be changed by the
         // following instructions ... so also groups may be added and then the iteration is skrewed.
         std::vector<std::string> groups_in_ini;
-        for (unsigned long i=0; i<ini.getGroupCount(); i++) {
+        for (long i=0; i<ini.getGroupCount(); i++) {
             groups_in_ini.push_back(ini.getGroupName(i));
         }
 
@@ -168,16 +168,16 @@ void do_sim(std::string inifilename, int argc, char* argv[]) {
                 bool dotest;
                 int test_steps=0;
                 int test_walkers=0;
-                dotest=(ini.groupExists(supergroup+".test_dynamics") && ini.getAsBool(supergroup+".test_dynamics", false));
-                dotest=dotest || (ini.groupExists(gname+".test_dynamics") && ini.getAsBool(gname+".test_dynamics", false));
+                dotest=ini.getAsBool(supergroup+".test_dynamics", false) || (ini.groupExists(supergroup+".test_dynamics") && ini.getAsBool(supergroup+".test_dynamics", false));
+                dotest=dotest || ini.getAsBool(gname+".test_dynamics", false) || (ini.groupExists(gname+".test_dynamics") && ini.getAsBool(gname+".test_dynamics", false));
                 test_steps=ini.getSetAsInt(gname+".test_dynamics.sim_steps", ini.getSetAsInt(supergroup+".test_dynamics.sim_steps", 10000));
                 test_walkers=ini.getSetAsInt(gname+".test_dynamics.walkers", ini.getSetAsInt(supergroup+".test_dynamics.walkers", 200));
                 if (dotest) {
                     d->read_config(ini, gname, supergroup);
                     d->test(test_steps, test_walkers);
                 }
-                dotest=(ini.groupExists(supergroup+".test_photophysics") && ini.getAsBool(supergroup+".test_photophysics", false));
-                dotest=dotest || (ini.groupExists(gname+".test_photophysics") && ini.getAsBool(gname+".test_photophysics", false));
+                dotest=ini.getAsBool(supergroup+".test_photophysics", false) || (ini.groupExists(supergroup+".test_photophysics") && ini.getAsBool(supergroup+".test_photophysics", false));
+                dotest=dotest || ini.getAsBool(gname+".test_photophysics", false) || (ini.groupExists(gname+".test_photophysics") && ini.getAsBool(gname+".test_photophysics", false));
                 test_steps=ini.getSetAsInt(gname+".test_photophysics.sim_steps", ini.getSetAsInt(supergroup+".test_photophysics.sim_steps", 10000));
                 test_walkers=ini.getSetAsInt(gname+".test_photophysics.walkers", ini.getSetAsInt(supergroup+".test_photophysics.walkers", 200));
                 d->set_basename(basename);
@@ -508,13 +508,13 @@ int main(int argc, char* argv[])
                         }
                     } else if (fn.size()>2 && fn[0]=='-' && fn[1]=='R') {
                         std::string num;
-                        for (int jj=2; jj<fn.size(); jj++) {
+                        for (size_t jj=2; jj<fn.size(); jj++) {
                             num=num+fn[jj];
                         }
                         preset_ini_params["runid"]=num;
                     } else if (fn.size()>2 && fn[0]=='-' && fn[1]=='D') {
                         std::string name, value;
-                        int jj;
+                        size_t jj;
                         for (jj=2; jj<fn.size(); jj++) {
                             if (fn[jj]=='=') break;
                             name=name+fn[jj];

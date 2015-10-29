@@ -103,10 +103,10 @@ void FluorophorManager::load_spectrum(int ID) {
     double max_abs=tab.column_max(1);
     double sum_fl=1;
     if (tab.get_column_count()>2) sum_fl=tab.column_sum(2);
-    double max_fl=1;
-    if (tab.get_column_count()>2) max_fl=tab.column_max(2);
+    //double max_fl=1;
+    //if (tab.get_column_count()>2) max_fl=tab.column_max(2);
     //std::cout<<"max_abs="<<max_abs<<"   sum_fl="<<sum_fl<<std::endl;
-    for (size_t i=0; i<spectra[ID].val_count; i++) {
+    for (int i=0; i<spectra[ID].val_count; i++) {
         spectra[ID].lambda[i]=tab.get(0, i);
         spectra[ID].eff_abs[i]=tab.get(1, i)/max_abs;
         if (tab.get_column_count()>2) spectra[ID].eff_fl[i]=tab.get(2, i)/sum_fl;
@@ -122,7 +122,7 @@ void FluorophorManager::load_spectrum(int ID) {
     if (tab.get_column_count()>2) {
         double dl=spectra[ID].lambda[spectra[ID].val_count-1]-spectra[ID].lambda[0];
         double int_fl=gsl_spline_eval_integ(spectra[ID].spline_fl, spectra[ID].lambda[0], spectra[ID].lambda[0]+dl, spectra[ID].accel_fl);
-        for (size_t i=0; i<spectra[ID].val_count; i++) {
+        for (int i=0; i<spectra[ID].val_count; i++) {
             spectra[ID].eff_fl[i]=spectra[ID].eff_fl[i]/int_fl;
         }
         /*gsl_spline_free(spectra[ID.spline_abs);
@@ -150,8 +150,8 @@ void FluorophorManager::test_spectrum(int ID) {
     double max_abs=tab.column_max(1);
     double sum_fl=1;
     if (tab.get_column_count()>2) sum_fl=tab.column_sum(2);
-    double max_fl=1;
-    if (tab.get_column_count()>2) max_fl=tab.column_max(2);
+    //double max_fl=1;
+    //if (tab.get_column_count()>2) max_fl=tab.column_max(2);
 
     double dl=spectra[ID].lambda[spectra[ID].val_count-1]-spectra[ID].lambda[0];
     double int_fl=0;

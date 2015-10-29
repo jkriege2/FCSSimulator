@@ -196,13 +196,6 @@ class FluorophorDynamics
 
             /** \brief internal (quantum-mechanical) state of the walker: 0 (ground state), 1 (excited state) */
             int qm_state;
-            /** \brief absorbption cross section [m^2] */
-            double sigma_abs[N_FLUORESCENT_STATES];
-            /** \brief quantum efficiency of fluorescence [0..1]*/
-            double q_fluor[N_FLUORESCENT_STATES];
-            /** \brief photophysics transition rates in [1/second] The transition probabilities will be calculated as
-             *         rate*sim_timestep. So keep in mind, that all of these propabilitites have to sum up to 1 for one state */
-            double photophysics_transition[N_FLUORESCENT_STATES*N_FLUORESCENT_STATES];
             /** \brief number of used QM states (has to be smaller than  N_FLUORESCENT_STATES */
             int used_qm_states;
             /** \brief x-component of dipole moment vector */
@@ -219,14 +212,15 @@ class FluorophorDynamics
             /** \brief indicates, that this object has JUST been reset */
             bool was_just_reset;
 
-            walkerState& operator=(walkerState& other);
-            walkerState(walkerState& other);
+
+            //walkerState& operator=(walkerState& other);
+            //walkerState(walkerState& other);
         };
 
         /** \brief the possible shapes of the simulational volume */
         enum VolumeShape {
-            Box,
-            Ball
+            Box=0,
+            Sphere=1
         };
 
         enum AdditionalWalkerPositions {
@@ -237,6 +231,14 @@ class FluorophorDynamics
     protected:
         /** \brief pointer to the fluorophor database */
         FluorophorManager* fluorophors;
+
+        /** \brief absorbption cross section [m^2] */
+        //double init_sigma_abs[N_FLUORESCENT_STATES];
+        /** \brief quantum efficiency of fluorescence [0..1]*/
+        //double init_q_fluor[N_FLUORESCENT_STATES];
+        /** \brief photophysics transition rates in [1/second] The transition probabilities will be calculated as
+         *         rate*sim_timestep. So keep in mind, that all of these propabilitites have to sum up to 1 for one state */
+        //double init_photophysics_transition[N_FLUORESCENT_STATES*N_FLUORESCENT_STATES];
 
 
         /** \brief an array which holds the states of all walkers for potentially multiple timesteps*/
@@ -432,6 +434,9 @@ class FluorophorDynamics
         /** \brief indicates whether walker statistics is stored */
         bool store_walker_statistics;
 
+        /** \brief radius of the sphere for the central sphere in which walker_statistics_entry::count_existing_center is counted */
+        double walker_statistics_center_sphere_diameter;
+
         /** \brief average statistics of this duration [s] for every entry */
         double walker_statistics_averageduration;
         double walker_statistics_nextsavetime;
@@ -452,12 +457,14 @@ class FluorophorDynamics
                 average_steps=0;
                 posx=posy=posz=0;
                 count_existing_reallyinside=0;
+                count_existing_center=0;
                 for (int i=0; i<N_FLUORESCENT_STATES; i++) state_distribution[i]=0;
             }
             double time;
             uint64_t count_all;
             uint64_t count_existing;
             uint64_t count_existing_reallyinside;
+            double count_existing_center;
             double average_brightness;
             double state_distribution[N_FLUORESCENT_STATES];
             uint64_t average_steps;
@@ -549,14 +556,14 @@ class FluorophorDynamics
         /** \brief estimates teh runtime of the simulation, or return 0 if the simulation requires a given runtime */
         virtual double estimate_runtime();
 
-        double get_walker_sigma_times_qfl(unsigned long i);
+        double get_walker_sigma_times_qfl(unsigned long i) const;
 
 
         /** \brief return the number of walkers in the simulational box */
-        unsigned long get_walker_count() ;
+        unsigned long get_walker_count() const;
 
         /** \brief get pointer to array with all walker states */
-        inline walkerState* get_walker_state() { return walker_state_other; }
+        inline walkerState* get_walker_state() const { return walker_state_other; }
 
 
         /*! \brief return the number of visible walkers in the simulational box
@@ -566,8 +573,8 @@ class FluorophorDynamics
                   get_visible_walker_state(). And use them only in detection mode. In dynamics mode: use get_walker_count(),
                   get_walker_sigma_times_qfl(), get_walker_state()
          */
-        virtual unsigned long get_visible_walker_count() ;
-        virtual double get_visible_walker_sigma_times_qfl(unsigned long i);
+        virtual unsigned long get_visible_walker_count() const ;
+        virtual double get_visible_walker_sigma_times_qfl(unsigned long i) const;
         /*! \brief get pointer to array with all walker states
 
             \note Use this function to access the visible walkers, visible to a fluorescence detection. These may be less
@@ -582,7 +589,31 @@ class FluorophorDynamics
         virtual void perform_boundary_check(unsigned long i);
 
         /** \brief returns true, if the given particle is inside the simulation box and not in its outer laiwer with width (rel_margin * diameter in each direction) */
-        bool reallyInsideVolume(double x, double y, double z, double rel_margin=0.01) const;
+        inline bool reallyInsideVolume(double x, double y, double z, double rel_margin=0.01) const {
+            if (volume_shape==0) {
+                if (x<rel_margin*sim_x || x>(1.0-rel_margin)*sim_x) return false;
+                if (y<rel_margin*sim_y || y>(1.0-rel_margin)*sim_y) return false;
+                if (z<rel_margin*sim_z || z>(1.0-rel_margin)*sim_z) return false;
+                return true;
+            } else if (volume_shape==1) {
+                if (gsl_pow_2(x)+gsl_pow_2(x)+gsl_pow_2(x)>gsl_pow_2(sim_radius*(1.0-rel_margin))) {
+                    return false;
+                }
+                return true;
+            }
+
+            return false;
+        }
+
+        /** \brief returns true, if the given particle is inside the simulation box and not in its outer laiwer with width (rel_margin * diameter in each direction) */
+        inline bool isInCenter(double x, double y, double z, double center_size_micrometer=1) const {
+            if (volume_shape==0) {
+                return gsl_pow_2(x-sim_x/2.0)+gsl_pow_2(y-sim_y/2.0)+gsl_pow_2(z-sim_z/2.0)<gsl_pow_2(center_size_micrometer);
+            } else {
+                return gsl_pow_2(x)+gsl_pow_2(x)+gsl_pow_2(x)<gsl_pow_2(center_size_micrometer);
+            }
+            return false;
+        }
 
 
 

@@ -228,9 +228,9 @@ class DynamicsFromFiles2 : public FluorophorDynamics
         /** \brief column index of z-position column in file (default: 3)*/
         int col_posz;
         /** \brief column index of absorption cross section column in file (default: 8)*/
-        int col_abs;
+        //int col_abs;
         /** \brief column index of fluorescence quantum efficiency column in file (default: 7)*/
-        int col_qfluor;
+        //int col_qfluor;
         /** \brief column index of qm_state column in file (default: 9)*/
         int col_qmstate;
         /** \brief column index of x-component of polarisation column in file (default: 4)*/

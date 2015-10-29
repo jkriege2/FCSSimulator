@@ -131,7 +131,7 @@ void FluorescenceImaging::propagate(){
         } else { // add intensity to the current images
             double n0=I0*1e-6/Ephoton*sim_timestep;//*q_fluor*sigma_abs;
             for (size_t d=0; d<dyn.size(); d++) { // go through all dynamics objects that provide data for this measurement object
-                FluorophorDynamics::walkerState* dy=dyn[d]->get_visible_walker_state();
+                const FluorophorDynamics::walkerState* dy=dyn[d]->get_visible_walker_state();
                 unsigned long wc=dyn[d]->get_visible_walker_count();
                 if (!dyn[d]->end_of_trajectory_reached()) for (unsigned long i=0; i<wc; i++) { // iterate through all walkers in the d-th dynamics object
                     if (dy[i].exists) {

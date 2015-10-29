@@ -90,10 +90,10 @@ void ChildDynamics::propagate(bool boundary_check) {
     if (p) {
         sim_time=p->get_sim_time();
         endoftrajectory=p->end_of_trajectory_reached();
-        FluorophorDynamics::walkerState* ws=p->get_walker_state();
+        const FluorophorDynamics::walkerState* ws=p->get_walker_state();
         if (dont_copy_photophysics) {
-            FluorophorDynamics* p=get_parent();
-            FluorophorDynamics::walkerState* ws=p->get_walker_state();
+            const FluorophorDynamics* p=get_parent();
+            const FluorophorDynamics::walkerState* ws=p->get_walker_state();
             for (unsigned long i=0; i<walker_count; i++) {
                 walker_state[i].exists=ws[i].exists || (!copy_existstate);
                 if (reset_qmstate_on_boundary && (ws[i].was_just_reset || ws[i].time<=0)) {
@@ -160,12 +160,12 @@ bool ChildDynamics::depends_on(const FluorophorDynamics* other) const {
     return other==get_parent();
 }
 
-unsigned long ChildDynamics::get_visible_walker_count()  {
+unsigned long ChildDynamics::get_visible_walker_count() const {
     if (!initial_walker_visible) return (walker_count)*(n_fluorophores-1);
     return walker_count*n_fluorophores;
 }
 
-double ChildDynamics::get_visible_walker_sigma_times_qfl(unsigned long i) {
+double ChildDynamics::get_visible_walker_sigma_times_qfl(unsigned long i) const {
     if (!initial_walker_visible) return FluorophorDynamics::get_walker_sigma_times_qfl(i+walker_count);
     return FluorophorDynamics::get_walker_sigma_times_qfl(i);
 

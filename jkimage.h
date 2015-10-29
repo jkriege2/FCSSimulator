@@ -694,9 +694,9 @@ class JKImage {
             long ix1=floor(x);
             long iy1=floor(y);
             if (ix1<0) ix1=0;
-            if (ix1>=iwidth) ix1=iwidth-1;
+            if (ix1>=(int64_t)iwidth) ix1=iwidth-1;
             if (iy1<0) iy1=0;
-            if (iy1>=iheight) iy1=iheight-1;
+            if (iy1>=(int64_t)iheight) iy1=iheight-1;
             return d[iy1*iwidth+ix1];
         }
 
@@ -1306,7 +1306,7 @@ class JKImage {
             TinyTIFFFile* tif=TinyTIFFWriter_open(filename.c_str(), sizeof(uint16_t)*8, width, height);
             if (tif) {
                uint16_t* temp=(uint16_t*)calloc(iwidth*iheight, sizeof(uint16_t));
-               for (int i=0; i<iwidth*iheight; i++) {
+               for (uint64_t i=0; i<iwidth*iheight; i++) {
                     temp[i]=uint16_t(0xFFFF*double(d[i]-mi)/double(ma-mi));
                }
                TinyTIFFWriter_writeImage(tif, temp);

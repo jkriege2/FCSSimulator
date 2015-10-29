@@ -47,13 +47,13 @@ void TrajectoryPlotMeasurement::propagate() {
     bool runThis=true;
 
     if (trajectories.size()>0)  {
-        if (max_steps>0 && trajectories[0].size()>=max_steps) runThis=false;
+        if (max_steps>0 && (int64_t)trajectories[0].size()>=max_steps) runThis=false;
     }
 
     if (runThis) {
         int t=0;
         for (size_t d=0; d<dyn.size(); d++) { // go through all dynamics objects that provide data for this measurement object
-            FluorophorDynamics::walkerState* dynn=dyn[d]->get_walker_state();
+            const FluorophorDynamics::walkerState* dynn=dyn[d]->get_walker_state();
             unsigned long wc=dyn[d]->get_walker_count();
             if (!dyn[d]->end_of_trajectory_reached()) {
                 for (unsigned long i=0; i<wc; i++) { // iterate through all walkers in the d-th dynamics object
@@ -87,7 +87,7 @@ void TrajectoryPlotMeasurement::propagate() {
                 ti.x=ti.x/float(avgCount);
                 ti.y=ti.y/float(avgCount);
                 ti.z=ti.z/float(avgCount);
-                if (i>=trajectories.size())  {
+                if (i>=(int64_t)trajectories.size())  {
                     std::vector<trajectory_info> inf;
                     inf.push_back(ti);
                     trajectories.push_back(inf);

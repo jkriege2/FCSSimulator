@@ -114,9 +114,9 @@ void GridRandomWalkDynamics::init_walker(unsigned long i, double x, double y, do
     walker_state[i].p_x=init_p_x;
     walker_state[i].p_y=init_p_y;
     walker_state[i].p_z=init_p_z;
-    for (int j=0; j<N_FLUORESCENT_STATES; j++) walker_state[i].sigma_abs[j]=init_sigma_abs[j];
-    for (int j=0; j<N_FLUORESCENT_STATES; j++) walker_state[i].q_fluor[j]=init_q_fluor[j];
-    for (int j=0; j<N_FLUORESCENT_STATES*N_FLUORESCENT_STATES; j++) walker_state[i].photophysics_transition[j]=init_photophysics_transition[j];
+    //for (int j=0; j<N_FLUORESCENT_STATES; j++) walker_state[i].sigma_abs[j]=init_sigma_abs[j];
+    //for (int j=0; j<N_FLUORESCENT_STATES; j++) walker_state[i].q_fluor[j]=init_q_fluor[j];
+    //for (int j=0; j<N_FLUORESCENT_STATES*N_FLUORESCENT_STATES; j++) walker_state[i].photophysics_transition[j]=init_photophysics_transition[j];
     walker_state[i].qm_state=init_qm_state;
     walker_state[i].used_qm_states=init_used_qm_states;
     walker_state[i].type=init_type;
@@ -261,7 +261,7 @@ void GridRandomWalkDynamics::propagate(bool boundary_check){
 
             //std::cout<<"msd ";
 
-            if ((save_msd_every_n_timesteps>0)&&((walker_state[i].time%save_msd_every_n_timesteps)==(save_msd_every_n_timesteps-1))) {
+            if ((save_msd_every_n_timesteps>0)&&((int64_t)(walker_state[i].time%save_msd_every_n_timesteps)==(save_msd_every_n_timesteps-1))) {
                 double m=gsl_pow_2(nx-walker_state[i].x0)+gsl_pow_2(ny-walker_state[i].y0)+gsl_pow_2(nz-walker_state[i].z0);
                 double mg=gsl_pow_2(nx-walker_state[i].x0)/gsl_pow_2(grid_constant)+gsl_pow_2(ny-walker_state[i].y0)/gsl_pow_2(grid_constant)+gsl_pow_2(nz-walker_state[i].z0)/gsl_pow_2(grid_constant);
                 int idx=walker_state[i].time/save_msd_every_n_timesteps;

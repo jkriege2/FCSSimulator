@@ -51,6 +51,13 @@ class NullDynamics : public FluorophorDynamics
         /** \brief read configuration from INI file */
         virtual void read_config_internal(jkINIParser2& parser);
 
+        /** \brife indicates whether there is a single (non-moving) walker in this dynamics object */
+        bool has_walker;
+
+        double x;
+        double y;
+        double z;
+
 
 };
 

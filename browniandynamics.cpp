@@ -149,7 +149,7 @@ void BrownianDynamics::propagate(bool boundary_check){
                 walker_state[i].y=ny;
                 walker_state[i].z=nz;
 
-                if ((save_msd_every_n_timesteps>0)&&msd&&msd2&&msd_count&&((walker_state[i].time%save_msd_every_n_timesteps)==(save_msd_every_n_timesteps-1))) {
+                if ((save_msd_every_n_timesteps>0)&&msd&&msd2&&msd_count&&((int64_t)(walker_state[i].time%save_msd_every_n_timesteps)==(save_msd_every_n_timesteps-1))) {
                     double m=gsl_pow_2(nx-walker_state[i].x0)+gsl_pow_2(ny-walker_state[i].y0)+gsl_pow_2(nz-walker_state[i].z0);
                     int idx=walker_state[i].time/save_msd_every_n_timesteps;
                     //std::cout<<save_msd_every_n_timesteps<<", "<<msd<<", "<<msd_size<<", "<<idx<<"\n";
@@ -205,11 +205,11 @@ void BrownianDynamics::propagate(bool boundary_check){
                     /*while (fabs(dalpha)>=M_PI/2.0) {
                         dalpha=gsl_ran_gaussian_ziggurat(rng, sigma_rotjump);
                     }*/
-                    double dmu1, dmu2, dmu3, dmu;
+                    double dmu1, dmu2, dmu3;//, dmu;
                     dmu1=cos(phi)*ns1+sin(phi)*nss1;
                     dmu2=cos(phi)*ns2+sin(phi)*nss2;
                     dmu3=cos(phi)*ns3+sin(phi)*nss3;
-                    dmu=sqrt(dmu1*dmu1+dmu2*dmu2+dmu3*dmu3);
+                    //dmu=sqrt(dmu1*dmu1+dmu2*dmu2+dmu3*dmu3);
                     /*double x=sqrt(1.0/gsl_pow_2(cos(dalpha))-1.0)/dmu;
 
                     if (dalpha<0) {

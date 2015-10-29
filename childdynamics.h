@@ -58,8 +58,8 @@ class ChildDynamics : public FluorophorDynamics
                   get_visible_walker_state(). And use them only in detection mode. In dynamics mode: use get_walker_count(),
                   get_walker_sigma_times_qfl(), get_walker_state()
          */
-        virtual unsigned long get_visible_walker_count() ;
-        virtual double get_visible_walker_sigma_times_qfl(unsigned long i);
+        virtual unsigned long get_visible_walker_count() const;
+        virtual double get_visible_walker_sigma_times_qfl(unsigned long i) const;
         /*! \brief get pointer to array with all walker states
 
             \note Use this function to access the visible walkers, visible to a fluorescence detection. These may be less

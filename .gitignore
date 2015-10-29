@@ -47,3 +47,14 @@
 /manual/*.idx
 /manual/*.ilg
 /manual/*.ind
+/brownian1test_config.txt
+/brownian1test_hist_rot.dat
+/brownian1test_plot.plt
+/brownian1test_traj.dat
+/brownian1test_x2.dat
+/brownian1walkerstatistics.dat
+/brownian1walkerstatistics.plt
+/config.ini
+/config.txt
+/log.txt
+/diffusion4_test2
