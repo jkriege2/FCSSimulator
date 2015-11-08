@@ -15,6 +15,7 @@ LDFLAGS += -L../../extlibs/gsl/lib/ -L./extlibs/gsl/lib/ -lgsl -lgslcblas
 # Release: CFLAGS += -O2 -mtune=native -march=native -ffast-math -msse -msse2 -mfpmath=sse -malign-double -ftree-vectorize -ftree-vectorizer-verbose=0
 
 Release: CFLAGS += -O2 -mtune=native -march=native -ffast-math -msse -msse2 -mfpmath=sse -ftree-vectorize 
+QuickFit: CFLAGS += -O2 -march=generic -ffast-math -msse -msse2 -mfpmath=sse -ftree-vectorize 
 
 Debug: CC += -DDEBUG -g
 
@@ -69,8 +70,8 @@ endif
 
 
 Debug:  ${EXECUTABLE}$(EXE_SUFFIX)
-
 Release:  ${EXECUTABLE}$(EXE_SUFFIX)
+QuickFit:  ${EXECUTABLE}$(EXE_SUFFIX)
 
 ${EXECUTABLE}$(EXE_SUFFIX): ${SRC_FILE_O}
 	$(CC) $(CFLAGS) -o $(EXECUTABLE)$(EXE_SUFFIX) ${SRC_FILE_O} $(LDFLAGS)

@@ -8,9 +8,9 @@ This software is available on GitHub:
 \begin{center}
 	\url{https://github.com/jkriege2/FCSSimulator}
 \end{center}
-In addition this simulator is also a part (based on the same repository) of the FCS/FCCS data evaluation software \qf (\url{https://github.com/jkriege2/QuickFit3} and \url{http://www.dkfz.de/Macromol/quickfit/}), which also offers an integrated editor-GUI for the simulator configuration scripts.
+In addition this simulator is also a part (based on the same repository) of the FCS/FCCS data evaluation software \qf (\url{https://github.com/jkriege2/QuickFit3} and \url{http://www.dkfz.de/Macromol/quickfit/}), which also offers an integrated editor-GUI for the simulator configuration scripts. Therefore if you don't want to compile \df for yourself, or modify its source-code you will only have to install \qf and can skip the following sections~\ref{sec:DownloadAndSetup}~\&~\ref{sec:Compilation}. You can even use \qf to edit the \df configuration files and run the simulation, so also sections~\ref{sec:RunningTheSoftware}~\&~\ref{sec:RunningDfFromAMakefile} are only of minor interest! Also \qf can be used to easily read the FCS/FCCS-correlation curves from \df and evaluate them further. However, additional results might be created by \df. These are usually saved in standard ASCII- or CSV-files and can be viewed and evaluated with any standard data-evaluation software. But we propose to use the open-source tools described in section~\ref{sec:UsefullAdditionalTools}, as \df is optimized to work together with them!
 
-\section{Download and Setup}
+\section{Download and Setup of \df for COmpilation}
 \label{sec:DownloadAndSetup}
 \index{Download}\index{build environment}\index{build}
 \df is a C++ program, so you will need a working C++ compiler (e.g. the \textsc{GCC} in version $\geq$4.7, for Windows you can use \textsc{MinGW-Builds} from \url{http://sourceforge.net/projects/mingwbuilds/}). The program only relies on the GNU scientific library (GSL), available from \url{http://www.gnu.org/software/gsl/}, but also integrated in the repository (see below). In addition you will need a working \bash-shell (on Windows use \msys available from \url{http://www.mingw.org/wiki/msys}) and \textsc{Git} to access the repository (if you don't want to download the code manually). In general this program should compile on \textsc{Windows}, \textsc{Linux} and \textsc{MacOS X}.\\[10mm]
@@ -90,3 +90,19 @@ You can run such a Makefile with the command:
 $ make -f Makefile -j4
 \end{lstlisting}
 where \texttt{4} specifies the number of processors to use. This makefile also uses the \bash-script \texttt{random\_sleep.sh}, which waits a random number of seconds (up to 10 or 20) before running  the simulation. This ensures that the random number generator of each simulation is initialized with a different seed (the seed is taken from the system time!).
+
+\section{Usefull Additional Tools}
+\label{sec:UsefullAdditionalTools}
+\df will store its result in a bunch of standardized output-files. Many modules in \df generate data-files in the comma-separated values (CSV) format, or in other standardized data-formats (e.g. TIFF for images, or ALV-5000 ASCII-files for correlation data). Therefore you can use any standard data-evaluation software to further process the simulation results. Nevertheless, \df was optimized to work well with these open-source softwares:
+\begin{itemize}
+	\item \textsc{Gnuplot 4.6}\index{Gnuplot} is a data-plotting and evaluation tool. It is available for most platforms from 
+					\begin{center}
+						\url{http://gnuplot.info/}.
+					\end{center}
+				Many modules in \df generate \textsc{Gnuplot}-files (\texttt{*.plt})\index{.plt} in addition to CSV output files. These \textsc{Gnuplot}-files allow to immediately generate plots from the data, output by \df. Usually they are generated such that they first generate a PDF of the plots and then display them on the screen.
+	\item \textsc{GraphViz}\index{GraphViz} is used to plot graphs, that e.g. represent the structure of a \df-simulation. This software is available from
+						\begin{center}
+						\url{http://www.graphviz.org/}.
+					\end{center}
+     \df e.g. generates \texttt{.gv}-files that can be run through the \textsc{GraphViz}-module \texttt{dot} and then output a graph representing all generator- and detector-objects in the \df-simulation and their relation to each other.
+\end{itemize}
