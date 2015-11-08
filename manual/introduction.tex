@@ -1,16 +1,8 @@
-\chapter{Introduction to \df}
-\label{sec:IntroductionToDf}
-This software has been developed to simulate \itindex{fluorescence correlation spectroscopy} (\itindex{FCS}) and \itindex{fluorescence cross-correlation spectroscopy} (\itindex{FCCS}) measurements, based on particle trajectories.
 
-
-
-\section{Summary of \df}
+\chapter{Summary of FCS-simulation in \df}
 \label{sec:SummaryOfDf}
-\begin{center}
-  \itshape \underline{Note:} This section is a copy from the appendix of my PhD thesis!
-\end{center}
 
-This software can simulate FCS and FCCS correlation curves for different focus geometries and is closely related to the FCS/FCCS theory as presented in chapter~\ref{sec:FluorescenceFluctuationTechniques} and especially the modeling of fluorescence detection described in section~\ref{sec:FCSModelingTheOpticalSystem}. It starts from a set of $N$ particle trajectories $\{\vr_i(t)\}$, where $i$ numbers the particles and $t=1,2,...$ numbers the equidistant timepoints with resolution $\Delta t_\txt{im}$. The trajectories are either read from an external data file or are created internally by a configurable random walk. First $N_i\geq 1$ fluorophores are assigned to each particle, leading to an overall number of fluorophores \[  F=\sum\limits_{i=1}^NN_i  \] fluorophores $f$, which are each  characterized by the following set of properties (the functions $i(f)$ is the trajectory ID for every fluorophore $f$):
+The software \df was designed simulate FCS and FCCS correlation curves for different focus geometries and is closely related to the FCS/FCCS theory as presented in \cite{KRIEGERPHD2014} and especially the modeling of fluorescence detection described in section~\ref{sec:FCSModelingTheOpticalSystem}. It starts from a set of $N$ particle trajectories $\{\vr_i(t)\}$, where $i$ numbers the particles and $t=1,2,...$ numbers the equidistant timepoints with resolution $\Delta t_\txt{im}$. The trajectories are either read from an external data file or are created internally by a configurable random walk. First $N_i\geq 1$ fluorophores are assigned to each particle, leading to an overall number of fluorophores \[  F=\sum\limits_{i=1}^NN_i  \] fluorophores $f$, which are each  characterized by the following set of properties (the functions $i(f)$ is the trajectory ID for every fluorophore $f$):
 \begin{enumerate}
 	\item a position $\vr_f(t)=\vr_{i(f)}(t)+\Delta\vr_{f}$, where $\vr_{i(f)}(t)$ is the position of the particle and $\Delta\vr_f$ is an arbitrary, but constant shift from this position. In the simplest case there is only one fluorophore per particle and $\Delta\vr_f=0$. Using $\Delta\vr_f\neq0$, moving finite-sized objects may be simulated that are e.g. labeled with a set of fluorophores on their surface or in their interior.
   \item each fluorophore may be in one of $S_f$ states. Each state may have different spectroscopic properties. The current state at time $t$ is denoted by $s_f(t)$. 
@@ -49,7 +41,7 @@ summarizing the loss of light due to optics and detector quantum efficiency $q_{
 \end{equation}
 where $\bullet$ is a scalar product, $\theta_\txt{Pol}\in[0,1]$ is the fraction of linear polarization of the excitation light source and $\vec{\epsilon}_\txt{ex}$ (with $\snorm{\vec{\epsilon}_\txt{ex}}=1$) is the linear polarization direction of this light source.
 
-From the average number of detected photons, the measured number of photons ${N}_\txt{det}(t)$ is calculated, taking the detector statistics into account. In the simplest case of a photon counting detector, ${N}_\txt{det}(t)$ is drawn from a Poissonian distribution with mean (and variance) $\overline{N}_\txt{phot}(t)$. Other detection statistics are possible, such as a linear detector, where ${N}_\txt{det}(t)$ is drawn from a Gaussian distribution with mean $\avg{G}\cdot\overline{N}_\txt{phot}(t)$ and a variance comparable to \eqref{eq:photondet_counting_snr}:
+From the average number of detected photons, the measured number of photons ${N}_\txt{det}(t)$ is calculated, taking the detector statistics into account. In the simplest case of a photon counting detector, ${N}_\txt{det}(t)$ is drawn from a Poissonian distribution with mean (and variance) $\overline{N}_\txt{phot}(t)$. Other detection statistics are possible, such as a linear detector, where ${N}_\txt{det}(t)$ is drawn from a Gaussian distribution with mean $\avg{G}\cdot\overline{N}_\txt{phot}(t)$ and a variance:
 \begin{equation}\label{eq:app_sim_fcs_lindetnoise}
   \sigma_\txt{det}^2=\avg{G}^2\cdot\excessnoise\cdot{N}_\txt{det}(t)+\sigmaread^2,
 \end{equation}
@@ -57,6 +49,6 @@ where $\avg{G}$ is the average detector gain, $\excessnoise$ the excess noise fa
 
 Finally the time series  ${N}_\txt{det}(t)$ is post processed to yield count rate traces with arbitrary binning, auto- and cross-correlation functions (between different foci on the simulation) and other statistical properties. Also several test data sets are saved by the simulation program, such as particle \index{mean squared displacement}mean squared displacements (\index{MSD}MSDs), the raw detector statistics etc.
 
-The complete program is split into modules that may be combined in different ways for a simulation. All these modules are either trajectory sources or sinks. In each time step first all sources generate a new set of fluorophore properties, e.g. by reading a new data set from a file or advancing a random walk simulation. The these new particle properties are forwarded to the sink objects, which simulate the actual detection process, as described above, or generate MSDs and other trajectory statistics. Every sink may be connected to several sources, and one source can feed several sinks. This can be used e.g. for simulations of fluorophore reservoir depletion, as in section~\ref{sec:FluorophoreDepletion}, where a single trajectory source is fed into intermediate objects that simulate different bleaching rates on the same particle positions and finally detected by a set of identical sinks, which simulate FCS detection.
+The complete program is split into modules that may be combined in different ways for a simulation. All these modules are either trajectory sources or sinks. In each time step first all sources generate a new set of fluorophore properties, e.g. by reading a new data set from a file or advancing a random walk simulation. The these new particle properties are forwarded to the sink objects, which simulate the actual detection process, as described above, or generate MSDs and other trajectory statistics. Every sink may be connected to several sources, and one source can feed several sinks. This can be used e.g. for simulations of fluorophore reservoir depletion, where a single trajectory source is fed into intermediate objects that simulate different bleaching rates on the same particle positions and finally detected by a set of identical sinks, which simulate FCS detection.
 
 This software was initiated in the first year of the thesis and extended and improved in the following years. It was used to simulate different aspects of FCS/FCCS in several publications \cite{WOCJAN2009,BUCHHO2012,SINGHKRIEGER2013,KRIEGE2014}.

@@ -1,0 +1,843 @@
+%Einige nützliche LaTeX-Makros
+%Einige nützliche LaTeX-Makros
+%Einige nützliche LaTeX-Makros
+%(c) 2005/2006 by Jan W. Krieger
+%  jan@jkrieger.de --- http://www.jkrieger.de/
+%FREEWARE - you are free to use this software or any 
+%           portion of it in any way you want to. 
+%           Although I would be lucky to receive a message 
+%           if you changed something or found this software 
+%           useful...
+
+\usepackage{ifthen}
+\usepackage{pifont}
+\usepackage{dsfont}
+\usepackage{supertabular}
+\usepackage{upgreek}
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+%geändertes Label-Makro, damit man auch mit hyperref auf Labels verweisen kann!
+\newcommand{\jlabel}[1]{\hypertarget{#1}{}\label{#1}}
+\newcommand{\avg}[1]{\overline{#1}}
+
+
+% Farb-Definitionen für meinen persönlichen Dokument-Stil
+\ifthenelse{\isundefined{\hyperpage}}{}{\newcommand{\glossaryentry}[2]{\item #1 \hyperpage{#2}}}
+
+
+% Befehle für Index-Erstellung
+\newcommand{\itindex}[1]{{{\index{#1}}#1}\xspace} % Index-Eintrag im Fließtext. Es wird der Eintrag selbe auch ausgegeben.
+\newcommand{\itindexbf}[1]{{\textbf{{\index{#1@\textbf{#1}}}#1}}\xspace}
+\newcommand{\itindextt}[1]{{\texttt{{\index{#1@\texttt{#1}}}#1}}\xspace}
+\newcommand{\itindexit}[1]{{\textit{{\index{#1@\textit{#1}}}#1}}\xspace}
+\newcommand{\indexbf}[1]{\index{#1@\textbf{#1}}}
+\newcommand{\indextt}[1]{\index{#1@\texttt{#1}}}
+\newcommand{\indexit}[1]{\index{#1@\textit{#1}}}
+\newcommand{\indexbfs}[2]{\index{#1!#2@\textbf{#1}!\textbf{#2}}}
+\newcommand{\indextts}[2]{\index{#1!#2@\texttt{#1}!\texttt{#2}}}
+\newcommand{\indexits}[2]{\index{#1!#2@\textit{#1!#2}}}
+
+
+%zur Fehlerbehebung bei Verwendung mit TeXnicCenter 4 beta
+\newcommand{\p}{\\[3mm]}
+\newcommand{\script}{\scriptsize}
+
+
+% Vektoren
+\newcommand{\twovector}[2]{\begin{pmatrix} #1 \\ #2 \end{pmatrix}} % Vektor mit zwei zwei Einträgen
+\newcommand{\smalltwovector}[2]{\left(\begin{smallmatrix} #1 \\ #2 \end{smallmatrix}\right)} 
+\newcommand{\jvector}[3]{\begin{array}{c} #1 \\ #2 \\ #3 \end{array}} % Vektor mit drei Einträgen
+\newcommand{\threevector}[3]{\begin{pmatrix} #1 \\ #2 \\ #3 \end{pmatrix}} % Vektor mit drei Einträgen
+\newcommand{\smallthreevector}[3]{\left(\begin{smallmatrix} #1 \\ #2 \\ #3 \end{smallmatrix}\right)} % kleiner Vektor mit drei Einträgen
+\newcommand{\fourvector}[4]{\begin{pmatrix} #1 \\ #2 \\ #3 \\ #4 \end{pmatrix}} % Vektor mit vier Einträgen
+\newcommand{\smallfourvector}[4]{\left(\begin{smallmatrix} #1 \\ #2 \\ #3 \\ #4\end{smallmatrix}\right)}% kleiner Vektor mit vier Einträgen
+ \newcommand{\vecn}[2]{\begin{pmatrix} #1 \\\vdots\\ #2 \end{pmatrix}} % Vektor der Form (x_1 ... x_n)
+\newcommand{\vecxnsmall}{\left(\begin{smallmatrix} x_1 \\ \vdots \\ x_n \end{smallmatrix}\right)}
+\newcommand{\vecynsmall}{\left(\begin{smallmatrix} y_1 \\ \vdots \\ y_n \end{smallmatrix}\right)}
+\newcommand{\vecxntsmall}{\left(x_1,\ldots,x_n\right)}
+\newcommand{\vecyntsmall}{\left(y_1,\ldots,y_n\right)}
+
+% Matritzen
+\newcommand{\fourmatrix}[4]{\begin{pmatrix} #1 & #2 \\ #3 & #4 \end{pmatrix}} % 2x2-Matrix
+
+% spezielle Matritzen
+\newcommand{\matAmnsmall}{\left(\begin{smallmatrix} a_{11} & \ldots & a_{1n}\\ \vdots & \ddots & \vdots \\	a_{n1} & \ldots & a_{nn}\end{smallmatrix}\right)} % kleine nxn-Matrix mit Einträgen a_ij
+\newcommand{\matBmnsmall}{\left(\begin{smallmatrix} b_{11} & \ldots & b_{1n}\\ \vdots & \ddots & \vdots \\	b_{n1} & \ldots & b_{nn}\end{smallmatrix}\right)} % kleine nxn-Matrix mit Einträgen b_ij
+\newcommand{\matCmnsmall}{\left(\begin{smallmatrix} c_{11} & \ldots & c_{1n}\\ \vdots & \ddots & \vdots \\	c_{n1} & \ldots & c_{nn}\end{smallmatrix}\right)}% kleine nxn-Matrix mit Einträgen c_ij
+\newcommand{\matTmnsmall}{\left(\begin{smallmatrix} t_{11} & \ldots & t_{1n}\\ \vdots & \ddots & \vdots \\	t_{n1} & \ldots & t_{nn}\end{smallmatrix}\right)}% kleine nxn-Matrix mit Einträgen t_ij
+\newcommand{\matAmn}{\left(\begin{array}{cccc}a_{11} & a_{12} & \ldots & a_{1n}\\a_{21} & a_{22} & \ldots & a_{2n}\\\vdots &\vdots &\ddots & \vdots\\a_{m1} & a_{m2} & \ldots & a_{mn}\\\end{array}\right)} % mxn-Matrix mit Einträgen a_ij
+\newcommand{\matAnn}{\left(\begin{array}{cccc}a_{11} & a_{12} & \ldots & a_{1n}\\a_{21} & a_{22} & \ldots & a_{2n}\\\vdots & & & \vdots\\a_{n1} & a_{n2} & \ldots & a_{nn}\\\end{array}\right)} % nxn-Matrix mit Einträgen a_ij
+\newcommand{\matEnBig}{\left(\begin{array}{cccc}1 & 0 & \ldots & 0\\0 & 1 & \ddots & \vdots\\\vdots & \ddots & \ddots& 0\\0 & \ldots & 0 & 1\\\end{array}\right)} % große nxn-Einheitsmatrix
+\newcommand{\matEn}{\left(\begin{array}{cc}1 & \mathbf{0} \\ \mathbf{0} & 1\end{array}\right)} % Einheitsmatrix
+\newcommand{\matDiag}[2]{\begin{pmatrix}#1 &  & \mathbf{0}\\  & \ddots & \\ \mathbf{0} &  & #2\end{pmatrix}} % Diagonalmatrix mit Einträgen x_1..x_2 auf der Diagonalen
+\newcommand{\matThreeDiag}[3]{\begin{pmatrix}#1 & 0 & 0\\ 0 & #2 & 0\\ 0 & 0 & #3\end{pmatrix}} % 3x3-Diagonalmatrix
+\newcommand{\matTriangle}[2]{\begin{pmatrix}#1 & \cdots & \\  & \ddots & \vdots\\ \mathbf{0}&  & #2\end{pmatrix}} % rechte obere Dreiecksamtrix
+
+%Determinanten
+\newcommand{\fourdet}[4]{\begin{vmatrix} #1 & #2 \\ #3 & #4 \end{vmatrix}}
+
+% Real- und Imaginärteil-Operatoren
+\renewcommand{\Re}{\mathrm{Re}\;}
+\renewcommand{\Im}{\mathrm{Im}\;}
+
+
+% Darstellung von Einheiten
+\newcommand{\unit}[1]{\ensuremath{\bgroup\protect\renewcommand{\mu}{\upmu}\,\mathrm{#1}\egroup}}
+\newcommand{\unitf}[2]{\unit{\frac{#1}{#2}}}
+\newcommand{\unitb}[1]{\ensuremath{\bgroup\protect\renewcommand{\mu}{\upmu}\mathrm{\left[#1\right]}\egroup}}
+\newcommand{\unitbs}[1]{\ensuremath{\bgroup\protect\renewcommand{\mu}{\upmu}\mathrm{\bigl[#1\bigr]}\egroup}}
+\newcommand{\degree}{{}^\circ}
+\newcommand{\degC}{\unit{{}^\circ C}}
+\newcommand{\degF}{\unit{{}^\circ F}}
+\newcommand{\litre}{\ell}
+\newcommand{\liter}{\litre}
+\newcommand{\uliter}{\unit{\liter}}
+\newcommand{\ulitre}{\unit{\liter}}
+
+
+\newcommand{\const}{{\text{const}}}
+
+
+% Differentialbrüche
+\newcommand{\pfrac}[2]{\frac{\partial #1}{\partial #2}}  % partielles Differential
+\newcommand{\fracpd}[2]{\frac{\partial #1}{\partial #2}} % partielles Differential
+\newcommand{\fracppd}[2]{\frac{\partial^2 #1}{\partial #2^2}}  % zweite partielle 
+\newcommand{\fracd}[2]{\frac{\mathrm{d} #1}{\mathrm{d} #2}} % partielles Differential
+\newcommand{\fracdd}[2]{\frac{\mathrm{d}^2 #1}{\mathrm{d} #2^2}}  % zweite partielle 
+
+
+\newcommand{\dd}{\mathrm{d}}  
+\newcommand{\ddt}{\;\mathrm{d}t}  
+\newcommand{\ddts}{\;\mathrm{d}t'}  
+\newcommand{\ddtss}{\;\mathrm{d}t''}  
+\newcommand{\ddx}{\;\mathrm{d}x}  
+\newcommand{\ddy}{\;\mathrm{d}y}  
+\newcommand{\ddxs}{\;\mathrm{d}x'}  
+\newcommand{\ddys}{\;\mathrm{d}y'}  
+\newcommand{\ddz}{\;\mathrm{d}z}  
+\newcommand{\ddr}{\;\mathrm{d}r}  
+\newcommand{\ddA}{\;\mathrm{d}A}  
+\newcommand{\ddV}{\;\mathrm{d}V}  
+\newcommand{\ddvr}{\;\mathrm{d}\vr}  
+\newcommand{\ddtr}{\;\mathrm{d}^3r}  
+
+\newcommand{\ddnu}{\;\mathrm{d}\nu}  
+\newcommand{\ddtau}{\;\mathrm{d}\tau}  
+\newcommand{\ddxi}{\;\mathrm{d}\xi}  
+\newcommand{\ddphi}{\;\mathrm{d}\phi}  
+\newcommand{\ddvarphi}{\;\mathrm{d}\varphi}  
+\newcommand{\ddtheta}{\;\mathrm{d}\theta}  
+
+\newcommand{\ii}{\mathrm{i}}  
+
+% Blackboard-Font: Bezeichnungen für Mengen
+\newcommand{\bbone}{\mathds{1}}  % mathds benötigt das Package "dsfont"
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\K}{\mathbb{K}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\bP}{\mathbb{P}}
+\newcommand{\Q}{\mathbb{Q}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\bbA}{\mathbb{A}}
+\newcommand{\bbB}{\mathbb{B}}
+\newcommand{\bbC}{\mathbb{C}}
+\newcommand{\bbD}{\mathbb{D}}
+\newcommand{\bbE}{\mathbb{E}}
+\newcommand{\bbF}{\mathbb{F}}
+\newcommand{\bbG}{\mathbb{G}}
+\newcommand{\bbH}{\mathbb{H}}
+\newcommand{\bbI}{\mathbb{I}}
+\newcommand{\bbJ}{\mathbb{J}}
+\newcommand{\bbK}{\mathbb{K}}
+\newcommand{\bbL}{\mathbb{L}}
+\newcommand{\bbM}{\mathbb{M}}
+\newcommand{\bbN}{\mathbb{N}}
+\newcommand{\bbO}{\mathbb{O}}
+\newcommand{\bbP}{\mathbb{P}}
+\newcommand{\bbQ}{\mathbb{Q}}
+\newcommand{\bbR}{\mathbb{R}}
+\newcommand{\bbS}{\mathbb{S}}
+\newcommand{\bbT}{\mathbb{T}}
+\newcommand{\bbU}{\mathbb{U}}
+\newcommand{\bbV}{\mathbb{V}}
+\newcommand{\bbW}{\mathbb{W}}
+\newcommand{\bbX}{\mathbb{X}}
+\newcommand{\bbY}{\mathbb{Y}}
+\newcommand{\bbZ}{\mathbb{Z}}
+
+
+
+
+% spezielle Mengen R^n etc.
+\newcommand{\Knn}{\mathbb{K}^{n\times n}}
+\newcommand{\Kmn}{\mathbb{K}^{m\times n}}
+\newcommand{\Rnn}{\mathbb{R}^{n\times n}}
+\newcommand{\Rmn}{\mathbb{R}^{m\times n}}
+\newcommand{\Rmm}{\mathbb{R}^{m\times m}}
+\newcommand{\Kn}{\mathbb{K}^n}
+\newcommand{\Rn}{\mathbb{R}^n}
+\newcommand{\Rthree}{\mathbb{R}^3}
+\newcommand{\Km}{\mathbb{K}^m}
+\newcommand{\Rm}{\mathbb{R}^m}
+\newcommand{\HM}{\mathcal{H}(M)}
+\newcommand{\KX}{K\left[X\right]} %Menge der Polynome über X (???)
+\newcommand{\jset}[2]{\bigl\{ #1 \bigl| #2 \bigr.\bigr\}} % Menge aller Elemente #1 mit Eigenschaft #2
+\newcommand{\mCab}{{\cC}\left[a,b\right]} % C[a,b]
+\newcommand{\Cab}{{$\mCab$}} % Cab außerhalb Mathe-Modus
+
+
+% Groß-Buchstaben im mathcal-Font
+\newcommand{\cA}{\mathcal{A}}
+\newcommand{\cB}{\mathcal{B}}
+\newcommand{\cC}{\mathcal{C}}
+\newcommand{\cD}{\mathcal{D}}
+\newcommand{\cE}{\mathcal{E}}
+\newcommand{\cF}{\mathcal{F}}
+\newcommand{\cG}{\mathcal{G}}
+\newcommand{\cH}{\mathcal{H}}
+\newcommand{\cI}{\mathcal{I}}
+\newcommand{\cJ}{\mathcal{J}}
+\newcommand{\cK}{\mathcal{K}}
+\newcommand{\calL}{\mathcal{L}}
+\newcommand{\cL}{\mathcal{L}}
+\newcommand{\cM}{\mathcal{M}}
+\newcommand{\cN}{\mathcal{N}}
+\newcommand{\cO}{\mathcal{O}}
+\newcommand{\cP}{\mathcal{P}}
+\newcommand{\cQ}{\mathcal{Q}}
+\newcommand{\cR}{\mathcal{R}}
+\newcommand{\cS}{\mathcal{S}}
+\newcommand{\cT}{\mathcal{T}}
+\newcommand{\cU}{\mathcal{U}}
+\newcommand{\cV}{\mathcal{V}}
+\newcommand{\cW}{\mathcal{W}}
+\newcommand{\bX}{\mathbf{X}}
+\newcommand{\bY}{\mathbf{Y}}
+\newcommand{\cZ}{\mathcal{Z}}
+
+% Operatoren als Vektoren (Nabla ...)
+\newcommand{\vnabla}{\vec{\nabla}}
+
+% ausgewählte griechische Buchstaben als Vektoren
+\newcommand{\valpha}{\vec{\alpha}}
+\newcommand{\vbeta}{\vec{\beta}}
+\newcommand{\vgamma}{\vec{\gamma}}
+\newcommand{\vdelta}{\vec{\delta}}
+\newcommand{\vepsilon}{\vec{\epsilon}}
+\newcommand{\vtau}{\vec{\tau}}
+\newcommand{\vmu}{\vec{\mu}}
+\newcommand{\vphi}{\vec{\phi}}
+\newcommand{\vpi}{\vec{\pi}}
+\newcommand{\vPsi}{\vec{\Psi}}
+\newcommand{\vchi}{\vec{\chi}}
+\newcommand{\vvarphi}{\vec{\varphi}}
+\newcommand{\veta}{\vec{\eta}}
+\newcommand{\viota}{\vec{\iota}}
+\newcommand{\vkappa}{\vec{\kappa}}
+\newcommand{\vlambda}{\vec{\lambda}}
+\newcommand{\vnu}{\vec{\nu}}
+\newcommand{\vgo}{\vec{\o}}
+\newcommand{\vvarpi}{\vec{\varpi}}
+\newcommand{\vtheta}{\vec{\theta}}
+\newcommand{\vvartheta}{\vec{\vartheta}}
+\newcommand{\vrho}{\vec{\rho}}
+\newcommand{\vsigma}{\vec{\sigma}}
+\newcommand{\vvarsigma}{\vec{\varsigma}}
+\newcommand{\vupsilon}{\vec{\upsilon}}
+\newcommand{\vomega}{\vec{\omega}}
+\newcommand{\vxi}{\vec{\xi}}
+\newcommand{\vpsi}{\vec{\psi}}
+\newcommand{\vzeta}{\vec{\zeta}}
+
+
+
+% Großbuchstaben als Vektoren
+\newcommand{\vA}{\vec{A}}
+\newcommand{\vB}{\vec{B}}
+\newcommand{\vC}{\vec{C}}
+\newcommand{\vD}{\vec{D}}
+\newcommand{\vE}{\vec{E}}
+\newcommand{\vF}{\vec{F}}
+\newcommand{\vG}{\vec{G}}
+\newcommand{\vH}{\vec{H}}
+\newcommand{\vI}{\vec{I}}
+\newcommand{\vJ}{\vec{J}}
+\newcommand{\vK}{\vec{K}}
+\newcommand{\vL}{\vec{L}}
+\newcommand{\vM}{\vec{M}}
+\newcommand{\vN}{\vec{N}}
+\newcommand{\vO}{\vec{O}}
+\newcommand{\vP}{\vec{P}}
+\newcommand{\vQ}{\vec{Q}}
+\newcommand{\vR}{\vec{R}}
+\newcommand{\vS}{\vec{S}}
+\newcommand{\vT}{\vec{T}}
+\newcommand{\vU}{\vec{U}}
+\newcommand{\vV}{\vec{V}}
+\newcommand{\vW}{\vec{W}}
+\newcommand{\vX}{\vec{X}}
+\newcommand{\vY}{\vec{Y}}
+\newcommand{\vZ}{\vec{Z}}
+
+
+% Kleinbuchstaben als Vektoren
+\newcommand{\va}{\vec{a}}
+\newcommand{\vb}{\vec{b}}
+\newcommand{\vc}{\vec{c}}
+\newcommand{\vd}{\vec{d}}
+\newcommand{\ve}{\vec{e}}
+\newcommand{\vf}{\vec{f}}
+\newcommand{\vg}{\vec{g}}
+\newcommand{\vh}{\vec{h}}
+\newcommand{\vi}{\vec{i}}
+\newcommand{\vj}{\vec{j}}
+\newcommand{\vk}{\vec{k}}
+\newcommand{\vl}{\vec{l}}
+\newcommand{\vm}{\vec{m}}
+\newcommand{\vn}{\vec{n}}
+\newcommand{\vo}{\vec{o}}
+\newcommand{\vp}{\vec{p}}
+\newcommand{\vq}{\vec{q}}
+\newcommand{\vr}{\vec{r}}
+\newcommand{\vs}{\vec{s}}
+\newcommand{\vt}{\vec{t}}
+\newcommand{\vu}{\vec{u}}
+\newcommand{\vv}{\vec{v}}
+\newcommand{\vw}{\vec{w}}
+\newcommand{\vx}{\vec{x}}
+\newcommand{\vy}{\vec{y}}
+\newcommand{\vz}{\vec{z}}
+
+
+%Formatierung von Matritzen
+\newcommand{\mat}[1]{\mathrm{\mathbf{#1}}}
+
+
+% Großbuchstaben als Matritzen
+\newcommand{\mOne}{\mat{\mathds{1}}} % benötigt mathds-Package
+\newcommand{\mA}{\mat{A}}
+\newcommand{\mB}{\mat{B}}
+\newcommand{\mC}{\mat{C}}
+\newcommand{\mD}{\mat{D}}
+\newcommand{\mE}{\mat{E}}
+\newcommand{\mF}{\mat{F}}
+\newcommand{\mG}{\mat{G}}
+\newcommand{\mH}{\mat{H}}
+\newcommand{\mI}{\mat{I}}
+\newcommand{\mJ}{\mat{J}}
+\newcommand{\mK}{\mat{K}}
+\newcommand{\mL}{\mat{L}}
+\newcommand{\mM}{\mat{M}}
+\newcommand{\mN}{\mat{N}}
+\newcommand{\mO}{\mat{O}}
+\newcommand{\mP}{\mat{P}}
+\newcommand{\mQ}{\mat{Q}}
+\newcommand{\mR}{\mat{R}}
+\newcommand{\mS}{\mat{S}}
+\newcommand{\mT}{\mat{T}}
+\newcommand{\mU}{\mat{U}}
+\newcommand{\mV}{\mat{V}}
+\newcommand{\mW}{\mat{W}}
+\newcommand{\mX}{\mat{X}}
+\newcommand{\mY}{\mat{Y}}
+\newcommand{\mZ}{\mat{Z}}
+
+\newcommand{\msigma}{\mat{\sigma}}
+
+
+
+% Größen mit Hut
+\newcommand{\hx}{\hat{x}}
+\newcommand{\hlambda}{\hat{\lambda}}
+\newcommand{\hy}{\hat{y}}
+
+% häufige Grenzübergänge
+\newcommand{\limninfty}{\lim\limits_{n\rightarrow\infty}} % lim n -> infty
+\newcommand{\limkinfty}{\lim\limits_{k\rightarrow\infty}} % lim k -> infty
+\newcommand{\liminfninfty}{\liminf\limits_{n\rightarrow\infty}} % liminf n-> infty
+\newcommand{\liminfkinfty}{\liminf\limits_{k\rightarrow\infty}} % liminf k-> infty
+\newcommand{\limsupninfty}{\limsup\limits_{n\rightarrow\infty}} % limsup n-> infty
+\newcommand{\limsupkinfty}{\limsup\limits_{k\rightarrow\infty}} % limsup k-> infty
+\newcommand{\supnN}{\sup\limits_{n\in\N}} % sup n in N
+\newcommand{\infnN}{\sup\limits_{n\in\N}} % inf n in N
+\newcommand{\ninfty}{n\rightarrow\infty} % n -> infty
+\newcommand{\kinfty}{k\rightarrow\infty} % k -> infty
+\newcommand{\epsilonzero}{\epsilon\rightarrow0} % epsilon -> 0
+\newcommand{\epsilonnull}{\epsilon\rightarrow0} % epsilon -> 0
+\newcommand{\hzero}{h\rightarrow0} % h -> 0
+\newcommand{\hnull}{h\rightarrow0} % h -> 0
+
+% häufige Summationen
+\newcommand{\sumknullinfty}{\sum\limits_{k=0}^\infty}
+\newcommand{\sumnnullinfty}{\sum\limits_{n=0}^\infty}
+\newcommand{\sumkzeroinfty}{\sum\limits_{k=0}^\infty}
+\newcommand{\sumnzeroinfty}{\sum\limits_{n=0}^\infty}
+\newcommand{\sumkoneinfty}{\sum\limits_{k=1}^\infty}
+\newcommand{\sumkonen}{\sum\limits_{k=1}^n}
+\newcommand{\sumkonem}{\sum\limits_{k=1}^m}
+\newcommand{\sumionen}{\sum\limits_{i=1}^n}
+\newcommand{\sumjonen}{\sum\limits_{j=1}^n}
+\newcommand{\sumionem}{\sum\limits_{i=1}^m}
+\newcommand{\sumnoneinfty}{\sum\limits_{n=1}^\infty}
+
+% diverse Operatoren/Funktionen etc.
+
+% lineare Algebra (Normen etc.)
+\newcommand{\sabs}[1]{{|#1|}} % Absolut-Betrag
+\newcommand{\abs}[1]{\left|#1\right|} % Absolut-Betrag
+\newcommand{\bigabs}[1]{\bigl|#1\bigr|} % Absolut-Betrag, groß
+\newcommand{\absa}[1]{\left|#1\right|_a}
+\newcommand{\absi}[1]{\left|#1\right|_i}
+\newcommand{\snorm}[2][]{\|#2\|_{#1}} % Norm
+\newcommand{\norm}[2][]{\left\|#2\right\|_{#1}} % Norm
+\newcommand{\normmax}[1]{\left\|#1\right\|_{\infty}} % infty-Norm
+\newcommand{\normltwo}[1]{\left\|#1\right\|_{2}} % L2-Norm
+\newcommand{\transp}[1]{{#1}^\mathrm{\mathbf{T}}} % Transposition
+\newcommand{\skalarp}[2]{\langle #1, #2 \rangle}
+
+% spezielle Befehle: Physik
+\newcommand{\lorentz}{\textsc{Lorentz}}
+\newcommand{\einstein}{\textsc{Einstein}}
+\newcommand{\smallmetric}{\left(\begin{smallmatrix}1 & & &\mathbf{0}\\ & -1 & &\\ & & -1 &\\\mathbf{0} & & &-1\\\end{smallmatrix}\right)} % Metrik der spec. Rel.
+\newcommand{\poisson}[2]{\left\{{#1},{#2}\right\}}
+
+%Quantenmechanische Bra-Ket-Notation
+\newcommand{\bra}[1]{\langle{#1}|}
+\newcommand{\ket}[1]{|{#1}\rangle}
+\newcommand{\braOPket}[3]{\langle #1|\hat{#2}| #3\rangle}
+\newcommand{\braOPvket}[3]{\langle #1|\hat{\vec{#2}}| #3\rangle}
+\newcommand{\braopket}[3]{\langle #1| #2 | #3\rangle}
+\newcommand{\braket}[2]{\langle #1 | #2 \rangle}
+\newcommand{\ketbra}[2]{\ket{#1}\bra{#2}}
+\newcommand{\qmskalar}[2]{\langle #1, #2 \rangle}
+\newcommand{\OP}[1]{\hat{{#1}}}
+\newcommand{\OPv}[1]{\hat{\vec{{#1}}}}
+\newcommand{\obs}[1]{\mathcal{#1}}
+\newcommand{\obsv}[1]{\vec{\mathcal{#1}}}
+\newcommand{\commutator}[2]{[#1, #2]}
+\newcommand{\commutatorOP}[2]{[\hat{#1}, \hat{#2}]}
+\newcommand{\commutatorOPv}[2]{[\hat{\vec{#1}}, \hat{#2}]}
+\newcommand{\acommutator}[2]{\{#1, #2\}}
+\newcommand{\acommutatorOP}[2]{\{\hat{#1}, \hat{#2}\}}
+\newcommand{\acommutatorOPv}[2]{\{\hat{\vec{#1}}, \hat{#2}\}}
+\newcommand{\smean}[1]{\bigl\langle #1\bigr\rangle}
+\newcommand{\bmean}[1]{\Bigl\langle #1\Bigr\rangle}
+\newcommand{\mean}[1]{\left\langle #1\right\rangle}
+\newcommand{\meanOP}[1]{\langle\hat{#1}\rangle}
+\newcommand{\meanOPv}[1]{\langle\hat{\vec{#1}}\rangle}
+\newcommand{\prob}[1]{\bP\left({#1}\right)}
+\newcommand{\tp}{\otimes}
+
+\newcommand{\ketupsdown}{\ket{\uparrow/\downarrow}}
+\newcommand{\braupsdown}{\bra{\uparrow/\downarrow}}
+
+\newcommand{\ketupup}{\ket{\uparrow\uparrow}}
+\newcommand{\braupup}{\bra{\uparrow\uparrow}}
+\newcommand{\ketupdown}{\ket{\uparrow\downarrow}}
+\newcommand{\braupdown}{\bra{\uparrow\downarrow}}
+\newcommand{\ketdownup}{\ket{\downarrow\uparrow}}
+\newcommand{\bradownup}{\bra{\downarrow\uparrow}}
+\newcommand{\ketdowndown}{\ket{\downarrow\downarrow}}
+\newcommand{\bradowndown}{\bra{\downarrow\downarrow}}
+\newcommand{\ketup}{\ket{\uparrow}}
+\newcommand{\braup}{\bra{\uparrow}}
+\newcommand{\ketdown}{\ket{\downarrow}}
+\newcommand{\bradown}{\bra{\downarrow}}
+\newcommand{\ketnlm}{\ket{nlm}}
+\newcommand{\branlm}{\bra{nlm}}
+\newcommand{\ketp}{\ket{p}}
+\newcommand{\ketq}{\ket{q}}
+\newcommand{\ketn}{\ket{n}}
+\newcommand{\keta}{\ket{a}}
+\newcommand{\braa}{\bra{a}}
+\newcommand{\kete}{\ket{e}}
+\newcommand{\brae}{\bra{e}}
+\newcommand{\ketet}{\ket{e_t}}
+\newcommand{\ketg}{\ket{g}}
+\newcommand{\brag}{\bra{g}}
+\newcommand{\ketgt}{\ket{g_t}}
+\newcommand{\ketb}{\ket{b}}
+\newcommand{\brab}{\bra{b}}
+\newcommand{\ketr}{\ket{r}}
+\newcommand{\brar}{\bra{r}}
+\newcommand{\ketpsi}{\ket{\psi}}
+\newcommand{\ketpsit}{\ket{\psi_t}}
+\newcommand{\ketphi}{\ket{\phi}}
+\newcommand{\ketphit}{\ket{\phi_t}}
+\newcommand{\brap}{\bra{p}}
+\newcommand{\braq}{\bra{q}}
+\newcommand{\bran}{\bra{n}}
+\newcommand{\brapsi}{\bra{\psi}}
+\newcommand{\braphi}{\bra{\phi}}
+\newcommand{\OPA}{\OP{A}}
+\newcommand{\OPvA}{\OPv{A}}
+\newcommand{\OPa}{\OP{a}}
+\newcommand{\OPadagger}{{\OP{a}^\dagger}}
+\newcommand{\OPad}{\OPadagger}
+\newcommand{\OPB}{\OP{B}}
+\newcommand{\OPvB}{\OPv{B}}
+\newcommand{\OPC}{\OP{C}}
+\newcommand{\OPD}{\OP{D}}
+\newcommand{\OPvD}{\OPv{D}}
+\newcommand{\OPE}{\OP{E}}
+\newcommand{\OPvE}{\OPv{E}}
+\newcommand{\OPF}{\OP{F}}
+\newcommand{\OPFz}{\OP{F}_z}
+\newcommand{\OPvF}{\OPv{F}}
+\newcommand{\OPG}{\OP{G}}
+\newcommand{\OPH}{\OP{H}}
+\newcommand{\OPI}{\OP{I}}
+\newcommand{\OPIz}{\OP{I}_z}
+\newcommand{\OPvI}{\OPv{I}}
+\newcommand{\OPJ}{\OP{J}}
+\newcommand{\OPJs}{\OP{J}^2}
+\newcommand{\OPJx}{\OP{J}_x}
+\newcommand{\OPJpm}{\OP{J}_{\pm}}
+\newcommand{\OPJmp}{\OP{J}_{\mp}}
+\newcommand{\OPJp}{\OP{J}_{+}}
+\newcommand{\OPJm}{\OP{J}_{-}}
+\newcommand{\OPJy}{\OP{J}_y}
+\newcommand{\OPJz}{\OP{J}_z}
+\newcommand{\OPJv}{\OPv{J}}
+\newcommand{\OPJvs}{\OPv{J}^2}
+\newcommand{\OPvJ}{\OPJv}
+\newcommand{\OPvj}{\OPv{j}}
+\newcommand{\OPK}{\OP{K}}
+\newcommand{\OPk}{\OP{k}}
+\newcommand{\OPL}{\OP{L}}
+\newcommand{\OPvl}{\OPv{l}}
+\newcommand{\OPLs}{\OP{L}^2}
+\newcommand{\OPLp}{\OP{L}_{+}}
+\newcommand{\OPLpm}{\OP{L}_{\pm}}
+\newcommand{\OPLmp}{\OP{L}_{\mp}}
+\newcommand{\OPLm}{\OP{L}_{-}}
+\newcommand{\OPLx}{\OP{L}_x}
+\newcommand{\OPLy}{\OP{L}_y}
+\newcommand{\OPLz}{\OP{L}_z}
+\newcommand{\OPLv}{\OPv{L}}
+\newcommand{\OPvL}{\OPLv}
+\newcommand{\OPLvs}{\OPv{L}^2}
+\newcommand{\OPM}{\OP{M}}
+\newcommand{\OPN}{\OP{N}}
+\newcommand{\OPn}{\OP{n}}
+\newcommand{\OPO}{\OP{O}}
+\newcommand{\OPP}{\OP{P}}
+\newcommand{\OPvP}{\OPv{P}}
+\newcommand{\OPQ}{\OP{Q}}
+\newcommand{\OPvQ}{\OPv{Q}}
+\newcommand{\OPp}{\OP{p}}
+\newcommand{\OPvp}{\OPv{p}}
+\newcommand{\OPq}{\OP{q}}
+\newcommand{\OPR}{\OP{R}}
+\newcommand{\OPr}{\OP{r}}
+\newcommand{\OPvR}{\OPv{R}}
+\newcommand{\OPvr}{\OPv{r}}
+\newcommand{\OPS}{\OP{S}}
+\newcommand{\OPSs}{\OP{S}^2}
+\newcommand{\OPSp}{\OP{S}_{+}}
+\newcommand{\OPSpm}{\OP{S}_{\pm}}
+\newcommand{\OPSmp}{\OP{S}_{\mp}}
+\newcommand{\OPSm}{\OP{S}_{-}}
+\newcommand{\OPSx}{\OP{S}_x}
+\newcommand{\OPSy}{\OP{S}_y}
+\newcommand{\OPSz}{\OP{S}_z}
+\newcommand{\OPSv}{\OPv{S}}
+\newcommand{\OPvs}{\OPv{s}}
+\newcommand{\OPvS}{\OPSv}
+\newcommand{\OPSvs}{\OPv{S}^2}
+
+
+\newcommand{\OPT}{\OP{T}}
+\newcommand{\OPU}{\OP{U}}
+\newcommand{\OPV}{\OP{V}}
+\newcommand{\OPW}{\OP{W}}
+\newcommand{\OPX}{\OP{X}}
+\newcommand{\OPvX}{\OPv{X}}
+\newcommand{\OPY}{\OP{Y}}
+\newcommand{\OPZ}{\OP{Z}}
+\newcommand{\OPx}{\OP{x}}
+\newcommand{\OPy}{\OP{y}}
+\newcommand{\OPz}{\OP{z}}
+\newcommand{\OPPi}{\OP{\Pi}}
+
+
+
+\newcommand{\rhoMK}{{\rho_{\txt{MK}}}}
+\newcommand{\rhoK}{{\rho_{\txt{K}}}}
+\newcommand{\rhoGK}{{\rho_{\txt{GK}}}}
+\newcommand{\OPrhoMK}{{\OP{\rho}_{\txt{MK}}}}
+\newcommand{\OPrhoK}{{\OP{\rho}_{\txt{K}}}}
+\newcommand{\OPrhoGK}{{\OP{\rho}_{\txt{GK}}}}
+\newcommand{\OPrho}{{\OP{\rho}}}
+
+% spezielle Befehle: theoretische Informatik: Operatoren etc.
+\newcommand{\defined}{\!\!\downarrow} % größe ist definiert (Pfeil nach unten)
+\newcommand{\mundefined}{\!\!\uparrow} % größe ist nicht definiert (Pfeil nach oben)
+\newcommand{\FPRIM}{F(\text{PRIM})} % Klasse der primitiv rekursiven Funktioenn
+\newcommand{\FREK}{F(\text{REK})} % Klasse der rekursiven Funktionen
+\newcommand{\RETURN}{\textbf{return}\ }
+\newcommand{\xk}{x^{(k)}}
+\newcommand{\xkpone}{x^{(k+1)}}
+\newcommand{\xkmone}{x^{(k-1)}}
+\newcommand{\xn}{x^{(n)}}
+%\newcommand{\xl}{x^{(l)}}
+\newcommand{\xj}{x^{(j)}}
+\newcommand{\ei}{e^{(i)}}
+\newcommand{\ej}{e^{(j)}}
+\newcommand{\ek}{e^{(k)}}
+\newcommand{\en}{e^{(n)}}
+\newcommand{\LEX}{\text{LEX}}
+\newcommand{\llex}{\text{ll}}
+\newcommand{\eminus}{\dot{-}}
+\newcommand{\AF}[1]{\underset{\uparrow}{#1}}
+\newcommand{\goedel}[1]{\left\ulcorner #1\right\urcorner}
+\newcommand{\chomprod}{\underset{E}{\Rightarrow}}
+\newcommand{\chomproda}{\overset{\ast}{\underset{E}{\Rightarrow}}}
+\newcommand{\derive}{\overset{\ast}{\Rightarrow}}
+\newcommand{\derivep}{\overset{+}{\Rightarrow}}
+\newcommand{\derives}{\Rightarrow}
+\newcommand{\lderive}{\overset{\ast}{\underset{l}{\Rightarrow}}}
+\newcommand{\lderivep}{\overset{+}{\underset{l}{\Rightarrow}}}
+\newcommand{\lderives}{\underset{l}{\Rightarrow}}
+\newcommand{\rderive}{\overset{\ast}{\underset{r}{\Rightarrow}}}
+\newcommand{\rderivep}{\overset{+}{\underset{r}{\Rightarrow}}}
+\newcommand{\rderives}{\underset{r}{\Rightarrow}}
+\newcommand{\produ}{\overset{\ast}{\rightarrow}}
+\newcommand{\produep}{\overset{+}{\rightarrow}}
+\newcommand{\lprodu}{\overset{\ast}{\underset{l}{\rightarrow}}}
+\newcommand{\lprodup}{\overset{+}{\underset{l}{\rightarrow}}}
+\newcommand{\lprodus}{\underset{l}{\rightarrow}}
+\newcommand{\leqm}{\leq_m}
+\newcommand{\leqpm}{\leq^p_m}
+
+
+% sonstige Befehle
+\newcommand{\txt}[1]{{\text{#1}}} % Text in Mathe-Umgebung (aufrecht gesetzt)
+\newcommand{\txttt}[1]{{\text{\texttt{#1}}}}
+\newcommand{\txtit}[1]{{\text{\textit{#1}}}}
+
+\newcommand{\und}{\txt{\ und\ }}
+\newcommand{\bzw}{\txt{\ bzw.\ }}
+\newcommand{\oder}{\txt{\ oder\ }}
+\newcommand{\Mit}{\txt{\ mit\ }}
+\newcommand{\eff}{\txt{eff}}
+
+
+%\newcommand{\jgraphics}[2]{\parbox{#1}{\begin{latexonly}\includegraphics{#2.pdf}\end{latexonly}\html{\includegraphics{../epsfig/#2.eps}}}}
+\newcommand{\jgraphics}[2]{\parbox{#1}{\includegraphics{#2.pdf}}}
+
+%Autoren-Kommando aus Doku zu verse-Package für Gedicht
+\newcommand{\attrib}[1]{\nopagebreak{\raggedleft\footnotesize #1\par}}
+
+
+% diverse Mathe-Operatoren
+\DeclareMathOperator{\dalembert}{\square}
+\DeclareMathOperator{\ee}{e}
+\DeclareMathOperator{\SNR}{SNR}
+\DeclareMathOperator{\arcsinh}{arcsinh}
+\DeclareMathOperator{\arccosh}{arccosh}
+\DeclareMathOperator{\arctanh}{arctanh}
+\DeclareMathOperator{\sinc}{sinc}
+\DeclareMathOperator{\tanc}{tanc}
+\DeclareMathOperator{\sign}{sign}
+\DeclareMathOperator{\dist}{dist}
+\DeclareMathOperator{\cond}{cond}
+\DeclareMathOperator{\Div}{div}
+\DeclareMathOperator{\rot}{rot}
+\DeclareMathOperator{\Var}{Var}
+\DeclareMathOperator{\Cov}{Cov}
+\DeclareMathOperator{\Expect}{\mathbb{E}}
+\DeclareMathOperator{\Prob}{\mathbb{P}}
+\DeclareMathOperator{\Lin}{Lin}
+\DeclareMathOperator{\Rang}{Rang}
+\DeclareMathOperator{\Ker}{Ker}
+\DeclareMathOperator{\Img}{Im}
+\DeclareMathOperator{\Hom}{Hom}
+\DeclareMathOperator{\id}{id}
+\DeclareMathOperator{\End}{End}
+\DeclareMathOperator{\GL}{GL}
+\DeclareMathOperator{\SL}{SL}
+\DeclareMathOperator{\Spur}{Spur}
+\DeclareMathOperator{\diag}{diag}
+\DeclareMathOperator{\grad}{grad}
+\DeclareMathOperator{\Eig}{Eig}
+\DeclareMathOperator{\ord}{ord}
+\DeclareMathOperator{\bin}{bin}
+\DeclareMathOperator{\res}{res}
+\DeclareMathOperator{\PR}{PR}
+\DeclareMathOperator{\SPR}{SPR}
+\DeclareMathOperator{\sgn}{sgn}
+\DeclareMathOperator{\Iter}{Iter}
+\DeclareMathOperator{\diam}{diam}
+\DeclareMathOperator{\landauo}{\mathcal{o}}
+\DeclareMathOperator{\landauO}{\mathcal{O}}
+\DeclareMathOperator{\Wb}{Wb}
+\DeclareMathOperator{\Db}{Db}
+\DeclareMathOperator{\In}{In}
+\DeclareMathOperator{\TB}{TB}
+\DeclareMathOperator{\TM}{TM}
+\DeclareMathOperator{\TO}{TO}
+\DeclareMathOperator{\RM}{RM}
+\DeclareMathOperator{\RO}{RO}
+\DeclareMathOperator{\BI}{BI}
+\DeclareMathOperator{\Out}{Out}
+\DeclareMathOperator{\iin}{in}
+\DeclareMathOperator{\out}{out}
+\DeclareMathOperator{\Char}{Char}
+\DeclareMathOperator{\Time}{time}
+\DeclareMathOperator{\Space}{space}
+\DeclareMathOperator{\TL}{TL}
+\DeclareMathOperator{\tail}{tail}
+\DeclareMathOperator{\head}{head}
+\DeclareMathOperator{\REK}{REK}
+\DeclareMathOperator{\PRIM}{PRIM}
+\DeclareMathOperator{\RES}{RES}
+\DeclareMathOperator{\BIAS}{BIAS}
+\DeclareMathOperator{\CH}{CH}
+\DeclareMathOperator{\ERW}{ERW}
+\DeclareMathOperator{\KS}{KS}
+\DeclareMathOperator{\KF}{KF}
+\DeclareMathOperator{\LIN}{LIN}
+\DeclareMathOperator{\RLIN}{RLIN}
+\DeclareMathOperator{\LLIN}{LLIN}
+\DeclareMathOperator{\NSPACE}{NSPACE}
+\DeclareMathOperator{\DSPACE}{DSPACE}
+\DeclareMathOperator{\NTIME}{NTIME}
+\DeclareMathOperator{\DTIME}{DTIME}
+\DeclareMathOperator{\FDSPACE}{FDSPACE}
+\DeclareMathOperator{\FDTIME}{FDTIME}
+\DeclareMathOperator{\EXP}{EXP}
+\DeclareMathOperator{\PTIME}{PTIME}
+\DeclareMathOperator{\PP}{P}
+\DeclareMathOperator{\PS}{\mathcal{P}}
+\DeclareMathOperator{\FP}{FP}
+\DeclareMathOperator{\E}{E}
+%\DeclareMathOperator{\EA}{EA}
+\DeclareMathOperator{\lEA}{\lambda\EA}
+\DeclareMathOperator{\DEA}{EA}
+\DeclareMathOperator{\lDEA}{\lambda\DEA}
+\DeclareMathOperator{\poly}{poly}
+\DeclareMathOperator{\LOGSPACE}{LOGSPACE}
+\DeclareMathOperator{\PSPACE}{PSPACE}
+\DeclareMathOperator{\EXPSPACE}{EXPSPACE}
+\DeclareMathOperator{\NP}{NP}
+\DeclareMathOperator{\NLOGSPACE}{NLOGSPACE}
+\DeclareMathOperator{\NLIN}{NLIN}
+\DeclareMathOperator{\NPSPACE}{NPSPACE}
+\DeclareMathOperator{\fetai}{\eta_i}
+\DeclareMathOperator{\fepsilonij}{\epsilon_{ij}}
+\DeclareMathOperator{\erf}{erf}
+\DeclareMathOperator{\var}{var}
+\DeclareMathOperator{\cov}{cov}
+\DeclareMathOperator{\laplace}{\bigtriangleup}
+\DeclareMathOperator{\rd}{rd}
+\DeclareMathOperator{\eps}{eps}
+\DeclareMathOperator{\true}{true}
+\DeclareMathOperator{\false}{false}
+\DeclareMathOperator{\LLo}{LL(1)}
+\DeclareMathOperator{\LRn}{LR(0)}
+\DeclareMathOperator{\LRo}{LR(1)}
+\DeclareMathOperator{\KA}{KA}
+\DeclareMathOperator{\ZKA}{ZKA}
+\DeclareMathOperator{\attr}{attrib}
+\DeclareMathOperator{\tarray}{array}
+\DeclareMathOperator{\tpointer}{pointer}
+\DeclareMathOperator{\trecord}{record}
+\DeclareMathOperator{\pre}{pre}
+\DeclareMathOperator{\leftc}{left}
+\DeclareMathOperator{\chara}{char}
+\DeclareMathOperator{\clo}{cl_0}
+\DeclareMathOperator{\succo}{succ_0}
+\DeclareMathOperator{\conv}{\circledast}
+\DeclareMathOperator{\rect}{rect}
+\DeclareMathOperator{\schema}{Schema}
+\DeclareMathOperator{\dtstring}{string}
+\DeclareMathOperator{\dtint}{int}
+\DeclareMathOperator{\dtfloat}{float}
+\newcommand{\NA}{\ensuremath{\text{NA}}}
+
+\newcommand{\DeclareMathSetSC}[2]{\newcommand{#1}{\text{\textsc{#2}}}} %um Macros in SmallCaps für Mathe-Umgebung zu definieren
+\newcommand{\DeclareMathSetBF}[2]{\newcommand{#1}{\text{\textbf{#2}}}} %um Macros in fett für Mathe-Umgebung zu definieren
+\newcommand{\DeclareMathSetTT}[2]{\newcommand{#1}{\text{\texttt{#2}}}} %um Macros in fett für Mathe-Umgebung zu definieren
+\DeclareMathSetSC{\OPER}{Oper}
+\DeclareMathSetSC{\TEST}{Test}
+\DeclareMathSetSC{\EMPTY}{Empty}
+\DeclareMathSetSC{\INF}{Inf}
+\DeclareMathSetSC{\EQUIV}{Equiv}
+\DeclareMathSetSC{\KON}{Kon}
+\DeclareMathSetSC{\IND}{Ind}
+\DeclareMathSetSC{\SAT}{Sat}
+\DeclareMathSetSC{\VC}{vc}
+\DeclareMathSetSC{\CNF}{cnf}
+\DeclareMathSetSC{\first}{First}
+\DeclareMathSetSC{\follow}{Follow}
+\DeclareMathSetBF{\error}{error}
+\DeclareMathSetTT{\code}{code}
+
+\newcommand{\codeL}{{\code_L}}
+\newcommand{\codeR}{{\code_R}}
+
+\newcommand{\irrev}{\txt{irrev}}
+\newcommand{\rev}{\txt{rev}}
+
+\newcommand{\OD}{\txt{\textit{OD}}}
+
+
+% Sonderzeichen
+\newcommand{\bigast}{\txt{\huge\bfseries *}}
+
+
+
+% Fourier-Trafos
+\newcommand{\FT}[1][]{\cF_{#1}}
+\newcommand{\FTa}[2][]{\cF_{#1}\left[#2\right]}
+\newcommand{\FTi}[1][]{\cF^{-1}_{#1}}
+\newcommand{\FTia}[2][]{\cF^{-1}_{#1}\left[{#2}\right]}
+
+
+
+% Zahlen in Kreisen (benötigt pifont-Paket)
+\newcommand{\oone}{\ding{172}}
+\newcommand{\otwo}{\ding{173}}
+\newcommand{\othree}{\ding{174}}
+\newcommand{\ofour}{\ding{175}}
+\newcommand{\ofive}{\ding{176}}
+\newcommand{\osix}{\ding{177}}
+\newcommand{\oseven}{\ding{178}}
+\newcommand{\oeight}{\ding{179}}
+\newcommand{\onine}{\ding{180}}
+\newcommand{\oten}{\ding{181}}
+
+
+% Umgebung zur Definition von formalen Sprachen
+\newenvironment{ebnf}{\begin{supertabular}{rcll}\small}{\end{supertabular}}
+\newcommand{\ebnfvar}[1]{{\textit{#1}}\ \ } % Variable
+\newcommand{\ebnfvara}[1]{$\left\langle \text{\textit{#1}}\right\rangle$\ \ } % Variable
+\newcommand{\ebnfor}{\txt{\ $|$\ \ }} % Terminalsymbol
+\newcommand{\ebnfterm}[1]{\txt{\underline{\textbf{#1}}}\ \ } % Terminalsymbol
+\newcommand{\ebnfoption}[1]{\txt{$\left[\;\text{#1}\;\right]$}\ \ } % [alpha]
+\newcommand{\ebnfsel}[1]{\txt{$\left(\;\text{#1}\;\right)$}\ \ } % (alpha)
+\newcommand{\ebnfmult}[1]{\txt{$\left\{\;\text{#1}\;\right\}$}\ \ } % {alpha}
+\newcommand{\ebnfattrib}[1]{{$\bigl\{$\ {#1}\ $\bigr\}$}\ \ } 
+\newcommand{\ebnfempty}{\txt{\ $\lambda$\ \ }} % Terminalsymbol
+\newcommand{\ebnfarrow}{$\ \rightarrow\ \ \ $} 
+
+\newcommand{\ebnfrule}[2]{{#1}&$\ \rightarrow\ $&{#2}&\\} % EBNF-Regel mit linker Seite, -> und rechter Seite
+\newcommand{\ebnfrulev}[2]{{\ebnfvar{#1}}&$\ \rightarrow\ $&{#2}&\\} % EBNF-Regel mit linker Seite, -> und rechter Seite
+\newcommand{\ebnfhalfrule}[1]{&&{\ebnfor {#1}}&\\} % halbe Regel, ohne linke Seite, dafür mit | als erstem Zeichen rechts
+\newcommand{\ebnfsinglerulev}[2]{\txt{{\ebnfvar{#1}}$\ \rightarrow\ ${#2}\\}} % EBNF-Regel mit linker Seite, -> und rechter Seite
+\newcommand{\ebnfsinglerule}[2]{\txt{{#1}$\ \rightarrow\ ${#2}\\}} % EBNF-Regel mit linker Seite, -> und rechter Seite
+
+\newcommand{\ebnfrulea}[3]{{#1}&$\ \rightarrow\ $&{#2}&{$\bigl\{$\ {#3}\ $\bigr\}$}\\} % EBNF-Regel mit linker Seite, -> und rechter Seite
+\newcommand{\ebnfruleav}[3]{{\ebnfvar{#1}}&$\ \rightarrow\ $&{#2}&{$\bigl\{$\ {#3}\ $\bigr\}$}\\} % EBNF-Regel mit linker Seite, -> und rechter Seite {text}
+\newcommand{\ebnfhalfrulea}[2]{&&{\ebnfor {#1}}&{$\bigl\{$\ {#2}\ $\bigr\}$}\\} % halbe Regel, ohne linke Seite, dafür mit | als erstem Zeichen rechts {text}
+\newcommand{\ebnfsingleruleav}[3]{\txt{{\ebnfvar{#1}}$\ \rightarrow\ ${#2}\ \ \ $\bigl\{$\ {#3}\ $\bigr\}$\\}} % EBNF-Regel mit linker Seite, -> und rechter Seite {text}
+\newcommand{\ebnfsinglerulea}[3]{\txt{{#1}$\ \rightarrow\ \ ${#2}\ \ $\bigl\{$\ {#3}\ $\bigr\}$\\}} % EBNF-Regel mit linker Seite, -> und rechter Seite {text}
+\newcommand{\ebnflb}{&&&\\} % leere Zeile
+
+\newcommand{\ebnfrulec}[3]{{#1}&$\ \rightarrow\ $&{#2}&\textsl{// #3}\\} % EBNF-Regel mit linker Seite, -> und rechter Seite
+\newcommand{\ebnfrulecv}[3]{{\ebnfvar{#1}}&$\ \rightarrow\ $&{#2}&\textsl{// #3}\\} % EBNF-Regel mit linker Seite, -> und rechter Seite
+\newcommand{\ebnfhalfrulec}[2]{&&{\ebnfor {#1}}&\textsl{// #2}\\} % halbe Regel, ohne linke Seite, dafür mit | als erstem Zeichen rechts
+

@@ -1,4 +1,7 @@
-\documentclass[a4paper,twoside,10pt]{report}
+\documentclass[a4paper,11pt]{report}
+
+% command line options:
+%  - LaTeX: -shell-escape
 
 %% Language %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \usepackage[USenglish]{babel} %francais, polish, spanish, ...
@@ -14,23 +17,65 @@
 \usepackage{listings}
 \usepackage{times}
 \usepackage{couriers}
-\usepackage[textwidth=160mm,textheight=230mm]{geometry}
+\usepackage[textwidth=160mm,textheight=250mm]{geometry}
 \usepackage{xspace}
 % optischer Randausgleich
 \usepackage{microtype}
+\usepackage{ifthen}
+\usepackage{pifont}
+\usepackage{dsfont}
+\usepackage{supertabular}
+\usepackage{upgreek}
+\usepackage{amsmath}
+\usepackage{amssymb}
 
 % additional citations
 \usepackage{doi}
 \usepackage[square,numbers,sort&compress]{natbib}
 \bibliographystyle{unsrtnat}%{jkdissertation}%{plainnat}%{plainnat}
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% USE GNUPLOT DIRECTLY FRO WITHIN LATEX
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\input{gnuplotconfig}
+
 \usepackage{makeidx}
 \makeindex
 
 \lstset{frame=trBL}
 
+
+\input{jkcommands}
+
 % Befehle für Listings
 \newcommand{\cmd}[1]{\begin{lstlisting}[language=bash] #1 \end{lstlisting}}
+
+% Bildunterschriften
+\newcommand{\mycaption}[2]{\caption[#1]{{\normalfont\bfseries\small #1}\ {#2}}}
+\renewcommand{\figurename}{Fig.}
+\renewcommand{\tablename}{Tab.}
+\newcommand{\equationname}{Eq.}
+%\newcommand{\figref}[1]{\figurename~\ref{#1}}
+%\newcommand{\Figref}[1]{\figref{#1}}
+\newcommand{\figref}[1]{\mbox{Fig.~\ref{#1}}}
+\newcommand{\Figref}[1]{\mbox{Figure~\ref{#1}}}
+\newcommand{\figrefs}[2]{\mbox{\figref{#1}(#2)}}
+\newcommand{\Figrefs}[2]{\mbox{\Figref{#1}(#2)}}
+\newcommand{\figrefsn}[2]{\mbox{\figref{#1}{#2}}}
+\newcommand{\Figrefsn}[2]{\mbox{\Figref{#1}{#2}}}
+\newcommand{\tabref}[1]{\mbox{Tab.~\ref{#1}}}
+\newcommand{\Tabref}[1]{\mbox{Table~\ref{#1}}}
+\let\originaleqref\eqref
+\let\oeqref\eqref
+\renewcommand{\eqref}[1]{Eq.~\originaleqref{#1}}
+\newcommand{\eqrefn}[1]{Eq.~\ref{#1}}
+\newcommand{\eqsref}[2]{Eqs.~(\ref{#1}, \ref{#2})}
+\newcommand{\deqref}[1]{Eq.~\originaleqref{#1}~(p.~\pageref{#1})}
+\newcommand{\eqrefd}[1]{\deqref{#1}}
+\newcommand{\deqrefn}[1]{Eq.~\originaleqref{#1},~p.~\pageref{#1}}
+\newcommand{\eqrefdn}[1]{\deqrefn{#1}}
+\newcommand{\Eqref}[1]{\eqref{#1}}
 
 % Befehle fuer Abkürzungen
 \newcommand{\df}{\textsc{diffusion4}\xspace}
@@ -42,26 +87,8 @@
 
 
 % Befehle für Index-Erstellung
-\newcommand{\itindex}[1]{{{\index{#1}}#1}\xspace} % Index-Eintrag im Fließtext. Es wird der Eintrag selbe auch ausgegeben.
-\newcommand{\itindexbf}[1]{{\textbf{{\index{#1@\textbf{#1}}}#1}}\xspace}
-\newcommand{\itindextt}[1]{{\texttt{{\index{#1@\texttt{#1}}}#1}}\xspace}
-\newcommand{\itindexit}[1]{{\textit{{\index{#1@\textit{#1}}}#1}}\xspace}
-\newcommand{\indexbf}[1]{\index{#1@\textbf{#1}}}
-\newcommand{\indextt}[1]{\index{#1@\texttt{#1}}}
-\newcommand{\indexit}[1]{\index{#1@\textit{#1}}}
-\newcommand{\indexbfs}[2]{\index{#1!#2@\textbf{#1}!\textbf{#2}}}
-\newcommand{\indextts}[2]{\index{#1!#2@\texttt{#1}!\texttt{#2}}}
-\newcommand{\indexits}[2]{\index{#1!#2@\textit{#1!#2}}}
 
 % Extra Mathematische befehle
-\newcommand{\dd}{\mathrm{d}}
-\newcommand{\vr}{\vec{r}}
-\newcommand{\vp}{\vec{p}}
-\newcommand{\txt}[1]{\text{#1}}
-\newcommand{\mean}[1]{\left\langle #1\right\rangle}
-\newcommand{\avg}[1]{\mean{#1}}
-\newcommand{\smean}[1]{\langle #1\rangle}
-\newcommand{\snorm}[1]{|#1|}
 \newcommand{\fullvolint}{\iiint\limits_{-\infty\ \ }^{\ \ \infty}}
 \newcommand{\fullareaint}{\iint\limits_{-\infty\ \ }^{\ \ \infty}}
 \newcommand{\clight}{c_0}
@@ -221,8 +248,8 @@
 \newcommand{\DA}{D_\txtA}
 \newcommand{\DB}{D_\txtB}
 \newcommand{\cAB}{\smean{c_\txtAB}}
-\newcommand{\cA}{\smean{c_\txtA}}
-\newcommand{\cB}{\smean{c_\txtB}}
+\renewcommand{\cA}{\smean{c_\txtA}}
+\renewcommand{\cB}{\smean{c_\txtB}}
 \newcommand{\wg}{w_\txtg}
 \renewcommand{\wr}{w_\txtr}
 \newcommand{\zg}{z_\txtg}
@@ -245,6 +272,11 @@
 \newcommand{\gggntau}{{g}_\txtgg}
 \newcommand{\grrntau}{{g}_\txtrr}
 \newcommand{\ggrntau}{{g}_\txtgr}
+
+
+
+
+
 
 
 \newcommand{\meanN}{\mean{N}}
@@ -281,11 +313,11 @@
 \maketitle
 
 \tableofcontents %Table of contents
-\cleardoublepage %The first chapter should start on an odd page.
 
 \pagestyle{plain} %Now display headings: headings / fancy / ...
 
 \input{availability}
+\input{introduction_fcs}
 \input{introduction}
 \input{reference}
 \input{extending}
