@@ -28,6 +28,7 @@
 \usepackage{upgreek}
 \usepackage{amsmath}
 \usepackage{amssymb}
+\usepackage[svgnames]{xcolor}
 
 % additional citations
 \usepackage{doi}
@@ -43,7 +44,23 @@
 \usepackage{makeidx}
 \makeindex
 
-\lstset{frame=trBL}
+\lstset{frame=trBL,basicstyle=\small}
+\lstdefinelanguage{INI}
+{
+    basicstyle=\ttfamily\small,
+    morecomment=[s][\color{black}\bfseries]{[}{]},
+    morecomment=[l]{\#},
+    morecomment=[l]{;},
+    commentstyle=\ttfamily\small\itshape\color{DimGray},
+ 		classoffset=0,
+    morekeywords={fcs,brownian},
+    keywordstyle={\color{black}\bfseries},
+		classoffset=1,
+    morekeywords={fcs1,fc2,fcs3,fcs4,fcs5,fcs6,fcs7,fcs8,fcs9,brownian1,brownian2,brownian3,brownian4,brownian5,brownian6,brownian7,brownian8,brownian9},
+    keywordstyle={\color{black}\bfseries},
+		classoffset=0,
+    otherkeywords={=,:,.},
+}
 
 
 \input{jkcommands}
